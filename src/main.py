@@ -62,17 +62,8 @@ class SearchRequest(BaseModel):
     query: str
 
 
-class PropertyResult(BaseModel):
-    name: str
-    address: str
-    area_sqft: int
-    price_usd: int
-    rooms_summary: dict[str, int]
-    features: list[str]
-
-
 class SearchResponse(BaseModel):
-    results: list[PropertyResult]
+    results: list[dict]
     understood_intent: str
     stats: dict
 
@@ -81,20 +72,8 @@ class SearchResponse(BaseModel):
 async def search_properties(request: SearchRequest):
     result = await search(request.query, _properties)
 
-    property_results = []
-    for prop in result["results"]:
-        rooms_summary = {room.Type: room.Count for room in prop.Rooms}
-        property_results.append(PropertyResult(
-            name=prop.Name,
-            address=(
-                f"{prop.Address.Street}, {prop.Address.City}, "
-                f"{prop.Address.State}, {prop.Address.Country}"
-            ),
-            area_sqft=prop.AreaSqft,
-            price_usd=prop.PriceUSD,
-            rooms_summary=rooms_summary,
-            features=prop.get_all_features(),
-        ))
+    # Return full property info matching the original data structure
+    property_results = [prop.model_dump() for prop in result["results"]]
 
     return SearchResponse(
         results=property_results,

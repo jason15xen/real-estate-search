@@ -10,11 +10,12 @@ This is what makes the system different from a pure vector search:
                   property truly has a fireplace → only true matches returned.
 """
 
+import asyncio
 import json
 import logging
 
 from config.settings import settings
-from src.llm_client import get_async_client
+from src.llm_client import get_async_client_fast
 from src.models.property import Property
 from src.models.search import FeatureCriterion, ParsedQuery
 
@@ -43,13 +44,49 @@ Return ONLY a JSON object:
 """
 
 
+def _text_match_feature(prop: Property, criterion: FeatureCriterion) -> bool:
+    """Fast text-based check: does the property contain this feature keyword?"""
+    keyword = criterion.feature.lower()
+    if criterion.room_context:
+        features = prop.get_features_by_room_type(criterion.room_context)
+    else:
+        features = prop.get_all_features()
+    return any(keyword in f.lower() or f.lower() in keyword for f in features)
+
+
+def _text_prefilter(
+    candidates: list[Property],
+    feature_criteria: list[FeatureCriterion],
+) -> tuple[list[Property], list[Property]]:
+    """
+    Split candidates into:
+      - direct_matches: all feature keywords found in text → no LLM needed
+      - ambiguous: some features missing in text → need LLM for synonym check
+    Properties where NO features match at all are dropped immediately.
+    """
+    direct_matches = []
+    ambiguous = []
+
+    for prop in candidates:
+        matched = [_text_match_feature(prop, fc) for fc in feature_criteria]
+        if all(matched):
+            direct_matches.append(prop)
+        elif any(matched):
+            # Some features found, others might be synonyms → ask LLM
+            ambiguous.append(prop)
+        # else: no features match at all → drop
+
+    return direct_matches, ambiguous
+
+
 async def validate_candidates(
     candidates: list[Property],
     parsed_query: ParsedQuery,
 ) -> list[Property]:
     """
-    Validates each candidate property against the feature criteria using Claude.
-    Returns only properties that truly match ALL criteria.
+    Two-phase validation:
+      1. Fast text matching — properties with exact keyword hits pass instantly
+      2. LLM validation — only for ambiguous cases (possible synonyms)
     """
     feature_criteria = [
         c for c in parsed_query.criteria if isinstance(c, FeatureCriterion)
@@ -58,18 +95,25 @@ async def validate_candidates(
     if not feature_criteria:
         return candidates
 
-    client = get_async_client()
-    validated = []
+    # Phase A: fast text pre-filter
+    direct_matches, ambiguous = _text_prefilter(candidates, feature_criteria)
+    logger.info(
+        f"Text pre-filter: {len(candidates)} candidates → "
+        f"{len(direct_matches)} direct matches, {len(ambiguous)} need LLM"
+    )
 
-    # Limit candidates to avoid excessive API calls
-    candidates_to_check = candidates[: settings.max_candidates_for_validation]
+    if not ambiguous:
+        return direct_matches
 
-    for prop in candidates_to_check:
+    # Phase B: LLM validation only for ambiguous candidates
+    client = get_async_client_fast()
+    ambiguous = ambiguous[: settings.max_candidates_for_validation]
+
+    async def _validate_one(prop: Property) -> Property | None:
         prompt = _build_validation_prompt(prop, feature_criteria)
-
         try:
             response = await client.messages.create(
-                model=settings.anthropic_model,
+                model=settings.anthropic_model_fast,
                 max_tokens=300,
                 system=VALIDATION_SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": prompt}],
@@ -86,18 +130,23 @@ async def validate_candidates(
             reasoning = result.get("reasoning", "")
 
             if passes:
-                validated.append(prop)
-                logger.info(f"✓ {prop.Name} PASSES validation: {reasoning}")
+                logger.info(f"✓ {prop.Name} PASSES: {reasoning}")
+                return prop
             else:
-                logger.info(f"✗ {prop.Name} FAILS validation: {reasoning}")
+                logger.info(f"✗ {prop.Name} FAILS: {reasoning}")
+                return None
 
         except Exception as e:
             logger.error(f"Validation error for {prop.Name}: {e}")
-            # On error, exclude the property (fail-safe: don't return unvalidated)
+            return None
 
+    results = await asyncio.gather(*[_validate_one(p) for p in ambiguous])
+    llm_validated = [p for p in results if p is not None]
+
+    validated = direct_matches + llm_validated
     logger.info(
-        f"Validation: {len(candidates_to_check)} candidates → "
-        f"{len(validated)} validated matches"
+        f"Final: {len(direct_matches)} text-matched + {len(llm_validated)} LLM-validated "
+        f"= {len(validated)} total"
     )
     return validated
 

@@ -67,6 +67,13 @@ Important rules:
 - Keep feature names concise and lowercase (e.g., "fireplace", "covered pool", "walk-in closet").
 - Only extract criteria that are explicitly stated or clearly implied.
 - Do NOT invent criteria the user did not mention.
+- CRITICAL: When a feature is described in relation to a room type, you MUST set room_context. \
+Examples:
+  "3 bedrooms with accent walls" → room_context="Bedroom" (accent walls must be IN the bedrooms)
+  "a kitchen with granite countertops" → room_context="Kitchen"
+  "bedrooms with walk-in closets" → room_context="Bedroom"
+  "a house with a pool" → room_context=null (pool is not tied to a specific room)
+  "a covered pool" → room_context=null
 """
 
 

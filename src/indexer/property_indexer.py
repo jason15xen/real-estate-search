@@ -14,17 +14,29 @@ from src.search.vector_search import get_collection
 logger = logging.getLogger(__name__)
 
 
-def index_properties(properties: list[Property]) -> int:
+def index_properties(properties: list[Property], force: bool = False) -> int:
     """
     Indexes all properties into ChromaDB. Each room instance becomes a
     separate document for fine-grained feature matching.
+
+    Skips re-indexing if the collection already has the expected document count
+    (set force=True to rebuild).
 
     Returns the total number of documents indexed.
     """
     collection = get_collection()
 
+    # Calculate expected doc count
+    expected = sum(len(inst) for p in properties for r in p.Rooms for inst in [r.Instances])
+
+    # Skip if already indexed
+    current = collection.count()
+    if not force and current == expected:
+        logger.info(f"Index already up to date ({current} documents). Skipping.")
+        return current
+
     # Clear existing data
-    if collection.count() > 0:
+    if current > 0:
         all_ids = collection.get()["ids"]
         if all_ids:
             collection.delete(ids=all_ids)

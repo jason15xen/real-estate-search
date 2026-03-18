@@ -1,0 +1,496 @@
+{
+  "results": [
+    {
+      "Name": "Property 174",
+      "Address": {
+        "Street": "949 Main St",
+        "District": "District 15",
+        "City": "Berlin",
+        "State": "Berlin",
+        "PostalCode": "90427",
+        "Country": "Germany",
+        "Latitude": 52.53735489878501,
+        "Longitude": 13.422769349665694
+      },
+      "AreaSqft": 1887,
+      "PriceUSD": 407147,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "blackout curtains",
+                "contemporary",
+                "crown molding",
+                "garden view",
+                "large window",
+                "neutral walls",
+                "queen bed",
+                "traditional"
+              ]
+            },
+            {
+              "Features": [
+                "accent wall",
+                "built-in shelves",
+                "cozy",
+                "crown molding",
+                "large window",
+                "private balcony",
+                "queen bed"
+              ]
+            },
+            {
+              "Features": [
+                "blackout curtains",
+                "built-in closet",
+                "built-in shelves",
+                "hardwood floors",
+                "natural light",
+                "queen bed",
+                "walk-in closet",
+                "workspace desk"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "bronze fixtures",
+                "heated floor",
+                "modern",
+                "natural light",
+                "rain shower",
+                "subway tile",
+                "walk-in shower",
+                "white tile"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Living Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "forest view",
+                "large windows",
+                "neutral paint",
+                "ocean view",
+                "open floor plan",
+                "open layout"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Kitchen",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "kitchen island",
+                "open shelving",
+                "recessed lighting",
+                "traditional",
+                "wine rack",
+                "wood cabinetry"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Garage",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "epoxy floor",
+                "overhead storage",
+                "pegboard wall",
+                "three-car garage",
+                "traditional",
+                "two car garage",
+                "workbench"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Property 107",
+      "Address": {
+        "Street": "701 Main St",
+        "District": "District 5",
+        "City": "Berlin",
+        "State": "Berlin",
+        "PostalCode": "42971",
+        "Country": "Germany",
+        "Latitude": 52.562865825126075,
+        "Longitude": 13.413553825451226
+      },
+      "AreaSqft": 870,
+      "PriceUSD": 1004799,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "accent wall",
+                "ceiling fan",
+                "city view",
+                "garden view",
+                "large window",
+                "queen bed",
+                "twin bed",
+                "walk-in closet"
+              ]
+            },
+            {
+              "Features": [
+                "accent wall",
+                "blackout curtains",
+                "built-in shelves",
+                "ceiling fan",
+                "modern",
+                "walk-in closet",
+                "workspace desk"
+              ]
+            },
+            {
+              "Features": [
+                "built-in shelves",
+                "crown molding",
+                "large window",
+                "minimalist",
+                "private balcony",
+                "walk-in closet"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "contemporary",
+                "luxury",
+                "matte black fixtures",
+                "natural light",
+                "soaking tub",
+                "walk-in shower",
+                "white tile"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Living Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "accent wall",
+                "city view",
+                "hardwood floors",
+                "modern",
+                "ocean view",
+                "sectional sofa",
+                "traditional"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Kitchen",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "chrome hardware",
+                "farmhouse",
+                "kitchen island",
+                "open shelving",
+                "recessed lighting",
+                "stainless appliances",
+                "subway tile backsplash",
+                "tile backsplash"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Property 72",
+      "Address": {
+        "Street": "46 Main St",
+        "District": "District 19",
+        "City": "Berlin",
+        "State": "Berlin",
+        "PostalCode": "79058",
+        "Country": "Germany",
+        "Latitude": 52.56964202840242,
+        "Longitude": 13.417193012653037
+      },
+      "AreaSqft": 3991,
+      "PriceUSD": 1961965,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "accent wall",
+                "blackout curtains",
+                "modern",
+                "natural light",
+                "queen bed",
+                "recessed lighting",
+                "walk-in closet",
+                "workspace desk"
+              ]
+            },
+            {
+              "Features": [
+                "accent wall",
+                "carpet flooring",
+                "city view",
+                "garden view",
+                "king bed",
+                "large window",
+                "minimalist",
+                "queen bed"
+              ]
+            },
+            {
+              "Features": [
+                "cozy",
+                "garden view",
+                "hardwood floors",
+                "large window",
+                "minimalist",
+                "traditional",
+                "workspace desk"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "bronze fixtures",
+                "double sink",
+                "heated floor",
+                "minimalist",
+                "skylight",
+                "stone tile",
+                "vessel sink"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Living Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "crown molding",
+                "fireplace",
+                "lake view",
+                "large windows",
+                "modern sofa",
+                "open layout"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Kitchen",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "contemporary",
+                "granite countertops",
+                "luxury",
+                "open concept",
+                "quartz countertops",
+                "tile backsplash",
+                "white cabinetry",
+                "wine rack"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Dining Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "built-in buffet",
+                "chandelier lighting",
+                "coffered ceiling",
+                "crown molding",
+                "farmhouse table",
+                "formal dining",
+                "open concept"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Property 298",
+      "Address": {
+        "Street": "640 Main St",
+        "District": "District 11",
+        "City": "Berlin",
+        "State": "Berlin",
+        "PostalCode": "78219",
+        "Country": "Germany",
+        "Latitude": 52.47578991688209,
+        "Longitude": 13.377803166282208
+      },
+      "AreaSqft": 1110,
+      "PriceUSD": 1586625,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "ceiling fan",
+                "cozy",
+                "crown molding",
+                "large window",
+                "modern",
+                "queen bed",
+                "twin bed"
+              ]
+            },
+            {
+              "Features": [
+                "city view",
+                "contemporary",
+                "hardwood floors",
+                "minimalist",
+                "neutral walls",
+                "vaulted ceiling",
+                "walk-in closet",
+                "workspace desk"
+              ]
+            },
+            {
+              "Features": [
+                "accent wall",
+                "blackout curtains",
+                "city view",
+                "contemporary",
+                "cozy",
+                "modern",
+                "walk-in closet",
+                "workspace desk"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "bathtub",
+                "contemporary",
+                "double sink",
+                "luxury",
+                "natural light",
+                "single vanity"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Living Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "carpet flooring",
+                "city view",
+                "fireplace",
+                "modern sofa",
+                "neutral paint",
+                "recessed lighting"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Kitchen",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "apron sink",
+                "butcher block countertop",
+                "contemporary",
+                "double oven",
+                "open concept",
+                "open shelving",
+                "quartz countertops",
+                "stainless appliances"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Garage",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "epoxy floor",
+                "ev charger",
+                "overhead storage",
+                "painted floor",
+                "pegboard wall",
+                "storage cabinets",
+                "storage shelves"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "understood_intent": "User is looking for a property in Berlin with 3 bedrooms (featuring accent walls), 1 kitchen, and 1 bathroom.",
+  "stats": {
+    "total_properties": 300,
+    "after_hard_filters": 5,
+    "after_proximity_filters": 5,
+    "after_vector_search": 5,
+    "final_results": 4
+  }
+}

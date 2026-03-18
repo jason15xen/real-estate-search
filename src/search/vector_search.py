@@ -51,43 +51,58 @@ def search_by_features(
 
     collection = get_collection()
 
-    # Build a combined query from all feature criteria
-    query_parts = []
+    # Search each feature criterion separately to enforce room_type filtering
+    per_criterion_results: list[set[str]] = []
+
     for fc in feature_criteria:
+        query_text = (
+            f"{fc.room_context} with {fc.feature}" if fc.room_context else fc.feature
+        )
+
+        # Build where filter: combine candidate restriction + room_type restriction
+        conditions = []
+        if candidate_property_names:
+            if len(candidate_property_names) == 1:
+                conditions.append({"property_name": candidate_property_names[0]})
+            else:
+                conditions.append({"property_name": {"$in": candidate_property_names}})
         if fc.room_context:
-            query_parts.append(f"{fc.room_context} with {fc.feature}")
-        else:
-            query_parts.append(fc.feature)
+            conditions.append({"room_type": fc.room_context})
 
-    query_text = "; ".join(query_parts)
+        where_filter = None
+        if len(conditions) == 1:
+            where_filter = conditions[0]
+        elif len(conditions) > 1:
+            where_filter = {"$and": conditions}
 
-    # Build where filter to restrict to candidates if provided
-    where_filter = None
-    if candidate_property_names:
-        if len(candidate_property_names) == 1:
-            where_filter = {"property_name": candidate_property_names[0]}
-        else:
-            where_filter = {"property_name": {"$in": candidate_property_names}}
+        results = collection.query(
+            query_texts=[query_text],
+            n_results=min(settings.vector_search_top_k, collection.count()),
+            where=where_filter if where_filter else None,
+        )
 
-    results = collection.query(
-        query_texts=[query_text],
-        n_results=min(settings.vector_search_top_k, collection.count()),
-        where=where_filter if where_filter else None,
-    )
+        matched_names = set()
+        if results["ids"] and results["ids"][0]:
+            for metadata in results["metadatas"][0]:
+                matched_names.add(metadata["property_name"])
 
-    if not results["ids"] or not results["ids"][0]:
-        return []
+        logger.info(
+            f"Vector search for '{query_text}'"
+            f"{f' (in {fc.room_context})' if fc.room_context else ''}"
+            f": {len(matched_names)} matches"
+        )
+        per_criterion_results.append(matched_names)
 
-    # Extract unique property names in order, preserving rank
-    seen = set()
-    property_names = []
-    for metadata in results["metadatas"][0]:
-        name = metadata["property_name"]
-        if name not in seen:
-            seen.add(name)
-            property_names.append(name)
+    # Intersect: property must match ALL feature criteria
+    if per_criterion_results:
+        matched = per_criterion_results[0]
+        for s in per_criterion_results[1:]:
+            matched = matched & s
+    else:
+        matched = set()
 
-    logger.info(
-        f"Vector search for '{query_text}': found {len(property_names)} candidate properties"
-    )
+    # Preserve order from first criterion's results
+    property_names = [n for n in per_criterion_results[0] if n in matched] if matched else []
+
+    logger.info(f"Vector search combined: {len(property_names)} candidate properties")
     return property_names
