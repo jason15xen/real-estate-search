@@ -1,22 +1,18 @@
-Hey, I need a couple of Azure services set up for the real estate search project. Everything should be in the East US 2 region. Here's what I need:
+Hey, I need a PostgreSQL service set up for the real estate search project.
 
 
-1) PostgreSQL (Flexible Server)
+PostgreSQL (Flexible Server)
 
-I need a PostgreSQL 16 Flexible Server. Burstable B2s tier is fine for now, 32 GB storage. The database name should be "real_estate".
+I need a PostgreSQL 16 Flexible Server in East US 2 region. Burstable B2s tier is fine for now, 32 GB storage. The database name should be "real_estate".
 
 After it's created, please enable these two extensions: postgis and pg_trgm. Then I'll handle running the table creation scripts on my end.
 
-Once it's ready, I'll need the host, port, username, and password.
+Once it's ready, I'll need:
+- Host (xxx.postgres.database.azure.com)
+- Port
+- Username
+- Password
 
-
-2) Azure AI Search
-
-I need an Azure AI Search service. Basic tier is fine for dev. I'll set up the index configuration myself once I have access.
-
-Once it's ready, I'll need the endpoint URL and admin API key.
-
-
-Both services need to be in East US 2 since our other endpoints are already there and we want to keep latency low.
+It needs to be in East US 2 since our other endpoints are already there and we want to keep latency low.
 
 Let me know if you have any questions.

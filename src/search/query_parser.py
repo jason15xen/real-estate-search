@@ -1,5 +1,5 @@
 """
-Query Parser — Uses Claude to decompose natural language into structured search criteria.
+Query Parser — Uses Azure OpenAI to decompose natural language into structured search criteria.
 
 The parser receives the full list of known features and room types from the data,
 so it can map user input to exact feature names. This eliminates the need for
@@ -16,7 +16,7 @@ import logging
 
 from config.settings import settings
 from src.data.feature_registry import registry
-from src.llm_client import get_async_client_fast
+from src.llm_client import get_async_client
 from src.models.search import (
     AreaCriterion,
     FeatureCriterion,
@@ -113,18 +113,20 @@ def _build_system_prompt() -> str:
 
 
 async def parse_query(query: str) -> ParsedQuery:
-    client = get_async_client_fast()
+    client = get_async_client()
     system_prompt = _build_system_prompt()
 
     try:
-        response = await client.messages.create(
-            model=settings.anthropic_model_fast,
-            max_tokens=1024,
-            system=system_prompt,
-            messages=[{"role": "user", "content": query}],
+        response = await client.chat.completions.create(
+            model=settings.azure_openai_deployment,
+            max_completion_tokens=1024,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": query},
+            ],
         )
 
-        raw_text = response.content[0].text
+        raw_text = response.choices[0].message.content
         # Strip markdown code fences if present
         if raw_text.startswith("```"):
             lines = raw_text.split("\n")
@@ -140,46 +142,54 @@ async def parse_query(query: str) -> ParsedQuery:
             understood_intent="Failed to parse query",
         )
 
-    criteria = []
-    for c in parsed["criteria"]:
-        criterion_type = c["type"]
-        if criterion_type == "room_count":
-            criteria.append(RoomCountCriterion(
-                room_type=c["room_type"],
-                exact_count=c.get("exact_count"),
-                min_count=c.get("min_count"),
-                max_count=c.get("max_count"),
-            ))
-        elif criterion_type == "feature":
-            criteria.append(FeatureCriterion(
-                feature=c["feature"],
-                room_context=c.get("room_context"),
-                negated=c.get("negated", False),
-            ))
-        elif criterion_type == "price":
-            criteria.append(PriceCriterion(
-                min_price=c.get("min_price"),
-                max_price=c.get("max_price"),
-            ))
-        elif criterion_type == "area":
-            criteria.append(AreaCriterion(
-                min_sqft=c.get("min_sqft"),
-                max_sqft=c.get("max_sqft"),
-            ))
-        elif criterion_type == "location":
-            criteria.append(LocationCriterion(
-                city=c.get("city"),
-                state=c.get("state"),
-                country=c.get("country"),
-                district=c.get("district"),
-            ))
-        elif criterion_type == "proximity":
-            criteria.append(ProximityCriterion(
-                landmark_name=c["landmark_name"],
-                max_distance_miles=c["max_distance_miles"],
-            ))
-        else:
-            logger.warning(f"Unknown criterion type: {criterion_type}")
+    try:
+        criteria = []
+        for c in parsed["criteria"]:
+            criterion_type = c["type"]
+            if criterion_type == "room_count":
+                criteria.append(RoomCountCriterion(
+                    room_type=c["room_type"],
+                    exact_count=c.get("exact_count"),
+                    min_count=c.get("min_count"),
+                    max_count=c.get("max_count"),
+                ))
+            elif criterion_type == "feature":
+                criteria.append(FeatureCriterion(
+                    feature=c["feature"],
+                    room_context=c.get("room_context"),
+                    negated=c.get("negated", False),
+                ))
+            elif criterion_type == "price":
+                criteria.append(PriceCriterion(
+                    min_price=c.get("min_price"),
+                    max_price=c.get("max_price"),
+                ))
+            elif criterion_type == "area":
+                criteria.append(AreaCriterion(
+                    min_sqft=c.get("min_sqft"),
+                    max_sqft=c.get("max_sqft"),
+                ))
+            elif criterion_type == "location":
+                criteria.append(LocationCriterion(
+                    city=c.get("city"),
+                    state=c.get("state"),
+                    country=c.get("country"),
+                    district=c.get("district"),
+                ))
+            elif criterion_type == "proximity":
+                criteria.append(ProximityCriterion(
+                    landmark_name=c["landmark_name"],
+                    max_distance_miles=c["max_distance_miles"],
+                ))
+            else:
+                logger.warning(f"Unknown criterion type: {criterion_type}")
+    except (KeyError, TypeError) as e:
+        logger.error(f"Failed to extract criteria: {e}")
+        return ParsedQuery(
+            original_query=query,
+            criteria=[],
+            understood_intent="Failed to parse query criteria",
+        )
 
     return ParsedQuery(
         original_query=query,

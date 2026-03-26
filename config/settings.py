@@ -2,24 +2,21 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Azure-hosted Anthropic endpoints (Opus and Haiku use different Azure services)
-    azure_anthropic_endpoint: str = "https://v-cke-m8mjd1dx-eastus2.services.ai.azure.com/anthropic/"
-    azure_anthropic_endpoint_fast: str = "https://v-cke-m8mjd1dx-eastus2.openai.azure.com/anthropic/"
-    azure_anthropic_api_key: str = ""
+    # Azure OpenAI
+    azure_openai_api_key: str = ""
+    azure_openai_endpoint: str = ""
+    azure_openai_deployment: str = "gpt-5.1"
+    azure_openai_model: str = "gpt-5.1"
+    azure_openai_api_version: str = "2025-04-01-preview"
 
-    # Models (Azure-hosted)
-    anthropic_model: str = "claude-opus-4-6"
-    anthropic_model_fast: str = "claude-haiku-4-5"
+    # PostgreSQL
+    postgres_host: str = "localhost"
+    postgres_port: int = 5432
+    postgres_user: str = "admin"
+    postgres_password: str = "admin123"
+    postgres_db: str = "real_estate"
 
-    chroma_persist_dir: str = "./chroma_db"
     log_level: str = "INFO"
-
-    # Search tuning
-    vector_search_top_k: int = 50
-    vector_similarity_threshold: float = 0.3
-
-    # Validation
-    max_candidates_for_validation: int = 30
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

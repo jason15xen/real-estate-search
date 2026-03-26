@@ -2,14 +2,12 @@
 Real Estate AI Search — FastAPI Application
 
 An AI-powered search engine that returns ONLY properties matching ALL criteria.
-Unlike pure vector search (which returns similar results ranked by similarity),
-this system uses a multi-phase pipeline:
+The system uses a multi-phase pipeline:
 
-  1. LLM parses query → structured criteria
-  2. Hard filters → eliminate non-qualifying properties
-  3. Proximity filters → distance-based elimination
-  4. Vector search → semantic feature matching (handles synonyms)
-  5. LLM validation → rejects false positives
+  1. LLM parses query → structured criteria (maps synonyms to known feature names)
+  2. Hard filters → PostgreSQL indexed queries
+  3. Proximity filters → PostGIS spatial queries
+  4. Feature matching → PostgreSQL text matching on room_instances
 
 The result: accurate results, not just "similar" ones.
 """
@@ -21,9 +19,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from config.settings import settings
+from src.data.database import close_pool, get_pool
 from src.data.feature_registry import registry
-from src.data.loader import load_properties
-from src.models.property import Property
 from src.search.orchestrator import search
 
 logging.basicConfig(
@@ -32,19 +29,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# In-memory property store (loaded at startup)
-_properties: list[Property] = []
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _properties
-    logger.info("Loading properties from mockup.json...")
-    _properties = load_properties("mockup.json")
-    logger.info(f"Loaded {len(_properties)} properties")
+    # Initialize database pool
+    pool = await get_pool()
+    logger.info("Database pool initialized")
 
-    logger.info("Building feature registry...")
-    registry.build_from_properties(_properties)
+    # Build feature registry from PostgreSQL
+    logger.info("Building feature registry from database...")
+    await registry.build_from_db(pool)
     logger.info(
         f"Registry ready: {len(registry.features)} features, "
         f"{len(registry.room_types)} room types"
@@ -52,11 +46,14 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    await close_pool()
+    logger.info("Database pool closed")
+
 
 app = FastAPI(
     title="Real Estate AI Search",
     description="Accurate AI-powered real estate search — returns only properties that match ALL criteria.",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -73,13 +70,11 @@ class SearchResponse(BaseModel):
 
 @app.post("/search", response_model=SearchResponse)
 async def search_properties(request: SearchRequest):
-    result = await search(request.query, _properties)
-
-    # Return full property info matching the original data structure
-    property_results = [prop.model_dump() for prop in result["results"]]
+    pool = await get_pool()
+    result = await search(request.query, pool)
 
     return SearchResponse(
-        results=property_results,
+        results=result["results"],
         understood_intent=result["parsed_query"].understood_intent,
         stats=result["stats"],
     )
@@ -87,4 +82,7 @@ async def search_properties(request: SearchRequest):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "properties_loaded": len(_properties)}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        count = await conn.fetchval("SELECT count(*) FROM properties")
+    return {"status": "ok", "properties_in_db": count}

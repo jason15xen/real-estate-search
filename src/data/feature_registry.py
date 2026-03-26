@@ -1,5 +1,5 @@
 """
-Feature Registry — Collects all unique feature names and room types from the data
+Feature Registry — Collects all unique feature names and room types from PostgreSQL
 at startup and stores them in memory.
 
 This allows the query parser to map user input to exact feature names,
@@ -8,7 +8,7 @@ eliminating the need for vector search and LLM validation.
 
 import logging
 
-from src.models.property import Property
+import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -19,20 +19,33 @@ class FeatureRegistry:
         self.room_types: set[str] = set()
         self.features_by_room_type: dict[str, set[str]] = {}
 
-    def build_from_properties(self, properties: list[Property]) -> None:
-        for prop in properties:
-            for room in prop.Rooms:
-                self.room_types.add(room.Type)
-                if room.Type not in self.features_by_room_type:
-                    self.features_by_room_type[room.Type] = set()
-                for instance in room.Instances:
-                    for feature in instance.Features:
-                        self.features.add(feature)
-                        self.features_by_room_type[room.Type].add(feature)
+    async def build_from_db(self, pool: asyncpg.Pool) -> None:
+        """Load unique features and room types from PostgreSQL."""
+        async with pool.acquire() as conn:
+            # Get all unique room types
+            rows = await conn.fetch(
+                "SELECT DISTINCT room_type FROM room_instances ORDER BY room_type"
+            )
+            for row in rows:
+                self.room_types.add(row["room_type"])
+
+            # Get all unique features per room type
+            rows = await conn.fetch("""
+                SELECT DISTINCT room_type, unnest(features) AS feature
+                FROM room_instances
+                ORDER BY room_type, feature
+            """)
+            for row in rows:
+                feature = row["feature"]
+                room_type = row["room_type"]
+                self.features.add(feature)
+                if room_type not in self.features_by_room_type:
+                    self.features_by_room_type[room_type] = set()
+                self.features_by_room_type[room_type].add(feature)
 
         logger.info(
             f"Feature registry: {len(self.features)} unique features, "
-            f"{len(self.room_types)} room types"
+            f"{len(self.room_types)} room types (from PostgreSQL)"
         )
 
     def get_features_list(self) -> list[str]:
