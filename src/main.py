@@ -21,8 +21,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from config.settings import settings
+from src.data.feature_registry import registry
 from src.data.loader import load_properties
-from src.indexer.property_indexer import index_properties
 from src.models.property import Property
 from src.search.orchestrator import search
 
@@ -43,9 +43,12 @@ async def lifespan(app: FastAPI):
     _properties = load_properties("mockup.json")
     logger.info(f"Loaded {len(_properties)} properties")
 
-    logger.info("Indexing properties into vector database...")
-    doc_count = index_properties(_properties)
-    logger.info(f"Indexed {doc_count} documents")
+    logger.info("Building feature registry...")
+    registry.build_from_properties(_properties)
+    logger.info(
+        f"Registry ready: {len(registry.features)} features, "
+        f"{len(registry.room_types)} room types"
+    )
 
     yield
 
