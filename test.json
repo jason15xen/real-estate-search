@@ -1,0 +1,1247 @@
+{
+  "results": [
+    {
+      "Name": "Property 200",
+      "Address": {
+        "Street": "647 Main St",
+        "District": "District 10",
+        "City": "London",
+        "State": "England",
+        "PostalCode": "83865",
+        "Country": "UK",
+        "Latitude": 51.46109129762676,
+        "Longitude": -0.12091274529307144
+      },
+      "AreaSqft": 1834,
+      "PriceUSD": 1985541,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "balcony",
+                "blackout curtains",
+                "contemporary",
+                "crown molding",
+                "king bed",
+                "large window",
+                "natural light"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "classic",
+                "double sink",
+                "matte black fixtures",
+                "modern",
+                "single vanity",
+                "walk-in shower",
+                "white tile"
+              ]
+            },
+            {
+              "Features": [
+                "bathtub",
+                "chrome fixtures",
+                "classic",
+                "contemporary",
+                "rain shower",
+                "stone tile",
+                "subway tile",
+                "vessel sink"
+              ]
+            },
+            {
+              "Features": [
+                "clawfoot tub",
+                "contemporary",
+                "frameless glass",
+                "freestanding tub",
+                "gold fixtures",
+                "stone tile",
+                "vessel sink",
+                "walk-in shower"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Kitchen",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "black cabinetry",
+                "farmhouse sink",
+                "granite countertops",
+                "pantry",
+                "pendant lights",
+                "traditional",
+                "white cabinetry",
+                "wine rack"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Property 1",
+      "Address": {
+        "Street": "176 Main St",
+        "District": "District 16",
+        "City": "Toronto",
+        "State": "Ontario",
+        "PostalCode": "89918",
+        "Country": "Canada",
+        "Latitude": 43.61092592886731,
+        "Longitude": -79.36610761762948
+      },
+      "AreaSqft": 1754,
+      "PriceUSD": 1742631,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "crown molding",
+                "garden view",
+                "king bed",
+                "large window",
+                "neutral walls",
+                "queen bed",
+                "twin bed",
+                "window seat"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "bathtub",
+                "classic",
+                "double sink",
+                "floating vanity",
+                "luxury",
+                "marble tile",
+                "minimalist",
+                "stone tile"
+              ]
+            },
+            {
+              "Features": [
+                "bathtub",
+                "bronze fixtures",
+                "heated floor",
+                "marble tile",
+                "natural light",
+                "stone tile",
+                "vessel sink",
+                "white tile"
+              ]
+            },
+            {
+              "Features": [
+                "bathtub",
+                "marble tile",
+                "minimalist",
+                "single vanity",
+                "vessel sink",
+                "wainscoting",
+                "walk-in shower"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Kitchen",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "black cabinetry",
+                "butcher block countertop",
+                "double oven",
+                "farmhouse",
+                "kitchen island",
+                "stainless appliances",
+                "traditional",
+                "white cabinetry"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Dining Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "accent wall",
+                "chandelier lighting",
+                "crown molding",
+                "formal dining",
+                "large dining table",
+                "neutral walls",
+                "pendant lights"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Property 219",
+      "Address": {
+        "Street": "489 Main St",
+        "District": "District 11",
+        "City": "Sydney",
+        "State": "NSW",
+        "PostalCode": "35942",
+        "Country": "Australia",
+        "Latitude": -33.85890137528656,
+        "Longitude": 151.23480971383324
+      },
+      "AreaSqft": 3609,
+      "PriceUSD": 360101,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "accent wall",
+                "contemporary",
+                "cozy",
+                "large window",
+                "natural light",
+                "queen bed",
+                "traditional",
+                "walk-in closet"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "gold fixtures",
+                "heated floor",
+                "matte black fixtures",
+                "mirror cabinet",
+                "natural light",
+                "single vanity",
+                "stone tile"
+              ]
+            },
+            {
+              "Features": [
+                "chrome fixtures",
+                "freestanding tub",
+                "natural light",
+                "rain shower",
+                "skylight",
+                "stone tile",
+                "vessel sink",
+                "walk-in shower"
+              ]
+            },
+            {
+              "Features": [
+                "bathtub",
+                "classic",
+                "freestanding tub",
+                "mirror cabinet",
+                "rain shower",
+                "single vanity",
+                "subway tile",
+                "vessel sink"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Living Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "cozy",
+                "forest view",
+                "large windows",
+                "natural light",
+                "open layout",
+                "sectional sofa",
+                "vaulted ceiling"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Kitchen",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "apron sink",
+                "butcher block countertop",
+                "farmhouse",
+                "farmhouse sink",
+                "granite countertops",
+                "marble countertops",
+                "subway tile backsplash",
+                "traditional"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Property 105",
+      "Address": {
+        "Street": "132 Main St",
+        "District": "District 1",
+        "City": "Berlin",
+        "State": "Berlin",
+        "PostalCode": "80029",
+        "Country": "Germany",
+        "Latitude": 52.47676328562736,
+        "Longitude": 13.403557800041147
+      },
+      "AreaSqft": 3346,
+      "PriceUSD": 916894,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "balcony",
+                "bay window",
+                "ceiling fan",
+                "crown molding",
+                "king bed",
+                "private balcony"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "double sink",
+                "floating vanity",
+                "gold fixtures",
+                "matte black fixtures",
+                "natural light",
+                "single vanity"
+              ]
+            },
+            {
+              "Features": [
+                "bathtub",
+                "luxury",
+                "marble tile",
+                "matte black fixtures",
+                "rain shower",
+                "soaking tub",
+                "walk-in shower"
+              ]
+            },
+            {
+              "Features": [
+                "floating vanity",
+                "frameless glass",
+                "freestanding tub",
+                "heated floor",
+                "minimalist",
+                "mirror cabinet",
+                "stone tile",
+                "wainscoting"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Dining Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "accent wall",
+                "chandelier lighting",
+                "contemporary",
+                "crown molding",
+                "formal dining",
+                "hardwood floors",
+                "natural light"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Garage",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "attached garage",
+                "epoxy floor",
+                "modern",
+                "one car garage",
+                "side entry",
+                "storage cabinets",
+                "two car garage",
+                "workbench"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Property 239",
+      "Address": {
+        "Street": "515 Main St",
+        "District": "District 15",
+        "City": "Berlin",
+        "State": "Berlin",
+        "PostalCode": "13716",
+        "Country": "Germany",
+        "Latitude": 52.54649916714109,
+        "Longitude": 13.45356422834938
+      },
+      "AreaSqft": 772,
+      "PriceUSD": 1866714,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "built-in closet",
+                "ceiling fan",
+                "city view",
+                "crown molding",
+                "recessed lighting",
+                "vaulted ceiling",
+                "walk-in closet",
+                "window seat"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "bathtub",
+                "contemporary",
+                "heated floor",
+                "matte black fixtures",
+                "single vanity",
+                "subway tile",
+                "towel warmer",
+                "vessel sink"
+              ]
+            },
+            {
+              "Features": [
+                "bathtub",
+                "double sink",
+                "gold fixtures",
+                "heated floor",
+                "mirror cabinet",
+                "skylight",
+                "towel warmer"
+              ]
+            },
+            {
+              "Features": [
+                "bronze fixtures",
+                "chrome fixtures",
+                "double sink",
+                "freestanding tub",
+                "heated floor",
+                "marble tile",
+                "stone tile",
+                "towel warmer"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Living Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "crown molding",
+                "fireplace",
+                "modern sofa",
+                "natural light",
+                "open layout",
+                "sectional sofa",
+                "stone fireplace"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Kitchen",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "breakfast bar",
+                "granite countertops",
+                "luxury",
+                "marble countertops",
+                "modern",
+                "pendant lights",
+                "under-cabinet lighting"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Garage",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "detached garage",
+                "ev charger",
+                "insulated walls",
+                "side entry",
+                "storage cabinets",
+                "traditional"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Property 31",
+      "Address": {
+        "Street": "924 Main St",
+        "District": "District 11",
+        "City": "Toronto",
+        "State": "Ontario",
+        "PostalCode": "21515",
+        "Country": "Canada",
+        "Latitude": 43.66116731712704,
+        "Longitude": -79.34931805968023
+      },
+      "AreaSqft": 813,
+      "PriceUSD": 468762,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "balcony",
+                "built-in closet",
+                "built-in shelves",
+                "en-suite bathroom",
+                "king bed",
+                "twin bed"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "bathtub",
+                "bronze fixtures",
+                "clawfoot tub",
+                "contemporary",
+                "single vanity",
+                "walk-in shower"
+              ]
+            },
+            {
+              "Features": [
+                "bathtub",
+                "chrome fixtures",
+                "frameless glass",
+                "matte black fixtures",
+                "minimalist",
+                "single vanity",
+                "skylight",
+                "white tile"
+              ]
+            },
+            {
+              "Features": [
+                "bathtub",
+                "chrome fixtures",
+                "classic",
+                "double sink",
+                "freestanding tub",
+                "gold fixtures",
+                "natural light",
+                "stone tile"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Living Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "city view",
+                "loft style",
+                "modern fireplace",
+                "modern sofa",
+                "open layout",
+                "stone fireplace"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Kitchen",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "contemporary",
+                "farmhouse sink",
+                "gold hardware",
+                "granite countertops",
+                "luxury",
+                "quartz countertops"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Dining Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "chandelier lighting",
+                "coffered ceiling",
+                "contemporary",
+                "crown molding",
+                "farmhouse table",
+                "neutral walls"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Property 18",
+      "Address": {
+        "Street": "432 Main St",
+        "District": "District 17",
+        "City": "Tokyo",
+        "State": "Tokyo",
+        "PostalCode": "20516",
+        "Country": "Japan",
+        "Latitude": 35.704099873822614,
+        "Longitude": 139.6579986332955
+      },
+      "AreaSqft": 3929,
+      "PriceUSD": 810374,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "accent wall",
+                "balcony",
+                "built-in closet",
+                "city view",
+                "king bed",
+                "walk-in closet"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "double sink",
+                "freestanding tub",
+                "mirror cabinet",
+                "natural light",
+                "single vanity",
+                "soaking tub",
+                "wainscoting"
+              ]
+            },
+            {
+              "Features": [
+                "bathtub",
+                "contemporary",
+                "heated floor",
+                "matte black fixtures",
+                "single vanity",
+                "skylight",
+                "soaking tub",
+                "white tile"
+              ]
+            },
+            {
+              "Features": [
+                "clawfoot tub",
+                "freestanding tub",
+                "heated floor",
+                "mirror cabinet",
+                "natural light",
+                "stone tile",
+                "walk-in shower"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Living Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "accent wall",
+                "forest view",
+                "hardwood floors",
+                "large windows",
+                "modern",
+                "open floor plan",
+                "open layout"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Kitchen",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "gold hardware",
+                "granite countertops",
+                "open concept",
+                "stainless appliances",
+                "subway tile backsplash",
+                "traditional",
+                "under-cabinet lighting",
+                "wine rack"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Property 288",
+      "Address": {
+        "Street": "507 Main St",
+        "District": "District 13",
+        "City": "Berlin",
+        "State": "Berlin",
+        "PostalCode": "57850",
+        "Country": "Germany",
+        "Latitude": 52.56245259629749,
+        "Longitude": 13.414911890722893
+      },
+      "AreaSqft": 1083,
+      "PriceUSD": 597563,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "built-in closet",
+                "contemporary",
+                "large window",
+                "minimalist",
+                "recessed lighting",
+                "vaulted ceiling",
+                "window seat",
+                "workspace desk"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "double sink",
+                "luxury",
+                "marble tile",
+                "minimalist",
+                "mirror cabinet",
+                "towel warmer"
+              ]
+            },
+            {
+              "Features": [
+                "bathtub",
+                "classic",
+                "freestanding tub",
+                "matte black fixtures",
+                "modern",
+                "skylight",
+                "soaking tub"
+              ]
+            },
+            {
+              "Features": [
+                "bathtub",
+                "bronze fixtures",
+                "contemporary",
+                "double sink",
+                "gold fixtures",
+                "stone tile"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Living Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "city view",
+                "fireplace",
+                "hardwood floors",
+                "industrial",
+                "modern",
+                "neutral paint",
+                "sectional sofa"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Kitchen",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "apron sink",
+                "granite countertops",
+                "kitchen island",
+                "modern",
+                "quartz countertops",
+                "recessed lighting"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Dining Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "built-in buffet",
+                "chandelier lighting",
+                "farmhouse table",
+                "hardwood floors",
+                "natural light",
+                "neutral walls",
+                "open concept",
+                "pendant lights"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Garage",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "detached garage",
+                "one car garage",
+                "pegboard wall",
+                "traditional",
+                "two car garage",
+                "workbench"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Property 241",
+      "Address": {
+        "Street": "282 Main St",
+        "District": "District 4",
+        "City": "Berlin",
+        "State": "Berlin",
+        "PostalCode": "63402",
+        "Country": "Germany",
+        "Latitude": 52.53949573872796,
+        "Longitude": 13.395868847970078
+      },
+      "AreaSqft": 780,
+      "PriceUSD": 1955146,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "accent wall",
+                "balcony",
+                "contemporary",
+                "king bed",
+                "modern",
+                "vaulted ceiling",
+                "walk-in closet",
+                "workspace desk"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "double sink",
+                "floating vanity",
+                "mirror cabinet",
+                "rain shower",
+                "single vanity",
+                "soaking tub",
+                "towel warmer"
+              ]
+            },
+            {
+              "Features": [
+                "clawfoot tub",
+                "double sink",
+                "frameless glass",
+                "marble tile",
+                "modern",
+                "soaking tub"
+              ]
+            },
+            {
+              "Features": [
+                "bronze fixtures",
+                "classic",
+                "freestanding tub",
+                "heated floor",
+                "matte black fixtures",
+                "stone tile"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Living Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "contemporary",
+                "large windows",
+                "minimalist",
+                "modern fireplace",
+                "open layout",
+                "vaulted ceiling"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Kitchen",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "apron sink",
+                "breakfast bar",
+                "contemporary",
+                "gold hardware",
+                "granite countertops",
+                "modern",
+                "under-cabinet lighting"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Garage",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "attached garage",
+                "one car garage",
+                "painted floor",
+                "pegboard wall",
+                "side entry",
+                "storage cabinets",
+                "traditional"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Property 232",
+      "Address": {
+        "Street": "519 Main St",
+        "District": "District 12",
+        "City": "Los Angeles",
+        "State": "CA",
+        "PostalCode": "10299",
+        "Country": "USA",
+        "Latitude": 34.036081446341115,
+        "Longitude": -118.28286531698657
+      },
+      "AreaSqft": 2793,
+      "PriceUSD": 1932557,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "hardwood floors",
+                "modern",
+                "natural light",
+                "recessed lighting",
+                "traditional",
+                "walk-in closet"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "contemporary",
+                "modern",
+                "skylight",
+                "towel warmer",
+                "walk-in shower",
+                "white tile"
+              ]
+            },
+            {
+              "Features": [
+                "bathtub",
+                "rain shower",
+                "skylight",
+                "soaking tub",
+                "subway tile",
+                "vessel sink",
+                "walk-in shower"
+              ]
+            },
+            {
+              "Features": [
+                "bathtub",
+                "contemporary",
+                "minimalist",
+                "soaking tub",
+                "stone tile",
+                "wainscoting"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Living Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "accent wall",
+                "built-in shelves",
+                "contemporary",
+                "crown molding",
+                "industrial",
+                "lake view",
+                "modern sofa",
+                "natural light"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Kitchen",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "breakfast bar",
+                "contemporary",
+                "farmhouse",
+                "granite countertops",
+                "recessed lighting",
+                "traditional"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Property 153",
+      "Address": {
+        "Street": "854 Main St",
+        "District": "District 9",
+        "City": "Miami",
+        "State": "FL",
+        "PostalCode": "76149",
+        "Country": "USA",
+        "Latitude": 25.79735819177181,
+        "Longitude": -80.15625764579525
+      },
+      "AreaSqft": 1709,
+      "PriceUSD": 1715357,
+      "Rooms": [
+        {
+          "Type": "Bedroom",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "accent wall",
+                "bay window",
+                "built-in shelves",
+                "contemporary",
+                "king bed",
+                "modern",
+                "queen bed",
+                "workspace desk"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Bathroom",
+          "Count": 3,
+          "Instances": [
+            {
+              "Features": [
+                "contemporary",
+                "frameless glass",
+                "minimalist",
+                "mirror cabinet",
+                "soaking tub",
+                "stone tile",
+                "walk-in shower"
+              ]
+            },
+            {
+              "Features": [
+                "chrome fixtures",
+                "double sink",
+                "heated floor",
+                "marble tile",
+                "rain shower",
+                "soaking tub",
+                "stone tile",
+                "walk-in shower"
+              ]
+            },
+            {
+              "Features": [
+                "bronze fixtures",
+                "double sink",
+                "heated floor",
+                "natural light",
+                "rain shower",
+                "skylight",
+                "wainscoting"
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Living Room",
+          "Count": 1,
+          "Instances": [
+            {
+              "Features": [
+                "bay window",
+                "city view",
+                "forest view",
+                "industrial",
+                "lake view",
+                "open layout",
+                "sectional sofa",
+                "stone fireplace"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "understood_intent": "User is looking for a property with exactly 1 bedroom and 3 bathrooms, where the bathrooms have stone tile.",
+  "stats": {
+    "total_properties": 300,
+    "after_hard_filters": 19,
+    "after_proximity_filters": 19,
+    "after_vector_search": 19,
+    "final_results": 11
+  }
+}

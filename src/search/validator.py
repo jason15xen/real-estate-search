@@ -27,13 +27,14 @@ a set of search criteria, you must determine whether the property TRULY satisfie
 ALL feature-based criteria.
 
 Rules:
-- A feature criterion is satisfied ONLY if the property clearly has that feature.
+- A POSITIVE criterion (must have) is satisfied ONLY if the property clearly has that feature.
+- A NEGATIVE criterion (must NOT have) is satisfied ONLY if the property clearly LACKS that feature.
 - Semantic equivalence is allowed: "hardwood floors" satisfies "wood flooring", \
 "enclosed pool" satisfies "covered pool".
 - But "similar" is NOT enough: having a "garden" does NOT satisfy "pool". \
 Having a "standard fireplace" DOES satisfy "fireplace".
 - If a feature has a room_context (e.g., feature="fireplace", room_context="Bedroom"), \
-the feature must exist in that specific room type.
+the feature must exist in (or be absent from, if negative) that specific room type.
 - You must evaluate EVERY criterion. If even ONE criterion is not met, the property FAILS.
 
 Return ONLY a JSON object:
@@ -45,13 +46,20 @@ Return ONLY a JSON object:
 
 
 def _text_match_feature(prop: Property, criterion: FeatureCriterion) -> bool:
-    """Fast text-based check: does the property contain this feature keyword?"""
+    """
+    Fast text-based check for both positive and negative criteria.
+    - Positive (negated=False): returns True if feature IS found
+    - Negative (negated=True):  returns True if feature is NOT found
+    """
     keyword = criterion.feature.lower()
     if criterion.room_context:
         features = prop.get_features_by_room_type(criterion.room_context)
     else:
         features = prop.get_all_features()
-    return any(keyword in f.lower() or f.lower() in keyword for f in features)
+    found = any(keyword in f.lower() or f.lower() in keyword for f in features)
+    if criterion.negated:
+        return not found  # pass if NOT found
+    return found  # pass if found
 
 
 def _text_prefilter(
@@ -161,12 +169,11 @@ def _build_validation_prompt(
         "## Criteria to Validate",
     ]
     for i, fc in enumerate(feature_criteria, 1):
+        action = "must NOT be present" if fc.negated else "must be present"
         if fc.room_context:
-            parts.append(
-                f"{i}. Feature '{fc.feature}' must be present in {fc.room_context}"
-            )
+            parts.append(f"{i}. Feature '{fc.feature}' {action} in {fc.room_context}")
         else:
-            parts.append(f"{i}. Feature '{fc.feature}' must be present in the property")
+            parts.append(f"{i}. Feature '{fc.feature}' {action} in the property")
 
     parts.append("")
     parts.append("Does this property satisfy ALL of the above criteria?")

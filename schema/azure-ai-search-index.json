@@ -1,0 +1,108 @@
+{
+  "name": "property-features",
+  "fields": [
+    {
+      "name": "id",
+      "type": "Edm.String",
+      "key": true,
+      "filterable": false,
+      "searchable": false,
+      "sortable": false
+    },
+    {
+      "name": "property_id",
+      "type": "Edm.Int32",
+      "filterable": true,
+      "searchable": false,
+      "sortable": false,
+      "facetable": false
+    },
+    {
+      "name": "property_name",
+      "type": "Edm.String",
+      "filterable": true,
+      "searchable": false,
+      "sortable": false,
+      "facetable": false
+    },
+    {
+      "name": "room_type",
+      "type": "Edm.String",
+      "filterable": true,
+      "searchable": false,
+      "sortable": false,
+      "facetable": true
+    },
+    {
+      "name": "instance_index",
+      "type": "Edm.Int32",
+      "filterable": false,
+      "searchable": false,
+      "sortable": false,
+      "facetable": false
+    },
+    {
+      "name": "features_text",
+      "type": "Edm.String",
+      "filterable": false,
+      "searchable": true,
+      "sortable": false,
+      "analyzer": "en.microsoft"
+    },
+    {
+      "name": "city",
+      "type": "Edm.String",
+      "filterable": true,
+      "searchable": false,
+      "sortable": false,
+      "facetable": true
+    },
+    {
+      "name": "state",
+      "type": "Edm.String",
+      "filterable": true,
+      "searchable": false,
+      "sortable": false,
+      "facetable": true
+    },
+    {
+      "name": "features_vector",
+      "type": "Collection(Edm.Single)",
+      "searchable": true,
+      "dimensions": 1536,
+      "vectorSearchProfile": "default-profile"
+    }
+  ],
+  "vectorSearch": {
+    "algorithms": [
+      {
+        "name": "default-algorithm",
+        "kind": "hnsw",
+        "hnswParameters": {
+          "metric": "cosine",
+          "m": 4,
+          "efConstruction": 400,
+          "efSearch": 500
+        }
+      }
+    ],
+    "profiles": [
+      {
+        "name": "default-profile",
+        "algorithm": "default-algorithm"
+      }
+    ]
+  },
+  "semantic": {
+    "configurations": [
+      {
+        "name": "default-semantic",
+        "prioritizedFields": {
+          "contentFields": [
+            { "fieldName": "features_text" }
+          ]
+        }
+      }
+    ]
+  }
+}

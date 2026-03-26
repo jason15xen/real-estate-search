@@ -1,0 +1,131 @@
+{
+  "name": "property-features",
+  "fields": [
+    {
+      "name": "id",
+      "type": "Edm.String",
+      "key": true,
+      "filterable": false,
+      "comment": "Unique ID: {property_id}_{room_type}_{instance_index}"
+    },
+    {
+      "name": "property_id",
+      "type": "Edm.Int32",
+      "filterable": true,
+      "sortable": false,
+      "comment": "FK to PostgreSQL properties.id — used to filter vector search to candidates from hard filter"
+    },
+    {
+      "name": "property_name",
+      "type": "Edm.String",
+      "filterable": true,
+      "searchable": false
+    },
+
+    {
+      "name": "room_type",
+      "type": "Edm.String",
+      "filterable": true,
+      "searchable": false,
+      "comment": "Bedroom, Bathroom, Kitchen, Living Room, Dining Room, Garage — used for room_context filtering"
+    },
+    {
+      "name": "instance_index",
+      "type": "Edm.Int32",
+      "filterable": false,
+      "comment": "Which instance of this room type (0, 1, 2...)"
+    },
+
+    {
+      "name": "feature_text",
+      "type": "Edm.String",
+      "searchable": true,
+      "filterable": false,
+      "comment": "All features as natural text: 'accent wall, modern fireplace, walk-in closet, hardwood floors'. Searchable for full-text keyword matching."
+    },
+    {
+      "name": "feature_vector",
+      "type": "Collection(Edm.Single)",
+      "searchable": true,
+      "dimensions": 1536,
+      "vectorSearchProfile": "vector-profile",
+      "comment": "Embedding of feature_text — used for semantic/synonym matching (e.g., 'covered pool' matches 'enclosed pool')"
+    },
+
+    {
+      "name": "city",
+      "type": "Edm.String",
+      "filterable": true,
+      "searchable": false,
+      "comment": "Denormalized for optional vector search filtering"
+    },
+    {
+      "name": "state",
+      "type": "Edm.String",
+      "filterable": true,
+      "searchable": false
+    },
+    {
+      "name": "country",
+      "type": "Edm.String",
+      "filterable": true,
+      "searchable": false
+    }
+  ],
+
+  "vectorSearch": {
+    "algorithms": [
+      {
+        "name": "hnsw-algorithm",
+        "kind": "hnsw",
+        "hnswParameters": {
+          "m": 4,
+          "efConstruction": 400,
+          "efSearch": 500,
+          "metric": "cosine"
+        }
+      }
+    ],
+    "profiles": [
+      {
+        "name": "vector-profile",
+        "algorithm": "hnsw-algorithm"
+      }
+    ]
+  },
+
+  "_comment_data_flow": [
+    "1. Properties are stored in PostgreSQL (hard filters + geo queries)",
+    "2. Each room instance is indexed here as a separate document",
+    "3. Search pipeline: PostgreSQL narrows candidates → property_ids sent here as filter",
+    "4. Azure AI Search does vector similarity on feature_text within filtered set",
+    "5. room_type filter enforces 'bedrooms with X' stays in Bedroom documents only"
+  ],
+
+  "_comment_example_queries": {
+    "bedrooms_with_fireplace": {
+      "search": "fireplace",
+      "vectorQueries": [
+        {
+          "kind": "text",
+          "text": "fireplace",
+          "fields": "feature_vector"
+        }
+      ],
+      "filter": "room_type eq 'Bedroom' and search.in(property_id, '101,102,103')",
+      "comment": "property_ids come from PostgreSQL hard filter results"
+    },
+    "covered_pool_synonym": {
+      "search": "covered pool",
+      "vectorQueries": [
+        {
+          "kind": "text",
+          "text": "covered pool",
+          "fields": "feature_vector"
+        }
+      ],
+      "filter": "search.in(property_id, '101,102,103')",
+      "comment": "Vector search handles synonym: 'covered pool' matches 'enclosed pool' or 'indoor pool'"
+    }
+  }
+}

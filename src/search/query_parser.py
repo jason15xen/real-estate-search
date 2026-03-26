@@ -1,17 +1,21 @@
 """
 Query Parser — Uses Claude to decompose natural language into structured search criteria.
 
-Example: "a house with two bedrooms, a fireplace, and a covered pool within 5 miles of School A"
+The parser receives the full list of known features and room types from the data,
+so it can map user input to exact feature names. This eliminates the need for
+vector search and LLM validation.
+
+Example: "a house with two bedrooms, wood flooring, and a hearth"
   → RoomCountCriterion(room_type="Bedroom", exact_count=2)
-  → FeatureCriterion(feature="fireplace")
-  → FeatureCriterion(feature="covered pool")
-  → ProximityCriterion(landmark_name="School A", max_distance_miles=5)
+  → FeatureCriterion(feature="hardwood floors")   ← mapped from "wood flooring"
+  → FeatureCriterion(feature="fireplace")          ← mapped from "hearth"
 """
 
 import json
 import logging
 
 from config.settings import settings
+from src.data.feature_registry import registry
 from src.llm_client import get_async_client_fast
 from src.models.search import (
     AreaCriterion,
@@ -25,9 +29,18 @@ from src.models.search import (
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """\
+SYSTEM_PROMPT_TEMPLATE = """\
 You are a real estate search query parser. Your job is to extract structured \
 search criteria from natural language queries about real estate properties.
+
+You have access to the EXACT feature names and room types that exist in our database. \
+You MUST map the user's words to these exact names.
+
+KNOWN ROOM TYPES:
+{room_types}
+
+KNOWN FEATURES (these are the ONLY valid feature names):
+{features}
 
 Extract ALL criteria from the user's query and return them as JSON.
 
@@ -35,13 +48,22 @@ Available criterion types:
 
 1. room_count — The user wants a specific number of rooms.
    Fields: room_type (string), exact_count (int|null), min_count (int|null), max_count (int|null)
-   Room types: Bedroom, Bathroom, Kitchen, Living Room, Dining Room, Garage
+   Use ONLY the room types listed above.
 
-2. feature — The user wants a specific feature in the property.
-   Fields: feature (string), room_context (string|null)
-   room_context ties the feature to a specific room type when the user says e.g. \
-"a bedroom with a fireplace" — feature="fireplace", room_context="Bedroom".
-   If the feature is general (e.g. "a covered pool"), set room_context to null.
+2. feature — The user wants a specific feature included or excluded.
+   Fields: feature (string), room_context (string|null), negated (bool)
+   CRITICAL: The "feature" value MUST be one of the KNOWN FEATURES listed above. \
+Map the user's words to the closest matching known feature.
+   Examples of mapping:
+     "wood flooring" → "hardwood floors"
+     "hearth" → "fireplace"
+     "enclosed pool" → "covered pool" (if it exists in known features)
+     "marble counters" → "marble countertops"
+   If the user mentions a feature that has NO close match in the known features, \
+still include it but use the closest known feature name.
+   room_context ties the feature to a specific room type. Set it ONLY when \
+the feature is explicitly described as INSIDE a specific room type.
+   negated=true means the property must NOT have this feature.
 
 3. price — Price range constraint.
    Fields: min_price (int|null), max_price (int|null)
@@ -56,45 +78,67 @@ Available criterion types:
    Fields: landmark_name (string), max_distance_miles (float)
 
 Return JSON with this exact structure:
-{
+{{
   "criteria": [ ... list of criterion objects, each with a "type" field ... ],
   "understood_intent": "Brief summary of what you understood the user is looking for"
-}
+}}
 
 Important rules:
 - If the user says "two bedrooms", that means exact_count=2 for Bedroom.
 - If the user says "at least 3 bathrooms", that means min_count=3 for Bathroom.
-- Keep feature names concise and lowercase (e.g., "fireplace", "covered pool", "walk-in closet").
+- CRITICAL: Feature values MUST be from the KNOWN FEATURES list above. \
+Map synonyms, abbreviations, and alternate phrasings to the exact known feature name.
 - Only extract criteria that are explicitly stated or clearly implied.
 - Do NOT invent criteria the user did not mention.
-- CRITICAL: When a feature is described in relation to a room type, you MUST set room_context. \
-Examples:
-  "3 bedrooms with accent walls" → room_context="Bedroom" (accent walls must be IN the bedrooms)
+- room_context rules:
+  Set room_context ONLY when the feature is explicitly described as INSIDE a specific room type.
+  "bedrooms with accent walls" → room_context="Bedroom"
   "a kitchen with granite countertops" → room_context="Kitchen"
-  "bedrooms with walk-in closets" → room_context="Bedroom"
-  "a house with a pool" → room_context=null (pool is not tied to a specific room)
-  "a covered pool" → room_context=null
+  Set room_context=null when the feature is a general property feature:
+  "3 bedrooms with a fireplace" → room_context=null
+  "2 bedrooms and hardwood floors" → room_context=null
+- When the user says "without", "no", "exclude", or "not", set negated=true.
+  "2 bedrooms without stone tile" → feature="stone tile", negated=true
+  "no pool" → the closest known feature, negated=true
 """
+
+
+def _build_system_prompt() -> str:
+    features = registry.get_features_list()
+    room_types = registry.get_room_types_list()
+    return SYSTEM_PROMPT_TEMPLATE.format(
+        room_types=", ".join(room_types),
+        features=", ".join(features),
+    )
 
 
 async def parse_query(query: str) -> ParsedQuery:
     client = get_async_client_fast()
+    system_prompt = _build_system_prompt()
 
-    response = await client.messages.create(
-        model=settings.anthropic_model_fast,
-        max_tokens=1024,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": query}],
-    )
+    try:
+        response = await client.messages.create(
+            model=settings.anthropic_model_fast,
+            max_tokens=1024,
+            system=system_prompt,
+            messages=[{"role": "user", "content": query}],
+        )
 
-    raw_text = response.content[0].text
-    # Strip markdown code fences if present
-    if raw_text.startswith("```"):
-        lines = raw_text.split("\n")
-        lines = [l for l in lines if not l.startswith("```")]
-        raw_text = "\n".join(lines)
+        raw_text = response.content[0].text
+        # Strip markdown code fences if present
+        if raw_text.startswith("```"):
+            lines = raw_text.split("\n")
+            lines = [l for l in lines if not l.startswith("```")]
+            raw_text = "\n".join(lines)
 
-    parsed = json.loads(raw_text)
+        parsed = json.loads(raw_text)
+    except (json.JSONDecodeError, KeyError, IndexError) as e:
+        logger.error(f"Failed to parse LLM response: {e}")
+        return ParsedQuery(
+            original_query=query,
+            criteria=[],
+            understood_intent="Failed to parse query",
+        )
 
     criteria = []
     for c in parsed["criteria"]:
@@ -110,6 +154,7 @@ async def parse_query(query: str) -> ParsedQuery:
             criteria.append(FeatureCriterion(
                 feature=c["feature"],
                 room_context=c.get("room_context"),
+                negated=c.get("negated", False),
             ))
         elif criterion_type == "price":
             criteria.append(PriceCriterion(

@@ -24,6 +24,7 @@ class FeatureCriterion(BaseModel):
     type: CriterionType = CriterionType.FEATURE
     feature: str
     room_context: str | None = None  # e.g., "bedroom" — feature must be in this room type
+    negated: bool = False  # True = property must NOT have this feature
 
 
 class PriceCriterion(BaseModel):

@@ -3,28 +3,38 @@ Search Orchestrator — Coordinates the multi-phase search pipeline.
 
 Pipeline:
   1. LLM Query Parser    → structured criteria from natural language
+                            (maps user words to exact known feature names)
   2. Hard Filters        → eliminate by room count, price, area, location
   3. Proximity Filters   → eliminate by distance to landmarks
-  4. Vector Search       → find candidates with matching features (semantic)
-  5. LLM Validator       → verify each candidate truly matches ALL criteria
-  6. Return results
+  4. Feature Matching    → exact text match on features (no vector search needed)
+  5. Return results
 
-This architecture ensures:
-  - Vector search handles synonym matching (different words, same meaning)
-  - Hard filters + validator ensure NO false positives are returned
+Because the query parser maps user input to known feature names at parse time,
+vector search and LLM validation are no longer needed.
 """
 
 import logging
 
 from src.models.property import Property
-from src.models.search import FeatureCriterion, ParsedQuery
+from src.models.search import FeatureCriterion
 from src.search.filter_engine import apply_hard_filters
 from src.search.geo_search import apply_proximity_filters
 from src.search.query_parser import parse_query
-from src.search.validator import validate_candidates
-from src.search.vector_search import search_by_features
 
 logger = logging.getLogger(__name__)
+
+
+def _matches_feature(prop: Property, criterion: FeatureCriterion) -> bool:
+    """Check if a property matches a feature criterion using exact text matching."""
+    keyword = criterion.feature.lower()
+    if criterion.room_context:
+        features = prop.get_features_by_room_type(criterion.room_context)
+    else:
+        features = prop.get_all_features()
+    found = any(keyword in f.lower() or f.lower() in keyword for f in features)
+    if criterion.negated:
+        return not found
+    return found
 
 
 async def search(
@@ -38,6 +48,7 @@ async def search(
       - stats: pipeline statistics
     """
     # Phase 1: Parse natural language query into structured criteria
+    # (LLM maps user words to exact known feature names)
     logger.info(f"Phase 1: Parsing query: '{query}'")
     parsed_query = await parse_query(query)
     logger.info(f"Parsed {len(parsed_query.criteria)} criteria: {parsed_query.understood_intent}")
@@ -52,29 +63,17 @@ async def search(
     candidates = await apply_proximity_filters(candidates, parsed_query.criteria)
     after_proximity_count = len(candidates)
 
-    # Phase 4: Vector search for feature matching (if feature criteria exist)
-    has_features = any(
-        isinstance(c, FeatureCriterion) for c in parsed_query.criteria
-    )
+    # Phase 4: Apply feature matching (exact text match — no vector search needed)
+    feature_criteria = [
+        c for c in parsed_query.criteria if isinstance(c, FeatureCriterion)
+    ]
 
-    if has_features and candidates:
-        logger.info("Phase 4: Vector search for feature matching")
-        candidate_names = [p.Name for p in candidates]
-        matched_names = search_by_features(parsed_query.criteria, candidate_names)
-
-        # Reorder candidates by vector search ranking
-        name_to_prop = {p.Name: p for p in candidates}
+    if feature_criteria and candidates:
+        logger.info("Phase 4: Feature matching")
         candidates = [
-            name_to_prop[name] for name in matched_names if name in name_to_prop
+            prop for prop in candidates
+            if all(_matches_feature(prop, fc) for fc in feature_criteria)
         ]
-        after_vector_count = len(candidates)
-    else:
-        after_vector_count = len(candidates)
-
-    # Phase 5: LLM validation to eliminate false positives
-    if has_features and candidates:
-        logger.info("Phase 5: LLM validation")
-        candidates = await validate_candidates(candidates, parsed_query)
 
     final_count = len(candidates)
 
@@ -82,7 +81,6 @@ async def search(
         "total_properties": len(all_properties),
         "after_hard_filters": after_hard_filter_count,
         "after_proximity_filters": after_proximity_count,
-        "after_vector_search": after_vector_count,
         "final_results": final_count,
     }
 

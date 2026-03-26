@@ -45,7 +45,10 @@ def search_by_features(
     If candidate_property_names is provided, only searches within those
     properties (used after hard filters narrow the set).
     """
-    feature_criteria = [c for c in criteria if isinstance(c, FeatureCriterion)]
+    # Only use vector search for POSITIVE features — negated features skip this entirely
+    feature_criteria = [
+        c for c in criteria if isinstance(c, FeatureCriterion) and not c.negated
+    ]
     if not feature_criteria:
         return candidate_property_names or []
 
