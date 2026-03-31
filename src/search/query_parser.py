@@ -52,15 +52,19 @@ Available criterion types:
 
 2. feature — The user wants a specific feature included or excluded.
    Fields: feature (string), room_context (string|null), negated (bool)
-   CRITICAL: The "feature" value MUST be one of the KNOWN FEATURES listed above. \
-Map the user's words to the closest matching known feature.
+   CRITICAL: Map the user's words to the closest matching known feature name. \
+But if the user's word is a GENERIC term that could match MANY features \
+(e.g., "cabinet", "tile", "wood", "pool"), keep the generic term as-is \
+so it matches broadly. Only map to a specific feature when the user is clearly specific.
    Examples of mapping:
-     "wood flooring" → "hardwood floors"
-     "hearth" → "fireplace"
-     "enclosed pool" → "covered pool" (if it exists in known features)
-     "marble counters" → "marble countertops"
+     "wood flooring" → "hardwood floors" (specific → specific)
+     "hearth" → "fireplace" (specific → specific)
+     "marble counters" → "marble countertops" (specific → specific)
+     "cabinet" → "cabinet" (generic → keep generic, matches "white cabinets", "shaker cabinets", etc.)
+     "tile" → "tile" (generic → keep generic, matches "tile flooring", "tile backsplash", etc.)
+     "pool" → "pool" (generic → keep generic)
    If the user mentions a feature that has NO close match in the known features, \
-still include it but use the closest known feature name.
+still include it using the user's original wording. NEVER drop a feature from the query.
    room_context ties the feature to a specific room type. Set it ONLY when \
 the feature is explicitly described as INSIDE a specific room type.
    negated=true means the property must NOT have this feature.
@@ -80,8 +84,36 @@ the feature is explicitly described as INSIDE a specific room type.
 Return JSON with this exact structure:
 {{
   "criteria": [ ... list of criterion objects, each with a "type" field ... ],
+  "reconstructed_queries": [
+    "predefined feature1 predefined feature2 ...",
+    "predefined feature3 predefined feature4 ..."
+  ],
   "understood_intent": "Brief summary of what you understood the user is looking for"
 }}
+
+The "reconstructed_queries" field is CRITICAL. You MUST reconstruct the user's original \
+query into one or more search queries using predefined features and room types from the database. \
+Multiple queries can be created if the user's intent can be split into distinct search paths. \
+NEVER drop any feature the user mentioned. If a feature has no match in the known features, \
+include it using the user's original wording.
+
+NEGATION in reconstructed_queries:
+  - For features the user does NOT want, prefix with "-" (minus sign).
+  - Example: "no brown cabinets" → "-brown cabinets"
+  - Example: "without carpet" → "-carpet"
+
+Examples:
+  User: "house with wood floors and a tub in the bathroom"
+  reconstructed_queries: ["hardwood flooring soaking tub Bathroom"]
+
+  User: "3 bedroom home with granite counters or marble counters"
+  reconstructed_queries: ["Bedroom granite countertops", "Bedroom marble countertops"]
+
+  User: "modern kitchen with island and no carpet"
+  reconstructed_queries: ["Kitchen island kitchen contemporary interior -carpet"]
+
+  User: "no brown cabinets in the kitchen and city view"
+  reconstructed_queries: ["Kitchen -brown cabinets city view"]
 
 Important rules:
 - If the user says "two bedrooms", that means exact_count=2 for Bedroom.
@@ -120,6 +152,7 @@ async def parse_query(query: str) -> ParsedQuery:
         response = await client.chat.completions.create(
             model=settings.azure_openai_deployment,
             max_completion_tokens=1024,
+            temperature=0,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": query},
@@ -194,5 +227,6 @@ async def parse_query(query: str) -> ParsedQuery:
     return ParsedQuery(
         original_query=query,
         criteria=criteria,
+        reconstructed_queries=parsed.get("reconstructed_queries", []),
         understood_intent=parsed.get("understood_intent", ""),
     )

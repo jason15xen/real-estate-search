@@ -76,7 +76,7 @@ async def _load_properties(pool: asyncpg.Pool, property_ids: list[int]) -> list[
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT
-                p.id, p.name, p.street, p.district, p.city, p.state,
+                p.id, p.guid, p.name, p.street, p.district, p.city, p.state,
                 p.postal_code, p.country,
                 ST_Y(p.geom::geometry) as latitude,
                 ST_X(p.geom::geometry) as longitude,
@@ -116,7 +116,27 @@ async def _load_properties(pool: asyncpg.Pool, property_ids: list[int]) -> list[
                     "Instances": [{"Features": feats} for feats in instances],
                 })
 
+            # Load nearby schools
+            school_rows = await conn.fetch("""
+                SELECT school_name, rating, grades, distance_miles, link
+                FROM property_schools
+                WHERE property_id = $1
+                ORDER BY distance_miles
+            """, prop_id)
+
+            schools = [
+                {
+                    "Name": sr["school_name"],
+                    "Rating": sr["rating"],
+                    "Grades": sr["grades"],
+                    "DistanceMiles": float(sr["distance_miles"]),
+                    "Link": sr["link"],
+                }
+                for sr in school_rows
+            ]
+
             properties.append({
+                "Id": row["guid"],
                 "Name": row["name"],
                 "Address": {
                     "Street": row["street"],
@@ -131,6 +151,7 @@ async def _load_properties(pool: asyncpg.Pool, property_ids: list[int]) -> list[
                 "AreaSqft": row["area_sqft"],
                 "PriceUSD": row["price_usd"],
                 "Rooms": rooms,
+                "Schools": schools,
             })
 
         return properties

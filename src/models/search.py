@@ -68,4 +68,5 @@ Criterion = (
 class ParsedQuery(BaseModel):
     original_query: str
     criteria: list[Criterion]
+    reconstructed_queries: list[str] = []  # query rebuilt using predefined DB features
     understood_intent: str  # LLM's summary of what it understood

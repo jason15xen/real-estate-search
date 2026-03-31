@@ -15,12 +15,13 @@ The result: accurate results, not just "similar" ones.
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from config.settings import settings
 from src.data.database import close_pool, get_pool
 from src.data.feature_registry import registry
+from src.img_analyzer.router import router as img_analyzer_router
 from src.search.orchestrator import search
 
 logging.basicConfig(
@@ -53,9 +54,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Real Estate AI Search",
     description="Accurate AI-powered real estate search — returns only properties that match ALL criteria.",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
+
+app.include_router(img_analyzer_router)
 
 
 class SearchRequest(BaseModel):
@@ -63,21 +66,26 @@ class SearchRequest(BaseModel):
 
 
 class SearchResponse(BaseModel):
-    results: list[dict]
-    understood_intent: str
-    stats: dict
+    query: str
+    zillowProperties: list[str]
 
 
 @app.post("/search", response_model=SearchResponse)
 async def search_properties(request: SearchRequest):
-    pool = await get_pool()
-    result = await search(request.query, pool)
+    try:
+        pool = await get_pool()
+        result = await search(request.query, pool)
 
-    return SearchResponse(
-        results=result["results"],
-        understood_intent=result["parsed_query"].understood_intent,
-        stats=result["stats"],
-    )
+        # Extract GUIDs from results
+        guids = [r["Id"] for r in result["results"]]
+
+        return SearchResponse(
+            query=request.query,
+            zillowProperties=guids,
+        )
+    except Exception as e:
+        logger.error(f"Search failed for query '{request.query}': {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 
 @app.get("/health")

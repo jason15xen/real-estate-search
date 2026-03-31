@@ -1,0 +1,52 @@
+  Analyze this real estate listing photo and provide a detailed evaluation according to the following process, focusing on identifying search keywords for house features.
+            Begin by carefully observing the image, and reason step-by-step through the following:
+
+            - Identify the RoomType, selecting only from: Kitchen, Bedroom, Bathroom, Living Room, Dining Room, Exterior, Pool, Garage. If the scene does not clearly fit one of these categories, return "RoomType": "Unknown".
+            - Examine visual details to extract key search keywords that describe the room’s features. Each feature should be a concise term that a homebuyer might use in a search (e.g., “granite countertops”, “hardwood floors”, “soaking tub”, “vaulted ceiling”). Do not describe features in sentence form; use discrete, searchable keywords only.
+            - Identify notable architectural styles or design elements present in the scene as additional keywords if applicable.
+            - Analyze the color scheme and include major color-related keywords relevant to real estate searches (e.g., “white cabinetry”, “stainless appliances”, “neutral paint”).
+            - Detect and specify the design style era or timeframe reflected in the decor or construction (e.g., “mid-century modern”, “Victorian”, “1980s”, “contemporary”) and include as a searchable keyword.
+
+            Before stating the "RoomType" conclusion, reason step-by-step from the observed visual cues and design traits that support your selection.
+
+            Respond only in JSON format, following this strict schema:
+            {
+              "RoomType": "[one of: Kitchen, Bedroom, Bathroom, Living Room, Dining Room, Exterior, Pool, Garage, or Unknown]",
+              "Features": ["[search keyword 1]", "[search keyword 2]", ...]
+            }
+
+            # Output Format
+
+            Return a single, well-structured JSON object (no extra text or commentary), strictly following the schema above, ensuring that "RoomType" is always selected from the permitted categories or set to "Unknown". The "Features" array should contain only concise, search-optimized keywords that accurately reflect the visible features.
+
+            # Steps
+
+            1. Observe the image, noting all relevant visual cues, materials, architectural and design elements.
+            2. Step through your reasoning process to determine the correct RoomType from the provided list. 
+            3. Extract all observable features as search keywords suited for real estate queries, ensuring each is distinct and not descriptive prose.
+            4. Review your reasoning and finalize the JSON object.
+
+            # Examples
+
+            Example:
+            Input: [Image of a kitchen with pastel tile, natural wood cabinets, and vintage appliances typical of the 1950s]
+            Output:
+            {
+              "RoomType": "Kitchen",
+              "Features": ["checkerboard linoleum", "pastel tile", "natural wood cabinets", "vintage appliances", "tile backsplash", "1950s", "retro"]
+            }
+
+            For real examples, the Features array should include all distinctive, searchable items evident in the image. Enclose each as a concise keyword phrase that a homebuyer might search for. Actual reasoning and feature coverage should be as comprehensive as possible.)
+
+            # Notes
+
+            - If a photo does not clearly belong to one of the accepted room types, set "RoomType": "Unknown."
+            - Never include any categories outside of the specified list for RoomType.
+            - The “Features” array should only include search-friendly keywords describing the room’s observed attributes (materials, styles, eras, colors, fixtures, etc).
+            - Do not include attributes that are not visible or verifiable from the photo.
+            - Do not use complete sentences or prose in the Features array; only concise, relevant keyword phrases.
+            - Reason step-by-step before finalizing conclusions, but only output the JSON.
+
+            Reminder: Focus on providing accurate, visually-supported search keywords for features, and always reason through your conclusions before providing the RoomType and Features in your JSON response.
+
+            

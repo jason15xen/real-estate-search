@@ -33,19 +33,24 @@ async def ingest_properties(
             for room in item["Rooms"]:
                 room_counts[room["Type"]] = room["Count"]
 
+            # Original GUID or generate one
+            import uuid
+            guid = item.get("Id", str(uuid.uuid4()))
+
             # Insert property
             prop_id = await conn.fetchval("""
                 INSERT INTO properties (
-                    name, street, district, city, state, postal_code, country,
+                    guid, name, street, district, city, state, postal_code, country,
                     geom, area_sqft, price_usd,
                     bedroom_count, bathroom_count, kitchen_count,
                     living_room_count, dining_room_count, garage_count
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7,
-                    ST_MakePoint($8, $9)::geography,
-                    $10, $11, $12, $13, $14, $15, $16, $17
+                    $1, $2, $3, $4, $5, $6, $7, $8,
+                    ST_MakePoint($9, $10)::geography,
+                    $11, $12, $13, $14, $15, $16, $17, $18
                 ) RETURNING id
             """,
+                guid,
                 item["Name"],
                 addr["Street"], addr["District"], addr["City"],
                 addr["State"], addr["PostalCode"], addr["Country"],

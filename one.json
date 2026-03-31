@@ -1,0 +1,973 @@
+[
+  {
+    "Id": "5f74499e-d1bb-468b-de83-08de8e4afd1c",
+    "ZillowPropertyId": 43373636,
+    "ZillowPropertyRecord": {
+      "zpid": 43373636,
+      "isListingClaimedByCurrentSignedInUser": false,
+      "isCurrentSignedInAgentResponsible": false,
+      "isCurrentSignedInUserVerifiedOwner": false,
+      "address": {
+        "streetAddress": "2780 Shady Oaks Dr",
+        "city": "Titusville",
+        "state": "FL",
+        "zipcode": "32796",
+        "subdivision": "Country Estates Unit 1"
+      },
+      "price": 209999,
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "livingArea": 1344,
+      "livingAreaValue": 1344,
+      "livingAreaUnits": "Square Feet",
+      "livingAreaUnitsShort": "sqft",
+      "homeType": "SINGLE_FAMILY",
+      "homeStatus": "FOR_SALE",
+      "yearBuilt": 1965,
+      "lotSize": 10018,
+      "lotAreaValue": 10018.8,
+      "lotAreaUnits": "Square Feet",
+      "description": "Welcome to this charming 3 bed, 1.5 bath single-family home nestled on a .23-acre lot in north Titusville. This home offers great potential for investors, first-time buyers or anyone looking to put their personal touch on a home.  Features include a formal living room, a spacious eat in kitchen and a huge 27 x 16 sq ft. bonus room under air that is not reflected on the property appraiser site. Enjoy a fully fenced backyard with a large storage shed and a covered carport with ample storage.   A/C 2024.  Roof 2013.  Sold As-Is.",
+      "latitude": 28.630688,
+      "longitude": -80.83732,
+      "zestimate": 208500,
+      "rentZestimate": 1816,
+      "zestimateLowPercent": "5",
+      "zestimateHighPercent": "5",
+      "daysOnZillow": 6,
+      "timeOnZillow": "6 days",
+      "resoFacts": {
+        "heating": [
+          "Electric"
+        ],
+        "cooling": [
+          "Central Air"
+        ],
+        "parkingFeatures": [
+          "Carport"
+        ],
+        "coveredParkingCapacity": 1,
+        "parkingCapacity": 1,
+        "stories": 1,
+        "storiesDecimal": 1,
+        "appliances": [
+          "Dishwasher",
+          "Electric Oven",
+          "Refrigerator"
+        ],
+        "pricePerSquareFoot": 156,
+        "bathrooms": 2,
+        "bathroomsFull": 1,
+        "bathroomsHalf": 1,
+        "bathroomsFloat": 2,
+        "bedrooms": 3,
+        "livingArea": "1,344 sqft",
+        "lotSize": "10,018 sqft",
+        "yearBuilt": 1965,
+        "hasAssociation": false,
+        "taxAnnualAmount": 565,
+        "taxAssessedValue": 143790,
+        "hasGarage": false,
+        "hasAttachedGarage": false,
+        "hasCarport": true,
+        "hasSpa": false,
+        "hasView": false,
+        "view": [],
+        "parcelNumber": "2135298000003.00007.00",
+        "constructionMaterials": [
+          "Block",
+          "Concrete"
+        ],
+        "exteriorFeatures": [],
+        "fencing": "Chain Link",
+        "lotFeatures": [
+          "Few Trees"
+        ],
+        "propertySubType": [
+          "Single Family Residence"
+        ],
+        "homeType": "SingleFamily",
+        "atAGlanceFacts": [
+          {
+            "factLabel": "Type",
+            "factValue": "Single Family Residence"
+          },
+          {
+            "factLabel": "Year Built",
+            "factValue": "1965"
+          },
+          {
+            "factLabel": "Heating",
+            "factValue": "Electric"
+          },
+          {
+            "factLabel": "Cooling",
+            "factValue": "Central Air"
+          },
+          {
+            "factLabel": "Parking",
+            "factValue": "1 Carport space"
+          },
+          {
+            "factLabel": "Lot",
+            "factValue": "10,018 sqft"
+          },
+          {
+            "factLabel": "Days on Zillow",
+            "factValue": "6 Days"
+          },
+          {
+            "factLabel": "Price/sqft",
+            "factValue": "$156"
+          },
+          {
+            "factLabel": "Offer Review Date"
+          }
+        ],
+        "sewer": [
+          "Public Sewer"
+        ],
+        "waterSource": [
+          "Public"
+        ],
+        "utilities": [
+          "Electricity Connected",
+          "Water Connected"
+        ],
+        "subdivisionName": "Country Estates Unit 1",
+        "cityRegion": "Titusville",
+        "listingTerms": "Cash,Conventional",
+        "onMarketDate": 1774224000000,
+        "otherFacts": [],
+        "rooms": [],
+        "elementarySchool": "Oak Park",
+        "middleOrJuniorSchool": "Madison",
+        "highSchool": "Astronaut",
+        "canRaiseHorses": false,
+        "furnished": false,
+        "hasAdditionalParcels": true,
+        "hasAttachedProperty": false,
+        "hasHomeWarranty": false,
+        "hasLandLease": false,
+        "isNewConstruction": false
+      },
+      "schools": [
+        {
+          "name": "Oak Park Elementary School",
+          "rating": 6,
+          "grades": "PK-6",
+          "distance": 0.9,
+          "link": "https://www.greatschools.org/florida/titusville/115-Oak-Park-Elementary-School/"
+        },
+        {
+          "name": "James Madison Middle School",
+          "rating": 4,
+          "grades": "7-8",
+          "distance": 0.8,
+          "link": "https://www.greatschools.org/florida/titusville/116-James-Madison-Middle-School/"
+        },
+        {
+          "name": "Astronaut High School",
+          "rating": 3,
+          "grades": "9-12",
+          "distance": 0.9,
+          "link": "https://www.greatschools.org/florida/titusville/124-Astronaut-High-School/"
+        }
+      ],
+      "attributionInfo": {
+        "agentName": "Susan Ryan",
+        "agentPhoneNumber": "321-543-3278",
+        "brokerName": "Mike Selig \u0026 Associates Inc",
+        "brokerPhoneNumber": "321-639-1111",
+        "mlsId": "1072671",
+        "mlsName": "Space Coast AOR",
+        "mlsDisclaimer": "IDX information is provided exclusively for personal, non-commercial use, and may not be used for any purpose other than to identify prospective properties consumers may be interested in purchasing. \nInformation is deemed reliable but not guaranteed.\n",
+        "lastChecked": "2026-03-30 03:43:33",
+        "lastUpdated": "2026-03-23 08:46:03",
+        "listingOffices": [
+          {
+            "associatedOfficeType": "listOffice",
+            "officeName": "Mike Selig \u0026 Associates Inc"
+          }
+        ],
+        "listingAgents": [
+          {
+            "associatedAgentType": "listAgent",
+            "memberFullName": "Susan Ryan",
+            "memberStateLicense": "3326502"
+          }
+        ],
+        "infoString5": "321-543-3278",
+        "infoString10": "IDX information is provided exclusively for personal, non-commercial use, and may not be used for any purpose other than to identify prospective properties consumers may be interested in purchasing. \nInformation is deemed reliable but not guaranteed.\n"
+      },
+      "priceHistory": [
+        {
+          "date": "2026-03-23",
+          "time": 1774224000000,
+          "price": 209999,
+          "pricePerSquareFoot": 156,
+          "priceChangeRate": 2.818163636363636,
+          "event": "Listed for sale",
+          "source": "Space Coast AOR",
+          "showCountyLink": false,
+          "postingIsRental": false,
+          "attributeSource": {
+            "infoString1": "1072671",
+            "infoString2": "Space Coast AOR"
+          }
+        },
+        {
+          "date": "2014-10-15",
+          "time": 1413331200000,
+          "price": 55000,
+          "pricePerSquareFoot": 41,
+          "priceChangeRate": -0.08180300500834725,
+          "event": "Sold",
+          "source": "Space Coast AOR",
+          "sellerAgent": {
+            "photo": null,
+            "profileUrl": "/profile/zuser20170524154946516/",
+            "name": "Johanna Hamilton"
+          },
+          "showCountyLink": false,
+          "postingIsRental": false,
+          "attributeSource": {
+            "infoString1": "672693",
+            "infoString2": "Space Coast AOR"
+          }
+        },
+        {
+          "date": "2014-09-10",
+          "time": 1410307200000,
+          "price": 59900,
+          "pricePerSquareFoot": 45,
+          "priceChangeRate": -0.1430615164520744,
+          "event": "Price change",
+          "source": "Coldwell Banker Coast Realty",
+          "showCountyLink": false,
+          "postingIsRental": false,
+          "attributeSource": {
+            "infoString1": "672693",
+            "infoString2": "Coldwell Banker Coast Realty"
+          }
+        },
+        {
+          "date": "2014-06-27",
+          "time": 1403827200000,
+          "price": 69900,
+          "pricePerSquareFoot": 52,
+          "priceChangeRate": -0.08627450980392157,
+          "event": "Price change",
+          "source": "Coldwell Banker Coast Realty",
+          "showCountyLink": false,
+          "postingIsRental": false,
+          "attributeSource": {
+            "infoString1": "672693",
+            "infoString2": "Coldwell Banker Coast Realty"
+          }
+        },
+        {
+          "date": "2013-12-04",
+          "time": 1386115200000,
+          "price": 76500,
+          "pricePerSquareFoot": 57,
+          "priceChangeRate": -0.0425531914893617,
+          "event": "Price change",
+          "source": "Coldwell Banker Coast Realty",
+          "showCountyLink": false,
+          "postingIsRental": false,
+          "attributeSource": {
+            "infoString1": "672693",
+            "infoString2": "Coldwell Banker Coast Realty"
+          }
+        },
+        {
+          "date": "2013-11-17",
+          "time": 1384646400000,
+          "price": 79900,
+          "pricePerSquareFoot": 59,
+          "priceChangeRate": 0.006297229219143577,
+          "event": "Price change",
+          "source": "Coldwell Banker Coast Realty",
+          "showCountyLink": false,
+          "postingIsRental": false,
+          "attributeSource": {
+            "infoString1": "672693",
+            "infoString2": "Coldwell Banker Coast Realty"
+          }
+        },
+        {
+          "date": "2013-11-14",
+          "time": 1384387200000,
+          "price": 79400,
+          "pricePerSquareFoot": 59,
+          "priceChangeRate": -0.006257822277847309,
+          "event": "Price change",
+          "source": "Coldwell Banker Coast Realty",
+          "showCountyLink": false,
+          "postingIsRental": false,
+          "attributeSource": {
+            "infoString1": "672693",
+            "infoString2": "Coldwell Banker Coast Realty"
+          }
+        },
+        {
+          "date": "2013-07-11",
+          "time": 1373500800000,
+          "price": 79900,
+          "pricePerSquareFoot": 59,
+          "priceChangeRate": 0,
+          "event": "Listed for sale",
+          "source": "Coldwell Banker Coast Realty",
+          "showCountyLink": false,
+          "postingIsRental": false,
+          "attributeSource": {
+            "infoString1": "672693",
+            "infoString2": "Coldwell Banker Coast Realty"
+          }
+        }
+      ],
+      "taxHistory": [
+        {
+          "time": 1711796156617,
+          "taxPaid": 530.11,
+          "taxIncreaseRate": 0.06415737,
+          "value": 69500,
+          "valueIncreaseRate": 0.029934796
+        },
+        {
+          "time": 1680173756617,
+          "taxPaid": 498.15,
+          "taxIncreaseRate": 0.14659578,
+          "value": 67480,
+          "valueIncreaseRate": 0.02991453
+        },
+        {
+          "time": 1648637756617,
+          "taxPaid": 434.46,
+          "taxIncreaseRate": -0.0028231335,
+          "value": 65520,
+          "valueIncreaseRate": 0.029864822
+        },
+        {
+          "time": 1617101756617,
+          "taxPaid": 435.69,
+          "taxIncreaseRate": -0.0029748685,
+          "value": 63620,
+          "valueIncreaseRate": 0.013864541
+        },
+        {
+          "time": 1585565756617,
+          "taxPaid": 436.99,
+          "taxIncreaseRate": -0.004102232,
+          "value": 62750,
+          "valueIncreaseRate": 0.022986632
+        },
+        {
+          "time": 1553943356617,
+          "taxPaid": 438.79,
+          "taxIncreaseRate": 0,
+          "value": 61340,
+          "valueIncreaseRate": 0.018936876
+        },
+        {
+          "time": 1522407356617,
+          "taxPaid": 438.79,
+          "taxIncreaseRate": -0.40508696,
+          "value": 60200,
+          "valueIncreaseRate": 0.020858064
+        },
+        {
+          "time": 1490871356617,
+          "taxPaid": 737.57,
+          "taxIncreaseRate": -0.0049377023,
+          "value": 58970,
+          "valueIncreaseRate": 0.020948753
+        },
+        {
+          "time": 1459335356617,
+          "taxPaid": 741.23,
+          "taxIncreaseRate": 0.11920932,
+          "value": 57760,
+          "valueIncreaseRate": 0.006973501
+        },
+        {
+          "time": 1427712956617,
+          "taxPaid": 662.28,
+          "taxIncreaseRate": -0.032645334,
+          "value": 57360,
+          "valueIncreaseRate": 0.06084705
+        },
+        {
+          "time": 1396176956617,
+          "taxPaid": 684.63,
+          "taxIncreaseRate": 0,
+          "value": 54070,
+          "valueIncreaseRate": 0.059365205
+        },
+        {
+          "time": 1364640956617,
+          "taxIncreaseRate": 0,
+          "value": 51040,
+          "valueIncreaseRate": 0.039087947
+        },
+        {
+          "time": 1333104956617,
+          "taxPaid": 1177.12,
+          "taxIncreaseRate": -0.07084389,
+          "value": 49120,
+          "valueIncreaseRate": -0.090707146
+        },
+        {
+          "time": 1301482556617,
+          "taxPaid": 1266.87,
+          "taxIncreaseRate": -0.0726714,
+          "value": 54020,
+          "valueIncreaseRate": -0.14592886
+        },
+        {
+          "time": 1269946556617,
+          "taxPaid": 1366.15,
+          "taxIncreaseRate": -0.113258116,
+          "value": 63250,
+          "valueIncreaseRate": -0.16896597
+        },
+        {
+          "time": 1238410556617,
+          "taxPaid": 1540.64,
+          "taxIncreaseRate": -0.1663068,
+          "value": 76110,
+          "valueIncreaseRate": -0.2047022
+        },
+        {
+          "time": 1206874556617,
+          "taxPaid": 1847.97,
+          "taxIncreaseRate": -0.12009808,
+          "value": 95700,
+          "valueIncreaseRate": -0.13550135
+        },
+        {
+          "time": 1175252156617,
+          "taxPaid": 2100.2,
+          "taxIncreaseRate": 0.030778047,
+          "value": 110700,
+          "valueIncreaseRate": 0.2175539
+        },
+        {
+          "time": 1112183756617,
+          "taxPaid": 2037.49,
+          "taxIncreaseRate": 0.26478332,
+          "value": 90920,
+          "valueIncreaseRate": 0.28891408
+        },
+        {
+          "time": 1080647756617,
+          "taxPaid": 1610.94,
+          "taxIncreaseRate": 0.11046468,
+          "value": 70540,
+          "valueIncreaseRate": 0.103221774
+        },
+        {
+          "time": 1049025356617,
+          "taxPaid": 1450.69,
+          "taxIncreaseRate": 0.028872723,
+          "value": 63940,
+          "valueIncreaseRate": 0.06655546
+        },
+        {
+          "time": 1017489356617,
+          "taxPaid": 1409.98,
+          "taxIncreaseRate": 0.07559805,
+          "value": 59950,
+          "valueIncreaseRate": 0.14190476
+        },
+        {
+          "time": 985953356617,
+          "taxPaid": 1310.88,
+          "taxIncreaseRate": 0.055407904,
+          "value": 52500,
+          "valueIncreaseRate": 0.041666668
+        },
+        {
+          "time": 954417356617,
+          "taxPaid": 1242.06,
+          "taxIncreaseRate": 0,
+          "value": 50400,
+          "valueIncreaseRate": 0
+        }
+      ],
+      "originalPhotos": [
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/0e576c676312e2ba63436f7e615ce35d-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/0e576c676312e2ba63436f7e615ce35d-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          }
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/f560e5ac87ec177aa13397867c99dce0-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/f560e5ac87ec177aa13397867c99dce0-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          }
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/c6d74769e5ffb68cb4f23632d260caf9-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/c6d74769e5ffb68cb4f23632d260caf9-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          }
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/9aabadd3634d87ccb082633c548dfdd3-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/9aabadd3634d87ccb082633c548dfdd3-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          }
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/5488f2fb76fe285792023d2a9e4550be-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/5488f2fb76fe285792023d2a9e4550be-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          }
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/a732a0e05302e68882bb803357d896d6-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/a732a0e05302e68882bb803357d896d6-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          }
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/3478277849cf8aea6514bbcad4667cf0-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/3478277849cf8aea6514bbcad4667cf0-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          }
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/f7643c14466bf7b1a5b77218aa428153-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/f7643c14466bf7b1a5b77218aa428153-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          }
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/69cd4dcf0430c0b432479677647a8bff-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/69cd4dcf0430c0b432479677647a8bff-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          }
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/0a34e635541a75381b7e16b04deecd8c-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/0a34e635541a75381b7e16b04deecd8c-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          }
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/4696b01c5db1fcfd63df6eeb8cede94c-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/4696b01c5db1fcfd63df6eeb8cede94c-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          }
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/46764a529efb48dfe39b11e624aef5e7-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/46764a529efb48dfe39b11e624aef5e7-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          }
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/dfd16306c38f27d182a29cb4d482d358-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/dfd16306c38f27d182a29cb4d482d358-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          }
+        }
+      ],
+      "brokerageName": "Mike Selig \u0026 Associates Inc",
+      "state": "FL",
+      "city": "Titusville",
+      "zipcode": "32796",
+      "streetAddress": "2780 Shady Oaks Dr",
+      "abbreviatedAddress": "2780 Shady Oaks Dr",
+      "county": "Brevard County",
+      "countyFIPS": "12009",
+      "parcelId": "2135298037",
+      "listingSubType": {
+        "isOpenHouse": false
+      },
+      "listing_sub_type": {
+        "is_FSBA": true,
+        "is_newHome": false,
+        "is_comingSoon": false,
+        "is_forAuction": false,
+        "is_FSBO": false,
+        "is_foreclosure": false,
+        "is_bankOwned": false,
+        "is_pending": false
+      },
+      "tourViewCount": 0,
+      "photoCount": 13,
+      "currency": "USD",
+      "timeZone": "America/New_York",
+      "datePostedString": "2026-03-23",
+      "isZillowOwned": false,
+      "isShowcaseListing": false,
+      "isPremierBuilder": false,
+      "isHousingConnector": false,
+      "hasPublicVideo": false,
+      "thirdPartyVirtualTour": {
+        "approved": false
+      },
+      "lastSoldPrice": 55000,
+      "hdpUrl": "/homedetails/2780-Shady-Oaks-Dr-Titusville-FL-32796/43373636_zpid/",
+      "zipcodeId": 72224,
+      "cityId": 7433,
+      "countyId": 1556,
+      "ssid": 650,
+      "isUndisclosedAddress": false,
+      "hasBadGeocode": false,
+      "staticMap": {
+        "sources": [
+          {
+            "width": 192,
+            "url": "https://maps.googleapis.com/maps/api/staticmap?center=28.630688,-80.83732\u0026zoom=13\u0026size=192x144\u0026maptype=roadmap\u0026key=AIzaSyARFMLB1na-BBWf7_R3-5YOQQaHqEJf6RQ\u0026signature=3od1Rcu9P2gy4miX22tucpTTkaM="
+          },
+          {
+            "width": 192,
+            "url": "https://maps.googleapis.com/maps/api/staticmap?center=28.630688,-80.83732\u0026zoom=15\u0026size=192x144\u0026maptype=roadmap\u0026key=AIzaSyARFMLB1na-BBWf7_R3-5YOQQaHqEJf6RQ\u0026scale=2\u0026signature=LpYKr1lJJJtHQRVEwO2tm4ZvVIM=",
+            "isHighResolutionStaticMap": true
+          },
+          {
+            "width": 384,
+            "url": "https://maps.googleapis.com/maps/api/staticmap?center=28.630688,-80.83732\u0026zoom=14\u0026size=384x288\u0026maptype=roadmap\u0026key=AIzaSyARFMLB1na-BBWf7_R3-5YOQQaHqEJf6RQ\u0026signature=UmFjT9s_zATv9KgpM_gwfnAVjyY="
+          },
+          {
+            "width": 384,
+            "url": "https://maps.googleapis.com/maps/api/staticmap?center=28.630688,-80.83732\u0026zoom=15\u0026size=384x288\u0026maptype=roadmap\u0026key=AIzaSyARFMLB1na-BBWf7_R3-5YOQQaHqEJf6RQ\u0026scale=2\u0026signature=hYThz10lxTr35exvLYhpk89WpGs=",
+            "isHighResolutionStaticMap": true
+          },
+          {
+            "width": 768,
+            "url": "https://maps.googleapis.com/maps/api/staticmap?center=28.630688,-80.83732\u0026zoom=15\u0026size=768x576\u0026maptype=roadmap\u0026key=AIzaSyARFMLB1na-BBWf7_R3-5YOQQaHqEJf6RQ\u0026signature=lT2ffWquVMYUppqDYOejOmss7Jk="
+          },
+          {
+            "width": 768,
+            "url": "https://maps.googleapis.com/maps/api/staticmap?center=28.630688,-80.83732\u0026zoom=15\u0026size=768x576\u0026maptype=roadmap\u0026key=AIzaSyARFMLB1na-BBWf7_R3-5YOQQaHqEJf6RQ\u0026scale=2\u0026signature=7ox9Jtc41_WM40RE2oiQDevVa8c=",
+            "isHighResolutionStaticMap": true
+          }
+        ]
+      },
+      "streetViewImageUrl": "https://maps.googleapis.com/maps/api/streetview?location=2780\u002BShady\u002BOaks\u002BDr%2C\u002BTitusville%2C\u002BFL\u002B32796\u0026size=512x234\u0026key=AIzaSyDY6ZJXL8FxBWwingKLmFPJdNF4VzD3vg4\u0026source=outdoor\u0026signature=8f7b7NQs3ED4RBH_Tp4g2s4zSzI=",
+      "downPaymentAssistance": {
+        "eligibility": {
+          "dpa": true
+        }
+      },
+      "foreclosureTypes": {
+        "isBankOwned": false,
+        "isForeclosedNFS": false,
+        "isPreforeclosure": false,
+        "isAnyForeclosure": false,
+        "wasNonRetailAuction": false,
+        "wasForeclosed": false
+      },
+      "listingMetadata": {
+        "mustAttributeOfficeNameBeforeAgentName": false,
+        "mustDisplayAttributionListAgentEmail": false,
+        "mustDisplayAttributionListAgentPhone": true,
+        "mustDisplayAttributionListingOfficePhone": false,
+        "mustDisplayDisclaimerBelowAttribution": false,
+        "mustHighlightListOfficeName": false,
+        "mustMakeListingAgentContactable": false,
+        "canShowOnMap": true,
+        "mustPreferMlsPhotos": false
+      },
+      "pals": [],
+      "listedBy": [
+        {
+          "id": "LISTING_AGENT",
+          "elements": [
+            {
+              "id": "NAME",
+              "text": "Susan Ryan"
+            },
+            {
+              "id": "PHONE",
+              "text": "321-543-3278"
+            }
+          ]
+        },
+        {
+          "id": "BROKER",
+          "elements": [
+            {
+              "id": "NAME",
+              "text": "Mike Selig \u0026 Associates Inc"
+            }
+          ]
+        }
+      ],
+      "nearbyCities": [
+        {
+          "regionUrl": {
+            "path": "/cocoa-fl/"
+          },
+          "name": "Cocoa"
+        },
+        {
+          "regionUrl": {
+            "path": "/melbourne-fl/"
+          },
+          "name": "Melbourne"
+        },
+        {
+          "regionUrl": {
+            "path": "/merritt-island-fl/"
+          },
+          "name": "Merritt Island"
+        },
+        {
+          "regionUrl": {
+            "path": "/mims-fl/"
+          },
+          "name": "Mims"
+        },
+        {
+          "regionUrl": {
+            "path": "/palm-bay-fl/"
+          },
+          "name": "Palm Bay"
+        },
+        {
+          "regionUrl": {
+            "path": "/rockledge-fl/"
+          },
+          "name": "Rockledge"
+        },
+        {
+          "regionUrl": {
+            "path": "/satellite-beach-fl/"
+          },
+          "name": "Satellite Beach"
+        },
+        {
+          "regionUrl": {
+            "path": "/sebastian-fl/"
+          },
+          "name": "Sebastian"
+        },
+        {
+          "regionUrl": {
+            "path": "/titusville-fl/"
+          },
+          "name": "Titusville"
+        },
+        {
+          "regionUrl": {
+            "path": "/west-melbourne-fl/"
+          },
+          "name": "West Melbourne"
+        }
+      ],
+      "nearbyNeighborhoods": [],
+      "nearbyZipcodes": [
+        {
+          "regionUrl": {
+            "path": "/titusville-fl-32780/"
+          },
+          "name": "32780"
+        },
+        {
+          "regionUrl": {
+            "path": "/titusville-fl-32781/"
+          },
+          "name": "32781"
+        },
+        {
+          "regionUrl": {
+            "path": "/titusville-fl-32783/"
+          },
+          "name": "32783"
+        },
+        {
+          "regionUrl": {
+            "path": "/titusville-fl-32796/"
+          },
+          "name": "32796"
+        }
+      ],
+      "citySearchUrl": {
+        "path": "/titusville-fl/",
+        "text": "Homes in Titusville"
+      },
+      "stateSearchUrl": {
+        "path": "/fl/"
+      },
+      "countySearchUrl": {
+        "path": "/brevard-county-fl/",
+        "text": "Homes in Brevard County"
+      },
+      "zipcodeSearchUrl": {
+        "path": "/titusville-fl-32796/"
+      },
+      "collections": {
+        "modules": [
+          {
+            "name": "Similar homes",
+            "placement": "NEIGHBORHOOD"
+          }
+        ],
+        "trackingTags": [
+          {
+            "value": "5ad3a3af46fcf2fbc617fe52ab373d6e"
+          }
+        ]
+      },
+      "thumb": [
+        {
+          "url": "https://photos.zillowstatic.com/fp/0e576c676312e2ba63436f7e615ce35d-p_a.jpg"
+        }
+      ],
+      "neighborhoodMapThumb": [
+        {
+          "url": "https://photos.zillowstatic.com/fp/0e576c676312e2ba63436f7e615ce35d-p_c.jpg"
+        }
+      ]
+    }
+  }]
