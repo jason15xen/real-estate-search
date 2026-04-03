@@ -1,12 +1,11 @@
 """
-Image Analyzer Router — POST /process endpoint.
+Image Analyzer Router — POST /process, GET /job/{job_id}, POST /saveprocesseddata
 
-Accepts a JSON file upload (same format as data.json),
-sends images to GPT-5.1 vision for feature extraction,
-injects features back into each photo object, and saves
-the enriched JSON to src/processed/data.json.
+/process runs in background and returns a job ID immediately.
+Poll GET /job/{job_id} to check progress.
 """
 
+import asyncio
 import json
 import logging
 
@@ -18,10 +17,11 @@ from src.img_analyzer.analyzer import (
     save_processed,
 )
 from src.img_analyzer.db_ingest import ingest_processed_data
+from src.img_analyzer.job_manager import job_manager
 from src.img_analyzer.models import (
+    JobStatus,
     PropertyItem,
     PropertyResult,
-    ProcessResponse,
     SaveResponse,
 )
 
@@ -30,13 +30,44 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Image Analyzer"])
 
 
-@router.post("/process", response_model=ProcessResponse)
+async def _process_in_background(
+    job_id: str,
+    raw_data: list[dict],
+    properties: list[PropertyItem],
+) -> None:
+    """Background task: analyze photos, inject features, save results."""
+    try:
+        results_map: dict[str, list] = {}
+
+        for prop in properties:
+            photos = prop.ZillowPropertyRecord.originalPhotos
+            logger.info(f"[Job {job_id}] Property {prop.Id}: {len(photos)} photos")
+
+            rooms = await analyze_photos(
+                property_id=prop.Id,
+                photos=photos,
+            )
+
+            results_map[prop.Id] = rooms
+            job_manager.update_progress(job_id)
+
+        # Inject features into original data and save
+        enriched = inject_features(raw_data, results_map)
+        save_processed(enriched)
+
+        job_manager.complete_job(job_id)
+    except Exception as e:
+        logger.error(f"[Job {job_id}] Failed: {e}")
+        job_manager.fail_job(job_id, str(e))
+
+
+@router.post("/process", response_model=JobStatus)
 async def process_property_images(file: UploadFile = File(...)):
     """
     Upload a JSON file (same format as data.json) to extract
     room types and features from property photos using GPT-5.1 vision.
 
-    Features are injected into each photo and saved to src/processed/data.json.
+    Returns immediately with a job ID. Poll GET /job/{job_id} for progress.
     """
     content = await file.read()
     raw_data: list[dict] = json.loads(content)
@@ -44,38 +75,39 @@ async def process_property_images(file: UploadFile = File(...)):
     # Parse into models for type-safe processing
     properties = [PropertyItem(**item) for item in raw_data]
 
-    logger.info(f"Processing {len(properties)} properties from '{file.filename}'")
+    logger.info(f"Starting background job for {len(properties)} properties from '{file.filename}'")
 
-    all_results: list[PropertyResult] = []
-    results_map: dict[str, list] = {}
+    # Create job and start background processing
+    job = job_manager.create_job(total_properties=len(properties))
+    asyncio.create_task(_process_in_background(job.job_id, raw_data, properties))
 
-    for prop in properties:
-        photos = prop.ZillowPropertyRecord.originalPhotos
-        logger.info(f"Property {prop.Id}: {len(photos)} photos")
+    return JobStatus(
+        job_id=job.job_id,
+        status=job.status,
+        progress=job.progress,
+        total_properties=job.total_properties,
+        processed_properties=job.processed_properties,
+    )
 
-        rooms = await analyze_photos(
-            property_id=prop.Id,
-            photos=photos,
-        )
 
-        results_map[prop.Id] = rooms
+@router.get("/job/{job_id}", response_model=JobStatus)
+async def get_job_status(job_id: str):
+    """
+    Check the status of a background processing job.
 
-        all_results.append(
-            PropertyResult(
-                id=prop.Id,
-                total_photos=len(photos),
-                processed_photos=len(rooms),
-                rooms=rooms,
-            )
-        )
+    Poll this endpoint until status is "completed" or "failed".
+    """
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
-    # Inject features into original data and save
-    enriched = inject_features(raw_data, results_map)
-    save_processed(enriched)
-
-    return ProcessResponse(
-        total_properties=len(all_results),
-        results=all_results,
+    return JobStatus(
+        job_id=job.job_id,
+        status=job.status,
+        progress=job.progress,
+        total_properties=job.total_properties,
+        processed_properties=job.processed_properties,
+        error=job.error,
     )
 
 

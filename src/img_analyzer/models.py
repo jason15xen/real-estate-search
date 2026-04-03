@@ -60,3 +60,12 @@ class SaveResponse(BaseModel):
     total_room_instances: int
     total_schools: int
     message: str
+
+
+class JobStatus(BaseModel):
+    job_id: str
+    status: str  # "processing", "completed", "failed"
+    progress: str = ""  # e.g. "5/27 properties"
+    total_properties: int = 0
+    processed_properties: int = 0
+    error: str | None = None
