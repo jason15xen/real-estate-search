@@ -123,15 +123,12 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
     if not data:
         raise ValueError("Processed data file is empty")
 
-    stats = {"total_properties": 0, "total_rooms": 0, "total_room_instances": 0, "total_schools": 0}
+    stats = {
+        "total_properties": 0, "updated_properties": 0,
+        "total_rooms": 0, "total_room_instances": 0, "total_schools": 0,
+    }
 
     async with pool.acquire() as conn:
-        # Clear existing data
-        await conn.execute("DELETE FROM property_schools")
-        await conn.execute("DELETE FROM room_instances")
-        await conn.execute("DELETE FROM rooms")
-        await conn.execute("DELETE FROM properties")
-
         for item in data:
             record = item.get("ZillowPropertyRecord", {})
             address = record.get("address", {})
@@ -154,36 +151,79 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
             # Original GUID from data.json
             guid = item.get("Id", "")
 
-            # Insert property
-            prop_id = await conn.fetchval("""
-                INSERT INTO properties (
-                    guid, name, street, district, city, state, postal_code, country,
-                    geom, area_sqft, price_usd,
-                    bedroom_count, bathroom_count, kitchen_count,
-                    living_room_count, dining_room_count, garage_count
-                ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8,
-                    ST_MakePoint($9, $10)::geography,
-                    $11, $12, $13, $14, $15, $16, $17, $18
-                ) RETURNING id
-            """,
-                guid,
-                name,
-                address.get("streetAddress", ""),
-                address.get("subdivision", ""),
-                address.get("city", ""),
-                address.get("state", ""),
-                address.get("zipcode", ""),
-                "US",
-                lng, lat,
-                int(area), int(price),
-                room_counts.get("Bedroom", 0),
-                room_counts.get("Bathroom", 0),
-                room_counts.get("Kitchen", 0),
-                room_counts.get("Living Room", 0),
-                room_counts.get("Dining Room", 0),
-                room_counts.get("Garage", 0),
+            # Check if property already exists
+            existing_id = await conn.fetchval(
+                "SELECT id FROM properties WHERE guid = $1", guid
             )
+
+            if existing_id:
+                # Update existing — delete old child data (CASCADE doesn't auto-trigger on UPDATE)
+                await conn.execute("DELETE FROM property_schools WHERE property_id = $1", existing_id)
+                await conn.execute("DELETE FROM room_instances WHERE property_id = $1", existing_id)
+                await conn.execute("DELETE FROM rooms WHERE property_id = $1", existing_id)
+
+                # Update property row
+                await conn.execute("""
+                    UPDATE properties SET
+                        name=$2, street=$3, district=$4, city=$5, state=$6,
+                        postal_code=$7, country=$8,
+                        geom=ST_MakePoint($9, $10)::geography,
+                        area_sqft=$11, price_usd=$12,
+                        bedroom_count=$13, bathroom_count=$14, kitchen_count=$15,
+                        living_room_count=$16, dining_room_count=$17, garage_count=$18,
+                        updated_at=NOW()
+                    WHERE id = $1
+                """,
+                    existing_id,
+                    name,
+                    address.get("streetAddress", ""),
+                    address.get("subdivision", ""),
+                    address.get("city", ""),
+                    address.get("state", ""),
+                    address.get("zipcode", ""),
+                    "US",
+                    lng, lat,
+                    int(area), int(price),
+                    room_counts.get("Bedroom", 0),
+                    room_counts.get("Bathroom", 0),
+                    room_counts.get("Kitchen", 0),
+                    room_counts.get("Living Room", 0),
+                    room_counts.get("Dining Room", 0),
+                    room_counts.get("Garage", 0),
+                )
+                prop_id = existing_id
+                stats["updated_properties"] += 1
+            else:
+                # Insert new property
+                prop_id = await conn.fetchval("""
+                    INSERT INTO properties (
+                        guid, name, street, district, city, state, postal_code, country,
+                        geom, area_sqft, price_usd,
+                        bedroom_count, bathroom_count, kitchen_count,
+                        living_room_count, dining_room_count, garage_count
+                    ) VALUES (
+                        $1, $2, $3, $4, $5, $6, $7, $8,
+                        ST_MakePoint($9, $10)::geography,
+                        $11, $12, $13, $14, $15, $16, $17, $18
+                    ) RETURNING id
+                """,
+                    guid,
+                    name,
+                    address.get("streetAddress", ""),
+                    address.get("subdivision", ""),
+                    address.get("city", ""),
+                    address.get("state", ""),
+                    address.get("zipcode", ""),
+                    "US",
+                    lng, lat,
+                    int(area), int(price),
+                    room_counts.get("Bedroom", 0),
+                    room_counts.get("Bathroom", 0),
+                    room_counts.get("Kitchen", 0),
+                    room_counts.get("Living Room", 0),
+                    room_counts.get("Dining Room", 0),
+                    room_counts.get("Garage", 0),
+                )
 
             stats["total_properties"] += 1
 
@@ -227,8 +267,10 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
                 )
                 stats["total_schools"] += 1
 
+    new_count = stats['total_properties'] - stats['updated_properties']
     logger.info(
-        f"Ingested {stats['total_properties']} properties, "
+        f"Ingested {stats['total_properties']} properties "
+        f"({new_count} new, {stats['updated_properties']} updated), "
         f"{stats['total_rooms']} rooms, "
         f"{stats['total_room_instances']} room instances, "
         f"{stats['total_schools']} schools"

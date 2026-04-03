@@ -12,11 +12,17 @@ from config.settings import settings
 logger = logging.getLogger(__name__)
 
 _pool: asyncpg.Pool | None = None
+_pool_lock = asyncio.Lock()
 
 
 async def get_pool() -> asyncpg.Pool:
     global _pool
-    if _pool is None:
+    if _pool is not None:
+        return _pool
+    async with _pool_lock:
+        # Double-check after acquiring lock
+        if _pool is not None:
+            return _pool
         dsn = (
             f"postgresql://{settings.postgres_user}:{settings.postgres_password}"
             f"@{settings.postgres_host}:{settings.postgres_port}/{settings.postgres_db}"

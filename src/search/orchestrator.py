@@ -148,7 +148,7 @@ def _build_alternatives(
             rq_words = set(rq_lower.split())
             # Remove common room type words
             room_words = {"kitchen", "bedroom", "bathroom", "living",
-                          "room", "dining", "exterior", "pool", "garage"}
+                          "room", "dining", "exterior"}
             fc_significant = fc_words - room_words
             rq_significant = rq_words - room_words
 

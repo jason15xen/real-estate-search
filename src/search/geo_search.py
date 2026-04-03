@@ -30,23 +30,24 @@ async def _filter_by_school(
     Try to filter by school distance data. Returns filtered IDs,
     or None if the landmark doesn't match any school.
     """
-    # Check if any school matches this landmark name (fuzzy match)
+    # Check if any school matches this landmark name
+    # Use similarity() from pg_trgm for accurate fuzzy matching (threshold 0.3)
     rows = await conn.fetch("""
         SELECT DISTINCT ps.property_id
         FROM property_schools ps
         WHERE ps.property_id = ANY($1)
-        AND LOWER(ps.school_name) LIKE $2
+        AND similarity(LOWER(ps.school_name), LOWER($2)) > 0.3
         AND ps.distance_miles <= $3
-    """, property_ids, f"%{landmark_name.lower()}%", max_distance_miles)
+    """, property_ids, landmark_name, max_distance_miles)
 
     if not rows:
         # Check if the school exists at all (maybe just no matches within distance)
         exists = await conn.fetchval("""
             SELECT EXISTS(
                 SELECT 1 FROM property_schools
-                WHERE LOWER(school_name) LIKE $1
+                WHERE similarity(LOWER(school_name), LOWER($1)) > 0.3
             )
-        """, f"%{landmark_name.lower()}%")
+        """, landmark_name)
 
         if exists:
             # School exists but no properties within distance

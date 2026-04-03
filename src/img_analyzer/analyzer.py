@@ -141,23 +141,37 @@ def inject_features(raw_data: list[dict], results_map: dict[str, list[PhotoResul
         for photo in photos:
             # Match by checking if this photo had a JPEG URL we analyzed
             jpegs = photo.get("mixedSources", {}).get("jpeg", [])
-            if jpegs and result_idx < len(photo_results):
-                pr = photo_results[result_idx]
-                photo["RoomType"] = pr.room_type
-                photo["Features"] = pr.features
-                result_idx += 1
+            if jpegs:
+                if result_idx < len(photo_results):
+                    pr = photo_results[result_idx]
+                    photo["RoomType"] = pr.room_type
+                    photo["Features"] = pr.features
+                result_idx += 1  # Always increment for photos with JEPGs
 
     return raw_data
 
 
 def save_processed(data: list[dict]) -> Path:
-    """Save the enriched JSON to src/processed/data.json."""
+    """Save the enriched JSON to src/processed/data.json, merging with existing data."""
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     output_path = PROCESSED_DIR / "data.json"
 
+    existing: dict[str, dict] = {}
+    if output_path.exists():
+        try:
+            existing_data = json.loads(output_path.read_text(encoding="utf-8"))
+            existing = {item["Id"]: item for item in existing_data if "Id" in item}
+        except json.JSONDecodeError:
+            logger.warning("Could not parse existing data.json; starting fresh")
+
+    for item in data:
+        existing[item["Id"]] = item
+
+    merged = list(existing.values())
+
     output_path.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False),
+        json.dumps(merged, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    logger.info(f"Saved processed data → {output_path} ({len(data)} properties)")
+    logger.info(f"Saved processed data → {output_path} ({len(merged)} total, {len(data)} upserted)")
     return output_path
