@@ -44,6 +44,7 @@
             - Never include any categories outside of the specified list for RoomType.
             - The “Features” array should only include search-friendly keywords describing the room’s observed attributes (materials, styles, eras, colors, fixtures, etc).
             - Do not include attributes that are not visible or verifiable from the photo.
+            - CRITICAL: Only extract features that belong to THIS property. If a photo shows a neighbor's pool, fence, yard, or any adjacent property's features visible in the background, do NOT include those. Only include features that are clearly part of the listed property itself.
             - Do not use complete sentences or prose in the Features array; only concise, relevant keyword phrases.
             - Reason step-by-step before finalizing conclusions, but only output the JSON.
 

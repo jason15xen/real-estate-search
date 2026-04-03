@@ -91,29 +91,34 @@ Return JSON with this exact structure:
   "understood_intent": "Brief summary of what you understood the user is looking for"
 }}
 
-The "reconstructed_queries" field is CRITICAL. You MUST reconstruct the user's original \
-query into one or more search queries using predefined features and room types from the database. \
-Multiple queries can be created if the user's intent can be split into distinct search paths. \
-NEVER drop any feature the user mentioned. If a feature has no match in the known features, \
-include it using the user's original wording.
+The "reconstructed_queries" field is CRITICAL. Each entry must contain EXACTLY ONE \
+feature variant — a single predefined feature name from the KNOWN FEATURES list.
 
-NEGATION in reconstructed_queries:
-  - For features the user does NOT want, prefix with "-" (minus sign).
-  - Example: "no brown cabinets" → "-brown cabinets"
-  - Example: "without carpet" → "-carpet"
+For each feature the user mentions, look through the KNOWN FEATURES and find ALL terms \
+that are related or synonymous. Generate a SEPARATE entry for EACH related term.
+
+RULES for reconstructed_queries:
+  - Each entry is ONE feature name only (no room types, no negations, no combinations)
+  - Include ALL related/synonymous features from the KNOWN FEATURES list
+  - NEVER drop a feature the user mentioned
+  - If no match exists in KNOWN FEATURES, include the user's original wording
 
 Examples:
-  User: "house with wood floors and a tub in the bathroom"
-  reconstructed_queries: ["hardwood flooring soaking tub Bathroom"]
+  User: "house with swimming pool"
+  KNOWN FEATURES contain: "pool", "in-ground pool", "private pool", "swimming pool"
+  reconstructed_queries: ["swimming pool", "pool", "in-ground pool", "private pool"]
 
-  User: "3 bedroom home with granite counters or marble counters"
-  reconstructed_queries: ["Bedroom granite countertops", "Bedroom marble countertops"]
+  User: "3 bedroom home with granite counters"
+  KNOWN FEATURES contain: "granite countertops"
+  reconstructed_queries: ["granite countertops"]
 
-  User: "modern kitchen with island and no carpet"
-  reconstructed_queries: ["Kitchen island kitchen contemporary interior -carpet"]
+  User: "kitchen with tile floor"
+  KNOWN FEATURES contain: "tile flooring", "porcelain tile flooring", "ceramic tile flooring"
+  reconstructed_queries: ["tile flooring", "porcelain tile flooring", "ceramic tile flooring"]
 
-  User: "no brown cabinets in the kitchen and city view"
-  reconstructed_queries: ["Kitchen -brown cabinets city view"]
+  User: "house with wood floors and a tub"
+  KNOWN FEATURES contain: "hardwood flooring", "wood flooring", "soaking tub", "freestanding tub"
+  reconstructed_queries: ["hardwood flooring", "wood flooring", "soaking tub", "freestanding tub"]
 
 Important rules:
 - If the user says "two bedrooms", that means exact_count=2 for Bedroom.
@@ -144,35 +149,65 @@ def _build_system_prompt() -> str:
     )
 
 
-async def parse_query(query: str) -> ParsedQuery:
+async def _call_llm(client, system_prompt: str, query: str) -> str | None:
+    """Call Azure OpenAI and return raw text. Returns None on failure."""
+    response = await client.chat.completions.create(
+        model=settings.azure_openai_deployment,
+        max_completion_tokens=4096,
+        temperature=0,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": query},
+        ],
+    )
+    raw_text = response.choices[0].message.content
+    if not raw_text or not raw_text.strip():
+        return None
+    return raw_text.strip()
+
+
+async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
     client = get_async_client()
     system_prompt = _build_system_prompt()
 
-    try:
-        response = await client.chat.completions.create(
-            model=settings.azure_openai_deployment,
-            max_completion_tokens=1024,
-            temperature=0,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": query},
-            ],
-        )
+    raw_text = None
+    parsed = None
 
-        raw_text = response.choices[0].message.content
-        # Strip markdown code fences if present
-        if raw_text.startswith("```"):
-            lines = raw_text.split("\n")
-            lines = [l for l in lines if not l.startswith("```")]
-            raw_text = "\n".join(lines)
+    for attempt in range(max_retries):
+        try:
+            raw_text = await _call_llm(client, system_prompt, query)
+            if not raw_text:
+                logger.warning(f"LLM returned empty response (attempt {attempt + 1}/{max_retries})")
+                continue
 
-        parsed = json.loads(raw_text)
-    except (json.JSONDecodeError, KeyError, IndexError) as e:
-        logger.error(f"Failed to parse LLM response: {e}")
+            logger.debug(f"Raw LLM response: {raw_text[:500]}")
+
+            # Strip markdown code fences if present
+            clean = raw_text
+            if clean.startswith("```"):
+                lines = clean.split("\n")
+                lines = [l for l in lines if not l.strip().startswith("```")]
+                clean = "\n".join(lines).strip()
+
+            parsed = json.loads(clean)
+            break  # Success
+        except (json.JSONDecodeError, KeyError, IndexError) as e:
+            logger.warning(
+                f"Failed to parse LLM response (attempt {attempt + 1}/{max_retries}): {e}\n"
+                f"Raw text: {raw_text[:500] if raw_text else 'None'}"
+            )
+            continue
+        except Exception as e:
+            logger.error(f"LLM call failed (attempt {attempt + 1}/{max_retries}): {e}")
+            continue
+
+    if not parsed:
+        logger.error(f"All {max_retries} attempts failed for query: '{query}'")
         return ParsedQuery(
             original_query=query,
             criteria=[],
-            understood_intent="Failed to parse query",
+            understood_intent="Failed to parse query after retries",
         )
 
     try:
