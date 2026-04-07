@@ -20,6 +20,34 @@ logger = logging.getLogger(__name__)
 MILES_TO_METERS = 1609.344
 
 
+def _is_rating_query(landmark_name: str) -> bool:
+    """Check if the query is about school quality rather than a specific school."""
+    quality_keywords = ["good school", "great school", "top school", "best school",
+                        "highly rated school", "high rated school", "quality school"]
+    name_lower = landmark_name.lower()
+    return any(kw in name_lower for kw in quality_keywords)
+
+
+async def _filter_by_school_rating(
+    conn: asyncpg.Connection,
+    property_ids: list[int],
+    max_distance_miles: float,
+    min_rating: int = 7,
+) -> list[int]:
+    """Filter properties that have nearby schools with high ratings."""
+    rows = await conn.fetch("""
+        SELECT DISTINCT ps.property_id
+        FROM property_schools ps
+        WHERE ps.property_id = ANY($1)
+        AND ps.rating >= $2
+        AND ps.distance_miles <= $3
+    """, property_ids, min_rating, max_distance_miles)
+
+    result = [row["property_id"] for row in rows]
+    logger.info(f"School rating filter (>= {min_rating}, within {max_distance_miles}mi): {len(result)} properties")
+    return result
+
+
 async def _filter_by_school(
     conn: asyncpg.Connection,
     property_ids: list[int],
@@ -30,6 +58,10 @@ async def _filter_by_school(
     Try to filter by school distance data. Returns filtered IDs,
     or None if the landmark doesn't match any school.
     """
+    # Check if this is a quality/rating query (e.g. "good schools")
+    if _is_rating_query(landmark_name):
+        return await _filter_by_school_rating(conn, property_ids, max_distance_miles)
+
     # Check if any school matches this landmark name
     # Use similarity() from pg_trgm for accurate fuzzy matching (threshold 0.3)
     rows = await conn.fetch("""

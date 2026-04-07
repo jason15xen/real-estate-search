@@ -10,6 +10,7 @@ class CriterionType(str, Enum):
     AREA = "area"
     LOCATION = "location"
     PROXIMITY = "proximity"
+    PROPERTY = "property"
 
 
 class RoomCountCriterion(BaseModel):
@@ -55,6 +56,21 @@ class ProximityCriterion(BaseModel):
     landmark_longitude: float | None = None
 
 
+class PropertyCriterion(BaseModel):
+    type: CriterionType = CriterionType.PROPERTY
+    home_type: str | None = None          # SINGLE_FAMILY, CONDO, TOWNHOUSE, MANUFACTURED, MULTI_FAMILY
+    min_rent: int | None = None
+    max_rent: int | None = None
+    min_year_built: int | None = None
+    max_year_built: int | None = None
+    min_lot_sqft: int | None = None
+    max_lot_sqft: int | None = None
+    min_stories: int | None = None
+    max_stories: int | None = None
+    has_pool: bool | None = None
+    has_waterfront: bool | None = None
+
+
 Criterion = (
     RoomCountCriterion
     | FeatureCriterion
@@ -62,6 +78,7 @@ Criterion = (
     | AreaCriterion
     | LocationCriterion
     | ProximityCriterion
+    | PropertyCriterion
 )
 
 

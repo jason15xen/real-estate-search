@@ -147,6 +147,22 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
             lng = record.get("longitude", 0) or 0
             area = record.get("livingArea", 0) or 0
             price = record.get("price", 0) or 0
+            reso_facts = record.get("resoFacts", {}) or {}
+
+            # New fields
+            home_type = record.get("homeType")
+            rent_estimate = record.get("rentZestimate")
+            year_built = record.get("yearBuilt")
+            lot_size = record.get("lotSize", 0) or 0
+            lot_units = record.get("lotAreaUnits", "")
+            if lot_units == "Acres":
+                lot_size = int(float(record.get("lotAreaValue", 0) or 0) * 43560)
+            else:
+                lot_size = int(lot_size)
+            stories_val = reso_facts.get("stories")
+            has_pool = bool(reso_facts.get("hasPrivatePool"))
+            has_waterfront = bool(reso_facts.get("hasWaterfrontView"))
+            description = record.get("description")
 
             # Original GUID from data.json
             guid = item.get("Id", "")
@@ -171,6 +187,9 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
                         area_sqft=$11, price_usd=$12,
                         bedroom_count=$13, bathroom_count=$14, kitchen_count=$15,
                         living_room_count=$16, dining_room_count=$17, garage_count=$18,
+                        home_type=$19, rent_estimate=$20, year_built=$21,
+                        lot_size_sqft=$22, stories=$23,
+                        has_pool=$24, has_waterfront=$25, description=$26,
                         updated_at=NOW()
                     WHERE id = $1
                 """,
@@ -190,6 +209,9 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
                     room_counts.get("Living Room", 0),
                     room_counts.get("Dining Room", 0),
                     room_counts.get("Garage", 0),
+                    home_type, rent_estimate, year_built,
+                    lot_size, stories_val,
+                    has_pool, has_waterfront, description,
                 )
                 prop_id = existing_id
                 stats["updated_properties"] += 1
@@ -200,11 +222,15 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
                         guid, name, street, district, city, state, postal_code, country,
                         geom, area_sqft, price_usd,
                         bedroom_count, bathroom_count, kitchen_count,
-                        living_room_count, dining_room_count, garage_count
+                        living_room_count, dining_room_count, garage_count,
+                        home_type, rent_estimate, year_built,
+                        lot_size_sqft, stories,
+                        has_pool, has_waterfront, description
                     ) VALUES (
                         $1, $2, $3, $4, $5, $6, $7, $8,
                         ST_MakePoint($9, $10)::geography,
-                        $11, $12, $13, $14, $15, $16, $17, $18
+                        $11, $12, $13, $14, $15, $16, $17, $18,
+                        $19, $20, $21, $22, $23, $24, $25, $26
                     ) RETURNING id
                 """,
                     guid,
@@ -223,6 +249,9 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
                     room_counts.get("Living Room", 0),
                     room_counts.get("Dining Room", 0),
                     room_counts.get("Garage", 0),
+                    home_type, rent_estimate, year_built,
+                    lot_size, stories_val,
+                    has_pool, has_waterfront, description,
                 )
 
             stats["total_properties"] += 1

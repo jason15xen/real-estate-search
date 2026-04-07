@@ -12,6 +12,7 @@ from src.models.search import (
     Criterion,
     LocationCriterion,
     PriceCriterion,
+    PropertyCriterion,
     RoomCountCriterion,
 )
 
@@ -28,7 +29,8 @@ async def apply_hard_filters(
     """
     hard_criteria = [
         c for c in criteria
-        if isinstance(c, (RoomCountCriterion, PriceCriterion, AreaCriterion, LocationCriterion))
+        if isinstance(c, (RoomCountCriterion, PriceCriterion, AreaCriterion,
+                          LocationCriterion, PropertyCriterion))
     ]
 
     conditions = []
@@ -88,6 +90,52 @@ async def apply_hard_filters(
             if criterion.district:
                 conditions.append(f"LOWER(district) = LOWER(${param_idx})")
                 params.append(criterion.district)
+                param_idx += 1
+
+        elif isinstance(criterion, PropertyCriterion):
+            if criterion.home_type:
+                conditions.append(f"UPPER(home_type) = UPPER(${param_idx})")
+                params.append(criterion.home_type)
+                param_idx += 1
+            if criterion.min_rent is not None:
+                conditions.append(f"rent_estimate >= ${param_idx}")
+                params.append(criterion.min_rent)
+                param_idx += 1
+            if criterion.max_rent is not None:
+                conditions.append(f"rent_estimate <= ${param_idx}")
+                params.append(criterion.max_rent)
+                param_idx += 1
+            if criterion.min_year_built is not None:
+                conditions.append(f"year_built >= ${param_idx}")
+                params.append(criterion.min_year_built)
+                param_idx += 1
+            if criterion.max_year_built is not None:
+                conditions.append(f"year_built <= ${param_idx}")
+                params.append(criterion.max_year_built)
+                param_idx += 1
+            if criterion.min_lot_sqft is not None:
+                conditions.append(f"lot_size_sqft >= ${param_idx}")
+                params.append(criterion.min_lot_sqft)
+                param_idx += 1
+            if criterion.max_lot_sqft is not None:
+                conditions.append(f"lot_size_sqft <= ${param_idx}")
+                params.append(criterion.max_lot_sqft)
+                param_idx += 1
+            if criterion.min_stories is not None:
+                conditions.append(f"stories >= ${param_idx}")
+                params.append(criterion.min_stories)
+                param_idx += 1
+            if criterion.max_stories is not None:
+                conditions.append(f"stories <= ${param_idx}")
+                params.append(criterion.max_stories)
+                param_idx += 1
+            if criterion.has_pool is not None:
+                conditions.append(f"has_pool = ${param_idx}")
+                params.append(criterion.has_pool)
+                param_idx += 1
+            if criterion.has_waterfront is not None:
+                conditions.append(f"has_waterfront = ${param_idx}")
+                params.append(criterion.has_waterfront)
                 param_idx += 1
 
     where_clause = " AND ".join(conditions) if conditions else "TRUE"

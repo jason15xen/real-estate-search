@@ -45,6 +45,21 @@ async def _match_single_feature(
     return {row["property_id"] for row in rows}
 
 
+async def _match_description(
+    conn,
+    property_ids: list[int],
+    feature: str,
+) -> set[int]:
+    """Match a feature keyword against properties.description. Returns matched IDs."""
+    keyword = f"%{feature.lower()}%"
+    rows = await conn.fetch("""
+        SELECT id FROM properties
+        WHERE id = ANY($1)
+        AND LOWER(description) LIKE $2
+    """, property_ids, keyword)
+    return {row["id"] for row in rows}
+
+
 async def _match_features(
     pool: asyncpg.Pool,
     property_ids: list[int],
@@ -83,9 +98,13 @@ async def _match_features(
                         conn, id_list, alt, fc.room_context
                     )
                     union_ids.update(matched)
+                # Also search description for each alternative
+                for alt in alts:
+                    desc_matched = await _match_description(conn, id_list, alt)
+                    union_ids.update(desc_matched)
                 logger.info(
                     f"Feature '{fc.feature}' alternatives={alts} "
-                    f"matched {len(union_ids)} properties (UNION)"
+                    f"matched {len(union_ids)} properties (UNION incl. description)"
                 )
                 result_ids = result_ids & union_ids
             else:
@@ -93,14 +112,20 @@ async def _match_features(
                 matched = await _match_single_feature(
                     conn, id_list, fc.feature, fc.room_context
                 )
+                # Also search description as fallback
+                desc_matched = await _match_description(conn, id_list, fc.feature)
+                matched = matched | desc_matched
                 result_ids = result_ids & matched
 
         # Process negated features (exact match, no alternatives)
+        # Also exclude from description matches
         for fc in negated_criteria:
             id_list = list(result_ids)
             matched = await _match_single_feature(
                 conn, id_list, fc.feature, fc.room_context
             )
+            desc_matched = await _match_description(conn, id_list, fc.feature)
+            matched = matched | desc_matched
             result_ids = result_ids - matched
 
     return list(result_ids)

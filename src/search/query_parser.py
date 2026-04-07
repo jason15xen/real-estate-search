@@ -23,6 +23,7 @@ from src.models.search import (
     LocationCriterion,
     ParsedQuery,
     PriceCriterion,
+    PropertyCriterion,
     ProximityCriterion,
     RoomCountCriterion,
 )
@@ -80,6 +81,24 @@ the feature is explicitly described as INSIDE a specific room type.
 
 6. proximity — Distance to a named landmark/place.
    Fields: landmark_name (string), max_distance_miles (float)
+   For "near good schools", use landmark_name="good schools" and max_distance_miles=5.
+
+7. property — Property attribute constraints.
+   Fields: home_type (string|null), min_rent (int|null), max_rent (int|null), \
+min_year_built (int|null), max_year_built (int|null), \
+min_lot_sqft (int|null), max_lot_sqft (int|null), \
+min_stories (int|null), max_stories (int|null), \
+has_pool (bool|null), has_waterfront (bool|null)
+   VALID home_type values: SINGLE_FAMILY, CONDO, TOWNHOUSE, MANUFACTURED, MULTI_FAMILY
+   Only set home_type when the user's term CLEARLY maps to one of these values.
+   If ambiguous (e.g. "apartment", "home", "house", "property"), do NOT set home_type.
+   Mapping: "condo" → CONDO, "townhouse" → TOWNHOUSE, "single family" → SINGLE_FAMILY, \
+"manufactured home" → MANUFACTURED, "duplex"/"multi family" → MULTI_FAMILY
+   "under $2k/mo" or "rent under 2000" → max_rent=2000
+   "with pool" or "swimming pool" → has_pool=true
+   "waterfront" or "on the water" → has_waterfront=true
+   "built after 2000" → min_year_built=2000
+   "single story" → max_stories=1
 
 Return JSON with this exact structure:
 {{
@@ -248,6 +267,20 @@ async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
                 criteria.append(ProximityCriterion(
                     landmark_name=c["landmark_name"],
                     max_distance_miles=c["max_distance_miles"],
+                ))
+            elif criterion_type == "property":
+                criteria.append(PropertyCriterion(
+                    home_type=c.get("home_type"),
+                    min_rent=c.get("min_rent"),
+                    max_rent=c.get("max_rent"),
+                    min_year_built=c.get("min_year_built"),
+                    max_year_built=c.get("max_year_built"),
+                    min_lot_sqft=c.get("min_lot_sqft"),
+                    max_lot_sqft=c.get("max_lot_sqft"),
+                    min_stories=c.get("min_stories"),
+                    max_stories=c.get("max_stories"),
+                    has_pool=c.get("has_pool"),
+                    has_waterfront=c.get("has_waterfront"),
                 ))
             else:
                 logger.warning(f"Unknown criterion type: {criterion_type}")
