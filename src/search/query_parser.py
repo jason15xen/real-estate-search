@@ -79,9 +79,13 @@ the feature is explicitly described as INSIDE a specific room type.
 5. location — City/state/country/district constraint.
    Fields: city (string|null), state (string|null), country (string|null), district (string|null)
 
-6. proximity — Distance to a named landmark/place.
+6. proximity — Distance to a SPECIFIC named landmark/place.
    Fields: landmark_name (string), max_distance_miles (float)
    For "near good schools", use landmark_name="good schools" and max_distance_miles=5.
+   ONLY use proximity for specific named places (e.g. "Oak Park Elementary School", "Central Park").
+   Do NOT use proximity for generic features like "beach", "lake", "park", "downtown".
+   Instead, use "feature" type for these: "near beach" → feature="beach", \
+"near lake" → feature="lake", "near park" → feature="park".
 
 7. property — Property attribute constraints.
    Fields: home_type (string|null), min_rent (int|null), max_rent (int|null), \
