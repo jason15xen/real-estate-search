@@ -70,8 +70,16 @@ app.add_middleware(
 app.include_router(img_analyzer_router)
 
 
+class Bounds(BaseModel):
+    north: str
+    south: str
+    east: str
+    west: str
+
+
 class SearchRequest(BaseModel):
     query: str
+    bounds: Bounds | None = None
 
 
 class SearchResponse(BaseModel):
@@ -83,7 +91,8 @@ class SearchResponse(BaseModel):
 async def search_properties(request: SearchRequest):
     try:
         pool = await get_pool()
-        result = await search(request.query, pool)
+        bounds_dict = request.bounds.model_dump() if request.bounds else None
+        result = await search(request.query, pool, bounds=bounds_dict)
 
         # Extract GUIDs from results
         guids = [r["Id"] for r in result["results"]]

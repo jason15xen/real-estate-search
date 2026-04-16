@@ -22,10 +22,14 @@ logger = logging.getLogger(__name__)
 async def apply_hard_filters(
     pool: asyncpg.Pool,
     criteria: list[Criterion],
+    bounds: dict | None = None,
 ) -> list[int]:
     """
     Applies deterministic filters via PostgreSQL indexed queries.
     Returns a list of property IDs that pass ALL criteria.
+
+    If bounds (with north/south/east/west keys) is provided, filters to
+    properties whose geom falls inside the bounding box.
     """
     hard_criteria = [
         c for c in criteria
@@ -36,6 +40,22 @@ async def apply_hard_filters(
     conditions = []
     params = []
     param_idx = 1
+
+    if bounds:
+        try:
+            south = float(bounds["south"])
+            north = float(bounds["north"])
+            west = float(bounds["west"])
+            east = float(bounds["east"])
+        except (KeyError, ValueError, TypeError) as e:
+            logger.warning(f"Invalid bounds ignored: {e}")
+        else:
+            conditions.append(
+                f"geom && ST_MakeEnvelope(${param_idx}, ${param_idx + 1}, "
+                f"${param_idx + 2}, ${param_idx + 3}, 4326)::geography"
+            )
+            params.extend([west, south, east, north])
+            param_idx += 4
 
     for criterion in hard_criteria:
         if isinstance(criterion, RoomCountCriterion):
@@ -145,7 +165,10 @@ async def apply_hard_filters(
         rows = await conn.fetch(query, *params)
 
     property_ids = [row["id"] for row in rows]
-    logger.info(f"Hard filter: {len(property_ids)} properties match ({len(conditions)} conditions)")
+    logger.info(
+        f"Hard filter: {len(property_ids)} properties match "
+        f"({len(conditions)} conditions, bounds={'yes' if bounds else 'no'})"
+    )
     return property_ids
 
 

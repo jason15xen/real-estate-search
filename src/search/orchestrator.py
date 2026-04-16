@@ -288,18 +288,25 @@ async def _load_properties(pool: asyncpg.Pool, property_ids: list[int]) -> list[
         return properties
 
 
-async def search(query: str, pool: asyncpg.Pool) -> dict:
+async def search(
+    query: str,
+    pool: asyncpg.Pool,
+    bounds: dict | None = None,
+) -> dict:
     """
     Executes the full search pipeline using PostgreSQL.
+
+    If bounds (with north/south/east/west) is provided, properties outside
+    the bounding box are excluded during Phase 2 (hard filters).
     """
     # Phase 1: Parse query
     logger.info(f"Phase 1: Parsing query: '{query}'")
     parsed_query = await parse_query(query)
     logger.info(f"Parsed {len(parsed_query.criteria)} criteria: {parsed_query.understood_intent}")
 
-    # Phase 2: Hard filters (PostgreSQL indexed)
-    logger.info("Phase 2: Hard filters (PostgreSQL)")
-    property_ids = await apply_hard_filters(pool, parsed_query.criteria)
+    # Phase 2: Hard filters (PostgreSQL indexed) — includes map bounds if provided
+    logger.info(f"Phase 2: Hard filters (PostgreSQL){' + map bounds' if bounds else ''}")
+    property_ids = await apply_hard_filters(pool, parsed_query.criteria, bounds=bounds)
     after_hard_filter_count = len(property_ids)
 
     # Phase 3: Proximity filters (PostGIS)
