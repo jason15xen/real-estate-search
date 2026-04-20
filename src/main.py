@@ -12,12 +12,17 @@ The system uses a multi-phase pipeline:
 The result: accurate results, not just "similar" ones.
 """
 
+import asyncio
+import json
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime
+from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from starlette.responses import Response
 
 from config.settings import settings
 from src.data.database import close_pool, get_pool
@@ -70,11 +75,109 @@ app.add_middleware(
 app.include_router(img_analyzer_router)
 
 
+LOG_DIR = Path("/app/log")
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+MAX_BODY_LOG_BYTES = 200_000
+_log_write_lock = asyncio.Lock()
+
+
+def _normalize_bounds(body: dict) -> dict:
+    """Ensure bounds values are logged as floats, even if the client sent strings."""
+    bounds = body.get("bounds")
+    if isinstance(bounds, dict):
+        for key in ("north", "south", "east", "west"):
+            if key in bounds:
+                try:
+                    bounds[key] = float(bounds[key])
+                except (ValueError, TypeError):
+                    pass
+    return body
+
+
+def _decode_body(raw: bytes, content_type: str) -> dict | str | None:
+    if not raw:
+        return None
+    if len(raw) > MAX_BODY_LOG_BYTES:
+        return {"_truncated": True, "size_bytes": len(raw)}
+    if "application/json" in content_type:
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                parsed = _normalize_bounds(parsed)
+            return parsed
+        except json.JSONDecodeError:
+            pass
+    if "multipart/form-data" in content_type:
+        return {"_binary_upload": True, "size_bytes": len(raw)}
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return {"_binary": True, "size_bytes": len(raw)}
+
+
+def _weekly_log_path() -> Path:
+    year, week, _ = datetime.utcnow().isocalendar()
+    return LOG_DIR / f"{year}-W{week:02d}.json"
+
+
+async def _append_log_entry(entry: dict) -> None:
+    async with _log_write_lock:
+        path = _weekly_log_path()
+        entries: list[dict] = []
+        if path.exists():
+            try:
+                existing = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(existing, list):
+                    entries = existing
+            except json.JSONDecodeError:
+                logger.warning(f"Log file {path.name} is corrupt, starting fresh")
+        entries.append(entry)
+        path.write_text(json.dumps(entries, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+@app.middleware("http")
+async def log_request_response(request: Request, call_next):
+    if request.url.path != "/search":
+        return await call_next(request)
+
+    req_body = await request.body()
+
+    async def receive():
+        return {"type": "http.request", "body": req_body, "more_body": False}
+
+    request._receive = receive
+
+    response = await call_next(request)
+
+    resp_chunks: list[bytes] = []
+    async for chunk in response.body_iterator:
+        resp_chunks.append(chunk)
+    resp_body = b"".join(resp_chunks)
+
+    new_response = Response(
+        content=resp_body,
+        status_code=response.status_code,
+        headers=dict(response.headers),
+        media_type=response.media_type,
+    )
+
+    try:
+        entry = {
+            "req": _decode_body(req_body, request.headers.get("content-type", "")),
+            "res": _decode_body(resp_body, new_response.headers.get("content-type", "")),
+        }
+        await _append_log_entry(entry)
+    except Exception as e:
+        logger.error(f"Failed to write request log: {e}")
+
+    return new_response
+
+
 class Bounds(BaseModel):
-    north: str
-    south: str
-    east: str
-    west: str
+    north: float
+    south: float
+    east: float
+    west: float
 
 
 class SearchRequest(BaseModel):

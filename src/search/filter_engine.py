@@ -51,8 +51,8 @@ async def apply_hard_filters(
             logger.warning(f"Invalid bounds ignored: {e}")
         else:
             conditions.append(
-                f"geom && ST_MakeEnvelope(${param_idx}, ${param_idx + 1}, "
-                f"${param_idx + 2}, ${param_idx + 3}, 4326)::geography"
+                f"ST_Covers(ST_MakeEnvelope(${param_idx}, ${param_idx + 1}, "
+                f"${param_idx + 2}, ${param_idx + 3}, 4326)::geography, geom)"
             )
             params.extend([west, south, east, north])
             param_idx += 4

@@ -1,0 +1,2212 @@
+[
+  {
+    "Id": "c733ad16-1d04-4428-af08-08de90d46c46",
+    "ZillowPropertyId": 43372507,
+    "ZillowPropertyRecord": {
+      "zpid": 43372507,
+      "isListingClaimedByCurrentSignedInUser": false,
+      "isCurrentSignedInAgentResponsible": false,
+      "isCurrentSignedInUserVerifiedOwner": false,
+      "address": {
+        "streetAddress": "3220 TEAL Street",
+        "city": "Titusville",
+        "state": "FL",
+        "zipcode": "32796",
+        "subdivision": "Westwood Villas 8th Addn"
+      },
+      "price": 270000,
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "livingArea": 1630,
+      "livingAreaValue": 1630,
+      "livingAreaUnits": "Square Feet",
+      "livingAreaUnitsShort": "sqft",
+      "homeType": "SINGLE_FAMILY",
+      "homeStatus": "FOR_SALE",
+      "yearBuilt": 1989,
+      "lotSize": 9147,
+      "lotAreaValue": 9147.6,
+      "lotAreaUnits": "Square Feet",
+      "description": "Welcome to this charming, well maintained home in Titusville! Offering 1,630sqft under air, this 3-bedroom, 2- bath residence features a desirable split plan providing both comfort and privacy. The spacious living area is filled with abundant natural light from Large windows, creating a bright and inviting atmosphere throughout. The layout flows seamlessly into an oversized and enclosed patio -- perfect for year-round living, entertaining or transforming into your dream space. With multiple access points leading to the enclosed patio, the layout offers exceptional flexibility to suit your lifestyle.  The oversized garage is a stand out features built-in and large window, creating a functional and well lit workspace. Perfect for a workshop, storage, or hobby space. Outside, the fully fence yard with double gates offers plenty of room for outdoor activities, relaxing, and ample space to add a pool, carport or create your own private tropical oasis. Recent updates include a newer HVAC system, water heater, and updated flooring (2025), giving peace of mind and modern appeal! Additional features include a shed, washer and dryer that convey, and no rental restrictions making this an excellent opportunity for homeowners, investors, or those seeking a second home. Ideally, located in a quiet, established neighborhood, near shopping, dining, in major employers like Kennedy Space Center, SpaceX, Lockheed, and Boeing. Enjoy the excitement of rocket launches right from your backyard an iconic Space Coast experience! Just a short drive to Playalinda Beach, New Smyrna Beach and Orlando, offering the perfect balance of convenience and coastal living. With solid bones and endless potential this home is ready for its next owner to add their personal touch and truly make it. 2023 Yamaha jet ski is not included in the sale but for sale, please contact listing agent. Open house 4/4, 4/5, & 4/7.",
+      "latitude": 28.647236,
+      "longitude": -80.845024,
+      "zestimate": 263500,
+      "rentZestimate": 1800,
+      "zestimateLowPercent": "5",
+      "zestimateHighPercent": "5",
+      "daysOnZillow": 1,
+      "timeOnZillow": "1 day",
+      "resoFacts": {
+        "heating": [
+          "Central"
+        ],
+        "cooling": [
+          "Central Air"
+        ],
+        "parkingFeatures": [
+          "Garage",
+          "Garage Door Opener",
+          "Off Street"
+        ],
+        "garageParkingCapacity": 2,
+        "coveredParkingCapacity": 2,
+        "parkingCapacity": 2,
+        "stories": 1,
+        "storiesDecimal": 1,
+        "flooring": [
+          "Carpet",
+          "Vinyl"
+        ],
+        "appliances": [
+          "Dishwasher",
+          "Disposal",
+          "Dryer",
+          "Electric Range",
+          "Freezer",
+          "Ice Maker",
+          "Microwave",
+          "Refrigerator",
+          "Tankless Water Heater",
+          "Washer"
+        ],
+        "laundryFeatures": [
+          "In Garage"
+        ],
+        "pricePerSquareFoot": 166,
+        "bathrooms": 2,
+        "bathroomsFull": 2,
+        "bathroomsHalf": 0,
+        "bathroomsFloat": 2,
+        "bedrooms": 3,
+        "livingArea": "1,630 sqft",
+        "lotSize": "9,147 sqft",
+        "yearBuilt": 1989,
+        "hasAssociation": false,
+        "taxAnnualAmount": 1389,
+        "taxAssessedValue": 197790,
+        "hasGarage": true,
+        "hasAttachedGarage": false,
+        "hasCarport": false,
+        "hasSpa": false,
+        "hasView": false,
+        "view": [],
+        "parcelNumber": "2105095",
+        "constructionMaterials": [],
+        "exteriorFeatures": [],
+        "interiorFeatures": [
+          "Ceiling Fan(s)",
+          "Pantry",
+          "Primary Bathroom - Tub with Shower"
+        ],
+        "propertySubType": [
+          "Single Family Residence"
+        ],
+        "homeType": "SingleFamily",
+        "atAGlanceFacts": [
+          {
+            "factLabel": "Type",
+            "factValue": "Single Family Residence"
+          },
+          {
+            "factLabel": "Year Built",
+            "factValue": "1989"
+          },
+          {
+            "factLabel": "Heating",
+            "factValue": "Central"
+          },
+          {
+            "factLabel": "Cooling",
+            "factValue": "Central Air"
+          },
+          {
+            "factLabel": "Parking",
+            "factValue": "2 Garage spaces"
+          },
+          {
+            "factLabel": "Lot",
+            "factValue": "9,147 sqft"
+          },
+          {
+            "factLabel": "Days on Zillow",
+            "factValue": "1 Day"
+          },
+          {
+            "factLabel": "Price/sqft",
+            "factValue": "$166"
+          },
+          {
+            "factLabel": "Offer Review Date"
+          }
+        ],
+        "waterSource": [
+          "Other"
+        ],
+        "utilities": [
+          "Electricity Available"
+        ],
+        "zoningDescription": "Residential",
+        "subdivisionName": "Westwood Villas 8th Addn",
+        "cityRegion": "Titusville",
+        "listingTerms": "Cash,Conventional,FHA",
+        "onMarketDate": 1775001600000,
+        "otherFacts": [],
+        "rooms": [
+          {
+            "roomType": "MasterBedroom"
+          }
+        ],
+        "elementarySchool": "Mims",
+        "middleOrJuniorSchool": "Madison",
+        "highSchool": "Astronaut",
+        "canRaiseHorses": false,
+        "furnished": false,
+        "hasAdditionalParcels": false,
+        "hasAttachedProperty": false,
+        "hasHomeWarranty": false,
+        "hasLandLease": false,
+        "isNewConstruction": false
+      },
+      "schools": [
+        {
+          "name": "Mims Elementary School",
+          "rating": 6,
+          "grades": "PK-6",
+          "distance": 1.4,
+          "link": "https://www.greatschools.org/florida/mims/120-Mims-Elementary-School/"
+        },
+        {
+          "name": "James Madison Middle School",
+          "rating": 4,
+          "grades": "7-8",
+          "distance": 0.8,
+          "link": "https://www.greatschools.org/florida/titusville/116-James-Madison-Middle-School/"
+        },
+        {
+          "name": "Astronaut High School",
+          "rating": 3,
+          "grades": "9-12",
+          "distance": 1.6,
+          "link": "https://www.greatschools.org/florida/titusville/124-Astronaut-High-School/"
+        }
+      ],
+      "attributionInfo": {
+        "agentName": "KATHRINE ROSE",
+        "agentPhoneNumber": "321-362-1333",
+        "brokerName": "UNLOCK REALTY GROUP LLC",
+        "brokerPhoneNumber": "470-509-3301",
+        "mlsId": "2137664",
+        "mlsName": "realMLS",
+        "mlsDisclaimer": "IDX information is provided exclusively for personal, non-commercial use, and may not be used for any purpose other than to identify prospective properties consumers may be interested in purchasing. Data is deemed reliable but is not guaranteed accurate by realMLS.\n",
+        "providerLogo": "https://photos.zillowstatic.com/fp/7e93ce7b14e79dd30af883babea7400f-zillow_web_95_35.jpg",
+        "lastChecked": "2026-04-02 08:42:26",
+        "lastUpdated": "2026-04-02 06:22:20",
+        "listingOffices": [
+          {
+            "associatedOfficeType": "listOffice",
+            "officeName": "UNLOCK REALTY GROUP LLC"
+          }
+        ],
+        "listingAgents": [
+          {
+            "associatedAgentType": "listAgent",
+            "memberFullName": "KATHRINE ROSE",
+            "memberStateLicense": "3550479"
+          }
+        ],
+        "trueStatus": "Active",
+        "infoString3": "https://photos.zillowstatic.com/fp/7e93ce7b14e79dd30af883babea7400f-zillow_web_95_35.jpg",
+        "infoString5": "321-362-1333",
+        "infoString10": "IDX information is provided exclusively for personal, non-commercial use, and may not be used for any purpose other than to identify prospective properties consumers may be interested in purchasing. Data is deemed reliable but is not guaranteed accurate by realMLS.\n"
+      },
+      "priceHistory": [
+        {
+          "date": "2026-04-01",
+          "time": 1775001600000,
+          "price": 270000,
+          "pricePerSquareFoot": 166,
+          "priceChangeRate": 0.6363636363636364,
+          "event": "Listed for sale",
+          "source": "realMLS",
+          "showCountyLink": false,
+          "postingIsRental": false,
+          "attributeSource": {
+            "infoString1": "2137664",
+            "infoString2": "realMLS",
+            "infoString3": "https://photos.zillowstatic.com/fp/7e93ce7b14e79dd30af883babea7400f-zillow_web_logo_inf_11.jpg"
+          }
+        },
+        {
+          "date": "2019-05-30",
+          "time": 1559174400000,
+          "price": 165000,
+          "pricePerSquareFoot": 101,
+          "priceChangeRate": 0,
+          "event": "Listing removed",
+          "source": "CENTURY 21 Paradise Palm",
+          "showCountyLink": false,
+          "postingIsRental": false,
+          "attributeSource": {
+            "infoString1": "842473",
+            "infoString2": "CENTURY 21 Paradise Palm"
+          }
+        },
+        {
+          "date": "2019-04-17",
+          "time": 1555459200000,
+          "price": 165000,
+          "pricePerSquareFoot": 101,
+          "priceChangeRate": 0.2692307692307692,
+          "event": "Listed for sale",
+          "source": "CENTURY 21 Paradise Palm",
+          "showCountyLink": false,
+          "postingIsRental": false,
+          "attributeSource": {
+            "infoString1": "842473",
+            "infoString2": "CENTURY 21 Paradise Palm"
+          }
+        },
+        {
+          "date": "2017-06-01",
+          "time": 1496275200000,
+          "price": 130000,
+          "pricePerSquareFoot": 80,
+          "priceChangeRate": -0.10034602076124567,
+          "event": "Sold",
+          "source": "Public Record",
+          "showCountyLink": false,
+          "postingIsRental": false,
+          "attributeSource": {
+            "infoString2": "Public Record"
+          }
+        },
+        {
+          "date": "2005-03-22",
+          "time": 1111449600000,
+          "price": 144500,
+          "pricePerSquareFoot": 89,
+          "priceChangeRate": 0,
+          "event": "Sold",
+          "source": "Public Record",
+          "showCountyLink": false,
+          "postingIsRental": false,
+          "attributeSource": {
+            "infoString2": "Public Record"
+          }
+        }
+      ],
+      "taxHistory": [
+        {
+          "time": 1712074784786,
+          "taxPaid": 1352.34,
+          "taxIncreaseRate": 0.035545763,
+          "value": 113700,
+          "valueIncreaseRate": 0.0299846
+        },
+        {
+          "time": 1680452384786,
+          "taxPaid": 1305.92,
+          "taxIncreaseRate": 0.02405022,
+          "value": 110390,
+          "valueIncreaseRate": 0.029949617
+        },
+        {
+          "time": 1648916384786,
+          "taxPaid": 1275.25,
+          "taxIncreaseRate": -0.010636453,
+          "value": 107180,
+          "valueIncreaseRate": 0.029982703
+        },
+        {
+          "time": 1617380384786,
+          "taxPaid": 1288.96,
+          "taxIncreaseRate": 0.005836986,
+          "value": 104060,
+          "valueIncreaseRate": 0.013933548
+        },
+        {
+          "time": 1585844384786,
+          "taxPaid": 1281.48,
+          "taxIncreaseRate": -0.0058725947,
+          "value": 102630,
+          "valueIncreaseRate": 0.02292435
+        },
+        {
+          "time": 1554221984786,
+          "taxPaid": 1289.05,
+          "taxIncreaseRate": 0,
+          "value": 100330,
+          "valueIncreaseRate": 0.018992484
+        },
+        {
+          "time": 1522685984786,
+          "taxPaid": 1289.05,
+          "taxIncreaseRate": 0.0013983677,
+          "value": 98460,
+          "valueIncreaseRate": -0.029089833
+        },
+        {
+          "time": 1491149984786,
+          "taxPaid": 1287.25,
+          "taxIncreaseRate": -0.44009972,
+          "value": 101410,
+          "valueIncreaseRate": 0.5608742
+        },
+        {
+          "time": 1459613984786,
+          "taxPaid": 2299.07,
+          "taxIncreaseRate": 2.2283058,
+          "value": 64970,
+          "valueIncreaseRate": 0.0069745816
+        },
+        {
+          "time": 1427991584786,
+          "taxPaid": 712.16,
+          "taxIncreaseRate": -0.033822265,
+          "value": 64520,
+          "valueIncreaseRate": 0.007967505
+        },
+        {
+          "time": 1396455584786,
+          "taxPaid": 737.09,
+          "taxIncreaseRate": 0,
+          "value": 64010,
+          "valueIncreaseRate": 0.014904075
+        },
+        {
+          "time": 1364919584786,
+          "taxIncreaseRate": 0,
+          "value": 63070,
+          "valueIncreaseRate": -0.0174482
+        },
+        {
+          "time": 1333383584786,
+          "taxPaid": 714.01,
+          "taxIncreaseRate": -0.033554383,
+          "value": 64190,
+          "valueIncreaseRate": -0.06700581
+        },
+        {
+          "time": 1301761184786,
+          "taxPaid": 738.8,
+          "taxIncreaseRate": -0.1282493,
+          "value": 68800,
+          "valueIncreaseRate": -0.1440657
+        },
+        {
+          "time": 1270225184786,
+          "taxPaid": 847.49,
+          "taxIncreaseRate": -0.23296438,
+          "value": 80380,
+          "valueIncreaseRate": -0.15469556
+        },
+        {
+          "time": 1238689184786,
+          "taxPaid": 1104.89,
+          "taxIncreaseRate": -0.24630788,
+          "value": 95090,
+          "valueIncreaseRate": -0.17670995
+        },
+        {
+          "time": 1207153184786,
+          "taxPaid": 1465.97,
+          "taxIncreaseRate": -0.2550095,
+          "value": 115500,
+          "valueIncreaseRate": -0.10741886
+        },
+        {
+          "time": 1175530784786,
+          "taxPaid": 1967.77,
+          "taxIncreaseRate": 1.9931248,
+          "value": 129400,
+          "valueIncreaseRate": 0.2437524
+        },
+        {
+          "time": 1112462384786,
+          "taxPaid": 657.43,
+          "taxIncreaseRate": 0.019982941,
+          "value": 104040,
+          "valueIncreaseRate": 0.29226184
+        },
+        {
+          "time": 1080926384786,
+          "taxPaid": 644.55,
+          "taxIncreaseRate": 0.003237532,
+          "value": 80510,
+          "valueIncreaseRate": 0.20235962
+        },
+        {
+          "time": 1049303984786,
+          "taxPaid": 642.47,
+          "taxIncreaseRate": 0.036760263,
+          "value": 66960,
+          "valueIncreaseRate": 0.06658171
+        },
+        {
+          "time": 1017767984786,
+          "taxPaid": 619.69,
+          "taxIncreaseRate": -0.0028962458,
+          "value": 62780,
+          "valueIncreaseRate": 0.16453348
+        },
+        {
+          "time": 986228384786,
+          "taxPaid": 621.49,
+          "taxIncreaseRate": 0.084359795,
+          "value": 53910,
+          "valueIncreaseRate": 0.06017699
+        },
+        {
+          "time": 954692384786,
+          "taxPaid": 573.14,
+          "taxIncreaseRate": 0,
+          "value": 50850,
+          "valueIncreaseRate": 0
+        }
+      ],
+      "originalPhotos": [
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/c8c6294a7b3f03a9ddb744d0fd44cfca-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/c8c6294a7b3f03a9ddb744d0fd44cfca-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "screened patio",
+            "covered patio",
+            "outdoor dining area",
+            "swing bench",
+            "concrete flooring",
+            "artificial turf rug",
+            "privacy fence",
+            "fenced backyard",
+            "planter boxes",
+            "potted flowers",
+            "neutral flooring",
+            "white ceiling",
+            "contemporary exterior",
+            "outdoor living space",
+            "patio enclosure",
+            "backyard entertaining area"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/e22d6186d7542006daba7ace4f43eb73-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/e22d6186d7542006daba7ace4f43eb73-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Living Room",
+          "Features": [
+            "living room",
+            "open living area",
+            "sectional sofa",
+            "ceiling fan",
+            "vaulted ceiling",
+            "recessed entry",
+            "front door with decorative glass",
+            "picture window",
+            "window blinds",
+            "curtains",
+            "wood-look vinyl flooring",
+            "laminate flooring",
+            "neutral paint",
+            "white walls",
+            "wainscoting",
+            "entry bench",
+            "modern light fixture",
+            "built-in HVAC vent",
+            "transitional interior",
+            "contemporary interior",
+            "1990s construction era"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/950cd46cd96e451480b106a3f02dafd5-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/950cd46cd96e451480b106a3f02dafd5-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "fenced backyard",
+            "privacy fence",
+            "large yard",
+            "lawn",
+            "outdoor seating area",
+            "adirondack chairs",
+            "patio umbrella",
+            "string lights",
+            "outdoor lighting",
+            "palm trees",
+            "mature trees",
+            "entertaining space",
+            "flat lot",
+            "evening ambiance",
+            "contemporary outdoor design",
+            "neutral outdoor palette"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/40ae1379c50324e2fa36f345148720a8-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/40ae1379c50324e2fa36f345148720a8-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Bedroom",
+          "Features": [
+            "guest bedroom",
+            "primary bedroom",
+            "en-suite bathroom",
+            "ceiling fan",
+            "tropical ceiling fan",
+            "wood-look vinyl flooring",
+            "laminate flooring",
+            "neutral paint",
+            "white walls",
+            "textured ceiling",
+            "recessed baseboards",
+            "beachy decor",
+            "contemporary interior",
+            "1990s",
+            "area rugs",
+            "natural light emphasis"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/f090d2f5d0ef99012a1205129aa21c46-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/f090d2f5d0ef99012a1205129aa21c46-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "screened porch",
+            "covered patio",
+            "concrete patio flooring",
+            "artificial turf rug",
+            "outdoor dining area",
+            "backyard",
+            "fenced yard",
+            "wood privacy fence",
+            "landscaped beds",
+            "grill area",
+            "French door exterior entry",
+            "neutral exterior paint",
+            "contemporary",
+            "outdoor entertaining space"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/b602d1c14154d350d8f38639e7898d6e-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/b602d1c14154d350d8f38639e7898d6e-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "large fenced yard",
+            "privacy fence",
+            "screened porch",
+            "covered patio",
+            "string lights",
+            "outdoor lighting",
+            "palm trees",
+            "mature tree",
+            "lawn",
+            "outdoor seating area",
+            "fire pit area",
+            "landscaped flower bed",
+            "rock border edging",
+            "level lot",
+            "backyard entertaining space",
+            "contemporary exterior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/fb96bfa8463fecbcb31b683d05fed6e5-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/fb96bfa8463fecbcb31b683d05fed6e5-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "front entry",
+            "covered entryway",
+            "storm door",
+            "painted front door",
+            "decorative door glass",
+            "vinyl siding",
+            "board and batten gable",
+            "two-tone exterior paint",
+            "pastel exterior colors",
+            "concrete walkway",
+            "front porch stoop",
+            "rock landscaping",
+            "bordered planting bed",
+            "tropical landscaping",
+            "single-story exterior",
+            "contemporary exterior",
+            "1970s",
+            "1980s"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/17ce58ba2f09e9704591cc6d50eb0c1e-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/17ce58ba2f09e9704591cc6d50eb0c1e-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "single-story ranch",
+            "attached garage",
+            "concrete driveway",
+            "front porch entry",
+            "arched window",
+            "horizontal siding",
+            "board and batten gable",
+            "shingle roof",
+            "front lawn",
+            "mature tree",
+            "palm tree landscaping",
+            "privacy fence",
+            "front flower beds",
+            "low-maintenance landscaping",
+            "neutral exterior paint",
+            "blue front door",
+            "suburban lot",
+            "1980s",
+            "traditional exterior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/5175cb00e059d5134f844b456b7d47dd-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/5175cb00e059d5134f844b456b7d47dd-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Living Room",
+          "Features": [
+            "sitting area",
+            "entry bench",
+            "wood bench seating",
+            "round wall mirror",
+            "accent mirror",
+            "neutral paint",
+            "white walls",
+            "laminate flooring",
+            "wood-look flooring",
+            "area rug",
+            "accent pillows",
+            "indoor plant",
+            "side tables",
+            "contemporary interior",
+            "minimalist decor",
+            "bright interior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/36f64c007eebe7ce0a27fb73e3af845e-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/36f64c007eebe7ce0a27fb73e3af845e-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Living Room",
+          "Features": [
+            "living room",
+            "open living area",
+            "entry foyer",
+            "sectional sofa",
+            "reclining sofa",
+            "ceiling fan",
+            "lighted ceiling fan",
+            "flush mount ceiling light",
+            "laminate flooring",
+            "wood look flooring",
+            "neutral paint",
+            "white walls",
+            "vaulted ceiling",
+            "textured ceiling",
+            "large window",
+            "window blinds",
+            "curtains",
+            "front door with glass inserts",
+            "modern interior",
+            "contemporary interior",
+            "accent bench",
+            "round wall mirror"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/9f266391dcb0fb19d1cf92e36f6ca358-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/9f266391dcb0fb19d1cf92e36f6ca358-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Bedroom",
+          "Features": [
+            "guest bedroom",
+            "neutral paint",
+            "white walls",
+            "laminate flooring",
+            "wood look flooring",
+            "ceiling fan",
+            "decorative ceiling fan",
+            "textured ceiling",
+            "arched window",
+            "window blinds",
+            "natural light",
+            "large window",
+            "tropical decor",
+            "contemporary interior",
+            "baseboards",
+            "area rug",
+            "TV nook",
+            "corner media cabinet",
+            "move-in ready interior",
+            "light wood tones"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/ba633e2d0b4aeff89a332300b9e24583-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/ba633e2d0b4aeff89a332300b9e24583-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Bathroom",
+          "Features": [
+            "full bathroom",
+            "single vanity",
+            "makeup vanity",
+            "dressing vanity",
+            "large wall mirror",
+            "corner vanity layout",
+            "tile flooring",
+            "white tile flooring",
+            "laminate countertops",
+            "wood trim cabinets",
+            "white cabinetry",
+            "frameless mirror",
+            "vanity lighting",
+            "exposed bulb vanity lights",
+            "industrial style lighting",
+            "neutral paint",
+            "white walls",
+            "tub and shower combo",
+            "shower curtain",
+            "built-in shower shelves",
+            "towel bar",
+            "1980s",
+            "traditional interior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/66ab90fb55e3819bba7ccca42e823b21-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/66ab90fb55e3819bba7ccca42e823b21-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Bathroom",
+          "Features": [
+            "full bath",
+            "tub and shower combo",
+            "shower curtain",
+            "single vanity",
+            "laminate countertop",
+            "drop-in sink",
+            "large wall mirror",
+            "tile flooring",
+            "ceramic tile tub surround",
+            "built-in towel bar",
+            "toilet",
+            "open vanity storage",
+            "neutral paint",
+            "white tile",
+            "pink accents",
+            "traditional interior",
+            "1980s",
+            "standard ceiling height"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/2601ae7cc690d0a203ebb956af9ec762-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/2601ae7cc690d0a203ebb956af9ec762-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Living Room",
+          "Features": [
+            "living room",
+            "open living area",
+            "vaulted ceiling",
+            "ceiling fan",
+            "recessed entry",
+            "laminate flooring",
+            "wood-look flooring",
+            "neutral paint",
+            "white walls",
+            "front door with window",
+            "window blinds",
+            "accent curtains",
+            "contemporary lighting",
+            "transitional interior",
+            "move-in ready interior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/757e271025361332a0f8e0e37a90c092-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/757e271025361332a0f8e0e37a90c092-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Bathroom",
+          "Features": [
+            "full bath",
+            "tub and shower combo",
+            "handheld showerhead",
+            "tile shower surround",
+            "built-in soap dish",
+            "single vanity",
+            "oval sink",
+            "laminate countertop",
+            "large wall mirror",
+            "modern vanity light",
+            "cage pendant lighting",
+            "toilet adjacent to vanity",
+            "shower curtain rod",
+            "patterned shower curtain",
+            "frosted window",
+            "black window frame",
+            "neutral tile flooring",
+            "white walls",
+            "off-white bathtub",
+            "1980s",
+            "traditional interior",
+            "neutral color scheme"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/0050f46b13b66fe90e0737c19fa18a09-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/0050f46b13b66fe90e0737c19fa18a09-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Bedroom",
+          "Features": [
+            "neutral paint",
+            "beige walls",
+            "carpet flooring",
+            "large window",
+            "window blinds",
+            "ceiling fan",
+            "ceiling fan light",
+            "white trim",
+            "1990s",
+            "traditional interior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/b671e2c3d1ac0dc6cd3ebbeb72fb7f1f-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/b671e2c3d1ac0dc6cd3ebbeb72fb7f1f-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Living Room",
+          "Features": [
+            "linen closet",
+            "closet shelving",
+            "louvered closet doors",
+            "built-in storage",
+            "sectional sofa",
+            "neutral paint",
+            "neutral carpet",
+            "large window",
+            "window blinds",
+            "transitional interior",
+            "cozy living room"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/29bd6e9a21ffed9650fa0c702966c9ab-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/29bd6e9a21ffed9650fa0c702966c9ab-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Dining Room",
+          "Features": [
+            "open floor plan",
+            "adjacent kitchen",
+            "eat-in dining area",
+            "vaulted ceiling",
+            "laminate flooring",
+            "neutral paint",
+            "white walls",
+            "wainscoting",
+            "French doors",
+            "glass patio doors",
+            "blinds on doors",
+            "pendant lighting",
+            "ceiling light fixture",
+            "traditional cabinetry",
+            "vintage hutch",
+            "1980s kitchen cabinets",
+            "laminate countertops",
+            "breakfast bar",
+            "transitional interior",
+            "move-in ready interior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/43aaa4b7bc3aa124eaf550eb892673d0-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/43aaa4b7bc3aa124eaf550eb892673d0-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "covered patio",
+            "screened patio",
+            "outdoor dining area",
+            "French doors",
+            "glass patio doors",
+            "concrete patio flooring",
+            "artificial turf rug",
+            "neutral exterior paint",
+            "white ceiling",
+            "patio swing",
+            "privacy fence",
+            "privacy screen",
+            "outdoor seating area",
+            "outdoor lighting",
+            "contemporary exterior",
+            "2020s"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/fc6a09697758a6b967823850dc03761d-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/fc6a09697758a6b967823850dc03761d-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Dining Room",
+          "Features": [
+            "screened porch",
+            "enclosed patio",
+            "indoor outdoor dining area",
+            "covered patio ceiling",
+            "neutral tile flooring",
+            "sliding screen door",
+            "privacy fence backyard",
+            "natural light",
+            "casual dining space",
+            "transitional style",
+            "white exterior walls",
+            "neutral paint",
+            "2020s"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/8bafff66821e55b80318daedb169502d-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/8bafff66821e55b80318daedb169502d-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Kitchen",
+          "Features": [
+            "eat-in kitchen",
+            "open kitchen",
+            "window over backyard",
+            "blinds",
+            "white walls",
+            "neutral paint",
+            "laminate flooring",
+            "wood-look flooring",
+            "area rug",
+            "white appliances",
+            "white refrigerator",
+            "dishwasher",
+            "laminate countertops",
+            "light wood cabinets",
+            "ceiling light fixtures",
+            "wicker pendant light",
+            "1960s",
+            "1970s",
+            "transitional interior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/b9ef628e5af0bb5b2853147f930744e9-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/b9ef628e5af0bb5b2853147f930744e9-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Unknown",
+          "Features": [
+            "laminate flooring",
+            "wood look flooring",
+            "area rug",
+            "neutral paint",
+            "white walls",
+            "large window",
+            "window blinds",
+            "baseboards",
+            "ceiling light fixture",
+            "vintage light fixture",
+            "wrought iron shelving",
+            "hallway",
+            "small utility room",
+            "transitional interior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/abf613261a89d95329ba9356ca381a7c-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/abf613261a89d95329ba9356ca381a7c-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Garage",
+          "Features": [
+            "attached garage",
+            "two-car garage",
+            "concrete floor",
+            "block walls",
+            "overhead garage door",
+            "garage door opener",
+            "workbench",
+            "storage shelves",
+            "utility sink",
+            "laundry hookups",
+            "neutral paint",
+            "large windows",
+            "natural light",
+            "fluorescent lighting",
+            "electrical panel",
+            "2020s",
+            "contemporary"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/19a068cc32abd70e94e17ab61b2aac18-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/19a068cc32abd70e94e17ab61b2aac18-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Garage",
+          "Features": [
+            "attached garage",
+            "single car garage",
+            "concrete flooring",
+            "block walls",
+            "painted block walls",
+            "overhead garage door",
+            "automatic garage door opener",
+            "laundry hookups",
+            "washer in garage",
+            "interior access door",
+            "small window",
+            "natural light",
+            "neutral paint",
+            "utility garage",
+            "storage space",
+            "contemporary"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/5ecaf2a2367d85245509ffe7d06ab214-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/5ecaf2a2367d85245509ffe7d06ab214-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "fenced yard",
+            "privacy fence",
+            "wood fence",
+            "side yard",
+            "concrete walkway",
+            "mulch border",
+            "stucco exterior",
+            "utility door",
+            "exterior lighting",
+            "central HVAC unit",
+            "utility meters",
+            "neutral exterior paint",
+            "outdoor storage area",
+            "contemporary"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/ee038e8ee3f5e2e0d9503bb82cbdaefe-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/ee038e8ee3f5e2e0d9503bb82cbdaefe-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "large fenced backyard",
+            "privacy fence",
+            "single-story home",
+            "screened porch",
+            "covered patio",
+            "concrete patio",
+            "paver walkway",
+            "landscaped border",
+            "mulch beds",
+            "palm tree",
+            "outdoor seating area",
+            "gabled roof",
+            "asphalt shingle roof",
+            "neutral exterior paint",
+            "suburban lot",
+            "ranch-style",
+            "1970s-1980s"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/3ffaf43073f66192cc3501beab45c3d8-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/3ffaf43073f66192cc3501beab45c3d8-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Garage",
+          "Features": [
+            "separate laundry room",
+            "in-garage laundry",
+            "washer hookup",
+            "dryer hookup",
+            "utility sink plumbing",
+            "laundry storage shelf",
+            "concrete flooring",
+            "painted block walls",
+            "neutral paint",
+            "white trim",
+            "central air handler",
+            "utility room",
+            "functional storage space",
+            "2010s",
+            "contemporary"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/68048e385d6c9f5bfb0c0c24617b8652-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/68048e385d6c9f5bfb0c0c24617b8652-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Kitchen",
+          "Features": [
+            "galley kitchen",
+            "one-wall kitchen",
+            "laminate countertops",
+            "flat panel cabinets",
+            "wood cabinets",
+            "white cabinet fronts",
+            "white appliances",
+            "electric range",
+            "over-the-range microwave",
+            "top-freezer refrigerator",
+            "double basin sink",
+            "vinyl plank flooring",
+            "wood-look flooring",
+            "fluorescent ceiling light",
+            "ceiling pendant light",
+            "neutral paint",
+            "white walls",
+            "1980s",
+            "traditional interior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/5463f096f0109af1e6ef8d8d3b5de131-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/5463f096f0109af1e6ef8d8d3b5de131-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Kitchen",
+          "Features": [
+            "galley kitchen",
+            "electric range",
+            "white appliances",
+            "white microwave",
+            "refrigerator",
+            "double sink",
+            "laminate countertops",
+            "flat panel cabinets",
+            "wood trim cabinets",
+            "white cabinetry",
+            "vinyl plank flooring",
+            "wood look flooring",
+            "fluorescent ceiling light",
+            "window over sink",
+            "blinds",
+            "neutral paint",
+            "1980s",
+            "traditional interior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/c102153f5fd2c408fd5171ff6b568d8a-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/c102153f5fd2c408fd5171ff6b568d8a-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Kitchen",
+          "Features": [
+            "open floor plan",
+            "galley kitchen",
+            "breakfast bar peninsula",
+            "laminate countertops",
+            "flat panel cabinets",
+            "wood trim cabinets",
+            "white appliances",
+            "electric range",
+            "over-the-range microwave",
+            "top-freezer refrigerator",
+            "double sink",
+            "vinyl plank flooring",
+            "wood look flooring",
+            "ceiling fan",
+            "recessed lighting",
+            "flush mount lighting",
+            "neutral paint",
+            "white walls",
+            "vaulted ceiling",
+            "chair rail molding",
+            "traditional interior",
+            "1980s",
+            "transitional decor",
+            "entry foyer",
+            "living room adjacent",
+            "dining area adjacent",
+            "white cabinetry",
+            "light countertops",
+            "natural wood hutch"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/35accbab73ec3b5ed0e7c5eb8c3855b1-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/35accbab73ec3b5ed0e7c5eb8c3855b1-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Living Room",
+          "Features": [
+            "vaulted ceiling",
+            "ceiling fan",
+            "recessed lighting",
+            "wood-look vinyl flooring",
+            "neutral paint",
+            "white walls",
+            "wainscoting",
+            "French doors",
+            "glass patio doors",
+            "transitional interior",
+            "1990s construction",
+            "open living area",
+            "large sectional sofa",
+            "natural light"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/1cf01fb4aaeeb19fd48839904402f01d-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/1cf01fb4aaeeb19fd48839904402f01d-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Bedroom",
+          "Features": [
+            "secondary bedroom",
+            "carpet flooring",
+            "ceiling fan",
+            "closet with bi-fold doors",
+            "neutral paint",
+            "beige walls",
+            "white trim",
+            "textured ceiling",
+            "1980s",
+            "traditional interior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/f76beb324ca34180c9b400e4aae8cbb2-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/f76beb324ca34180c9b400e4aae8cbb2-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "screened porch",
+            "covered patio",
+            "outdoor dining area",
+            "swing bench",
+            "patio seating",
+            "concrete flooring",
+            "privacy fence",
+            "backyard",
+            "neutral patio flooring",
+            "transitional style",
+            "contemporary exterior",
+            "outdoor grill",
+            "ceiling panel roof",
+            "green patio chairs",
+            "outdoor entertaining space",
+            "fenced yard",
+            "patio enclosure",
+            "neutral outdoor decor"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/d7ce4d6d9bf02282e0aeaf0debf80a0d-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/d7ce4d6d9bf02282e0aeaf0debf80a0d-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "screened patio",
+            "covered patio",
+            "outdoor grilling area",
+            "concrete patio floor",
+            "privacy fence",
+            "backyard",
+            "patio seating area",
+            "modern exterior",
+            "neutral exterior finishes"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/f730a8e06b1629cb53ddaf7aba193d33-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/f730a8e06b1629cb53ddaf7aba193d33-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "fenced backyard",
+            "privacy fence",
+            "large yard",
+            "lawn",
+            "outdoor seating area",
+            "string lights",
+            "patio lights",
+            "palm trees",
+            "outdoor umbrella",
+            "level lot",
+            "evening lighting",
+            "outdoor entertaining space",
+            "backyard oasis",
+            "suburban setting",
+            "contemporary exterior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/2a9a8d194d2135827cac447672106e1c-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/2a9a8d194d2135827cac447672106e1c-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "large fenced backyard",
+            "privacy fence",
+            "lawn",
+            "string lights",
+            "outdoor entertaining area",
+            "covered patio",
+            "screened patio",
+            "back porch",
+            "patio seating area",
+            "palm tree landscaping",
+            "mulch flower bed",
+            "neutral exterior paint",
+            "single-story home",
+            "ranch-style exterior",
+            "contemporary exterior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/7e1f50e9842693ec4b717dc1232671e6-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/7e1f50e9842693ec4b717dc1232671e6-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "single-story home",
+            "attached garage",
+            "two-car garage",
+            "concrete driveway",
+            "front porch",
+            "covered entry",
+            "blue front door",
+            "large front window",
+            "arched window",
+            "horizontal siding",
+            "vinyl siding",
+            "fenced backyard",
+            "wood privacy fence",
+            "front lawn",
+            "mature tree",
+            "palm trees",
+            "landscaped front yard",
+            "shrubs",
+            "flower bed",
+            "side gate",
+            "suburban neighborhood",
+            "neutral exterior paint",
+            "light siding",
+            "gabled roof",
+            "asphalt shingle roof",
+            "1980s",
+            "traditional exterior"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/635969e51b4d0ad50a29ca8074258d51-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/635969e51b4d0ad50a29ca8074258d51-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "suburban neighborhood",
+            "single-story home",
+            "asphalt shingle roof",
+            "attached garage",
+            "concrete driveway",
+            "front sidewalk",
+            "fenced backyard",
+            "large backyard",
+            "storage shed",
+            "covered patio",
+            "backyard patio",
+            "lawn",
+            "privacy fence",
+            "outdoor seating area",
+            "cul-de-sac street",
+            "contemporary exterior",
+            "neutral exterior paint"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/333c1208ea5afcee2ea6283176201880-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/333c1208ea5afcee2ea6283176201880-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Exterior",
+          "Features": [
+            "single-story home",
+            "attached garage",
+            "two-car garage",
+            "concrete driveway",
+            "extended driveway",
+            "front lawn",
+            "fenced backyard",
+            "wood privacy fence",
+            "side gate access",
+            "vinyl siding",
+            "asphalt shingle roof",
+            "covered entry",
+            "front porch walkway",
+            "landscaped front yard",
+            "palm trees",
+            "mature tree",
+            "flower beds",
+            "rock mulch landscaping",
+            "suburban neighborhood",
+            "curb appeal",
+            "sidewalk frontage",
+            "street mailbox",
+            "1970s",
+            "1980s",
+            "traditional exterior",
+            "neutral exterior paint"
+          ]
+        },
+        {
+          "caption": "",
+          "mixedSources": {
+            "jpeg": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/5d0658ac540460e7370aa562246d2c8d-uncropped_scaled_within_1536_1152.jpg",
+                "width": 1536
+              }
+            ],
+            "webp": [
+              {
+                "url": "https://photos.zillowstatic.com/fp/5d0658ac540460e7370aa562246d2c8d-uncropped_scaled_within_1536_1152.webp",
+                "width": 1536
+              }
+            ]
+          },
+          "RoomType": "Garage",
+          "Features": [
+            "attached garage",
+            "two-car garage",
+            "concrete floors",
+            "block walls",
+            "garage door opener",
+            "overhead garage door",
+            "workbench",
+            "storage shelves",
+            "utility sink",
+            "laundry hookups",
+            "neutral paint",
+            "fluorescent lighting",
+            "window with blinds",
+            "finished ceiling",
+            "contemporary"
+          ]
+        }
+      ],
+      "brokerageName": "UNLOCK REALTY GROUP LLC",
+      "state": "FL",
+      "city": "Titusville",
+      "zipcode": "32796",
+      "streetAddress": "3220 TEAL Street",
+      "abbreviatedAddress": "3220 TEAL Street",
+      "county": "Brevard County",
+      "countyFIPS": "12009",
+      "parcelId": "21352059B13",
+      "listingSubType": {
+        "isOpenHouse": true
+      },
+      "listing_sub_type": {
+        "is_FSBA": true,
+        "is_newHome": false,
+        "is_comingSoon": false,
+        "is_forAuction": false,
+        "is_FSBO": false,
+        "is_foreclosure": false,
+        "is_bankOwned": false,
+        "is_pending": false
+      },
+      "tourViewCount": 0,
+      "photoCount": 40,
+      "currency": "USD",
+      "timeZone": "America/New_York",
+      "datePostedString": "2026-04-01",
+      "isZillowOwned": false,
+      "isShowcaseListing": false,
+      "isPremierBuilder": false,
+      "isHousingConnector": false,
+      "hasPublicVideo": false,
+      "thirdPartyVirtualTour": {
+        "approved": false
+      },
+      "lastSoldPrice": 130000,
+      "hdpUrl": "/homedetails/3220-Teal-St-Titusville-FL-32796/43372507_zpid/",
+      "zipcodeId": 72224,
+      "cityId": 7433,
+      "countyId": 1556,
+      "ssid": 22,
+      "isUndisclosedAddress": false,
+      "hasBadGeocode": false,
+      "enhancedBrokerImageUrl": "https://photos.zillowstatic.com/fp/7e93ce7b14e79dd30af883babea7400f-zillow_web_95_35.jpg",
+      "staticMap": {
+        "sources": [
+          {
+            "width": 192,
+            "url": "https://maps.googleapis.com/maps/api/staticmap?center=28.647236,-80.845024&zoom=13&size=192x144&maptype=roadmap&key=AIzaSyARFMLB1na-BBWf7_R3-5YOQQaHqEJf6RQ&signature=t4yYAOtHyerNKRUdFsgcI5eZwCI="
+          },
+          {
+            "width": 192,
+            "url": "https://maps.googleapis.com/maps/api/staticmap?center=28.647236,-80.845024&zoom=15&size=192x144&maptype=roadmap&key=AIzaSyARFMLB1na-BBWf7_R3-5YOQQaHqEJf6RQ&scale=2&signature=vcgiMo0ayCKIcdtRDUys8bd3lY0=",
+            "isHighResolutionStaticMap": true
+          },
+          {
+            "width": 384,
+            "url": "https://maps.googleapis.com/maps/api/staticmap?center=28.647236,-80.845024&zoom=14&size=384x288&maptype=roadmap&key=AIzaSyARFMLB1na-BBWf7_R3-5YOQQaHqEJf6RQ&signature=jF6LKDswgDogfsC8gZfRRbTwQ38="
+          },
+          {
+            "width": 384,
+            "url": "https://maps.googleapis.com/maps/api/staticmap?center=28.647236,-80.845024&zoom=15&size=384x288&maptype=roadmap&key=AIzaSyARFMLB1na-BBWf7_R3-5YOQQaHqEJf6RQ&scale=2&signature=FY2C-0wAp1hlFjQOtsJ7b8pRVVk=",
+            "isHighResolutionStaticMap": true
+          },
+          {
+            "width": 768,
+            "url": "https://maps.googleapis.com/maps/api/staticmap?center=28.647236,-80.845024&zoom=15&size=768x576&maptype=roadmap&key=AIzaSyARFMLB1na-BBWf7_R3-5YOQQaHqEJf6RQ&signature=FJOxZlc2X88kGN8EiuVAyiS2esM="
+          },
+          {
+            "width": 768,
+            "url": "https://maps.googleapis.com/maps/api/staticmap?center=28.647236,-80.845024&zoom=15&size=768x576&maptype=roadmap&key=AIzaSyARFMLB1na-BBWf7_R3-5YOQQaHqEJf6RQ&scale=2&signature=NvswGpk6T6LJMJUsHmUJL9Dr8Yo=",
+            "isHighResolutionStaticMap": true
+          }
+        ]
+      },
+      "streetViewImageUrl": "https://maps.googleapis.com/maps/api/streetview?location=3220+Teal+St%2C+Titusville%2C+FL+32796&size=512x234&key=AIzaSyDY6ZJXL8FxBWwingKLmFPJdNF4VzD3vg4&source=outdoor&signature=_P8WUO0k-xD6cGhnod7447FACYk=",
+      "downPaymentAssistance": {
+        "eligibility": {
+          "dpa": true
+        }
+      },
+      "foreclosureTypes": {
+        "isBankOwned": false,
+        "isForeclosedNFS": false,
+        "isPreforeclosure": false,
+        "isAnyForeclosure": false,
+        "wasNonRetailAuction": false,
+        "wasForeclosed": false
+      },
+      "listingMetadata": {
+        "mustAttributeOfficeNameBeforeAgentName": false,
+        "mustDisplayAttributionListAgentEmail": false,
+        "mustDisplayAttributionListAgentPhone": true,
+        "mustDisplayAttributionListingOfficePhone": true,
+        "mustDisplayDisclaimerBelowAttribution": false,
+        "mustHighlightListOfficeName": false,
+        "mustMakeListingAgentContactable": false,
+        "canShowOnMap": true,
+        "mustPreferMlsPhotos": false
+      },
+      "pals": [],
+      "listedBy": [
+        {
+          "id": "LISTING_AGENT",
+          "elements": [
+            {
+              "id": "NAME",
+              "text": "KATHRINE ROSE"
+            },
+            {
+              "id": "PHONE",
+              "text": "321-362-1333"
+            }
+          ]
+        },
+        {
+          "id": "BROKER",
+          "elements": [
+            {
+              "id": "NAME",
+              "text": "UNLOCK REALTY GROUP LLC"
+            },
+            {
+              "id": "PHONE",
+              "text": "470-509-3301"
+            }
+          ]
+        }
+      ],
+      "nearbyCities": [
+        {
+          "regionUrl": {
+            "path": "/cocoa-fl/"
+          },
+          "name": "Cocoa"
+        },
+        {
+          "regionUrl": {
+            "path": "/melbourne-fl/"
+          },
+          "name": "Melbourne"
+        },
+        {
+          "regionUrl": {
+            "path": "/merritt-island-fl/"
+          },
+          "name": "Merritt Island"
+        },
+        {
+          "regionUrl": {
+            "path": "/mims-fl/"
+          },
+          "name": "Mims"
+        },
+        {
+          "regionUrl": {
+            "path": "/palm-bay-fl/"
+          },
+          "name": "Palm Bay"
+        },
+        {
+          "regionUrl": {
+            "path": "/rockledge-fl/"
+          },
+          "name": "Rockledge"
+        },
+        {
+          "regionUrl": {
+            "path": "/satellite-beach-fl/"
+          },
+          "name": "Satellite Beach"
+        },
+        {
+          "regionUrl": {
+            "path": "/sebastian-fl/"
+          },
+          "name": "Sebastian"
+        },
+        {
+          "regionUrl": {
+            "path": "/titusville-fl/"
+          },
+          "name": "Titusville"
+        },
+        {
+          "regionUrl": {
+            "path": "/west-melbourne-fl/"
+          },
+          "name": "West Melbourne"
+        }
+      ],
+      "nearbyNeighborhoods": [],
+      "nearbyZipcodes": [
+        {
+          "regionUrl": {
+            "path": "/titusville-fl-32780/"
+          },
+          "name": "32780"
+        },
+        {
+          "regionUrl": {
+            "path": "/titusville-fl-32781/"
+          },
+          "name": "32781"
+        },
+        {
+          "regionUrl": {
+            "path": "/titusville-fl-32783/"
+          },
+          "name": "32783"
+        },
+        {
+          "regionUrl": {
+            "path": "/titusville-fl-32796/"
+          },
+          "name": "32796"
+        }
+      ],
+      "citySearchUrl": {
+        "path": "/titusville-fl/",
+        "text": "Homes in Titusville"
+      },
+      "stateSearchUrl": {
+        "path": "/fl/"
+      },
+      "countySearchUrl": {
+        "path": "/brevard-county-fl/",
+        "text": "Homes in Brevard County"
+      },
+      "zipcodeSearchUrl": {
+        "path": "/titusville-fl-32796/"
+      },
+      "collections": {
+        "modules": [
+          {
+            "name": "Similar homes",
+            "placement": "NEIGHBORHOOD"
+          }
+        ],
+        "trackingTags": [
+          {
+            "value": "b4ee4cb11cf0148a2a3e7d0c661eac63"
+          }
+        ]
+      },
+      "thumb": [
+        {
+          "url": "https://photos.zillowstatic.com/fp/c8c6294a7b3f03a9ddb744d0fd44cfca-p_a.jpg"
+        }
+      ],
+      "neighborhoodMapThumb": [
+        {
+          "url": "https://photos.zillowstatic.com/fp/c8c6294a7b3f03a9ddb744d0fd44cfca-p_c.jpg"
+        }
+      ]
+    }
+  }
+]

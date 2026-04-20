@@ -24,6 +24,7 @@ services:
       - .env
     volumes:
       - ./src/processed:/app/src/processed
+      - ./log:/app/log
     environment:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432

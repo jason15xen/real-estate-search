@@ -69,10 +69,10 @@ Natural language property search with optional map bounds filter.
 {
   "query": "3 bedroom home with hardwood floors under $500k in Seattle",
   "bounds": {
-    "north": "47.7",
-    "south": "47.5",
-    "east": "-122.2",
-    "west": "-122.4"
+    "north": 47.7,
+    "south": 47.5,
+    "east": -122.2,
+    "west": -122.4
   }
 }
 ```
@@ -207,10 +207,10 @@ The `bounds` field on `/search` filters properties to a rectangular region using
 {
   "query": "3 bedroom",
   "bounds": {
-    "north": "47.7",
-    "south": "47.5",
-    "east": "-122.2",
-    "west": "-122.4"
+    "north": 47.7,
+    "south": 47.5,
+    "east": -122.2,
+    "west": -122.4
   }
 }
 ```
