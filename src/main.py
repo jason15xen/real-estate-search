@@ -234,3 +234,104 @@ async def health():
     async with pool.acquire() as conn:
         count = await conn.fetchval("SELECT count(*) FROM properties")
     return {"status": "ok", "properties_in_db": count}
+
+
+@app.get("/property/{guid}")
+async def get_property(guid: str):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        prop_row = await conn.fetchrow("""
+            SELECT
+                id, guid, name, street, district, city, state, postal_code, country,
+                ST_Y(geom::geometry) AS latitude,
+                ST_X(geom::geometry) AS longitude,
+                area_sqft, price_usd,
+                bedroom_count, bathroom_count, kitchen_count,
+                living_room_count, dining_room_count, garage_count,
+                home_type, rent_estimate, year_built, lot_size_sqft, stories,
+                description, created_at, updated_at
+            FROM properties WHERE guid = $1
+        """, guid)
+        if not prop_row:
+            raise HTTPException(status_code=404, detail=f"Property '{guid}' not found")
+
+        room_rows = await conn.fetch("""
+            SELECT room_type, instance_index, features
+            FROM room_instances
+            WHERE property_id = $1
+            ORDER BY room_type, instance_index
+        """, prop_row["id"])
+
+        school_rows = await conn.fetch("""
+            SELECT school_name, rating, grades, distance_miles, link
+            FROM property_schools
+            WHERE property_id = $1
+            ORDER BY distance_miles
+        """, prop_row["id"])
+
+    rooms_map: dict[str, list[list[str]]] = {}
+    all_features: set[str] = set()
+    for r in room_rows:
+        rooms_map.setdefault(r["room_type"], []).append(list(r["features"]))
+        all_features.update(r["features"])
+
+    rooms = [
+        {
+            "room_type": rt,
+            "instance_count": len(instances),
+            "instances": [{"features": feats} for feats in instances],
+        }
+        for rt, instances in rooms_map.items()
+    ]
+
+    schools = [
+        {
+            "name": s["school_name"],
+            "rating": s["rating"],
+            "grades": s["grades"],
+            "distance_miles": float(s["distance_miles"]),
+            "link": s["link"],
+        }
+        for s in school_rows
+    ]
+
+    return {
+        "property_id": guid,
+        "name": prop_row["name"],
+        "address": {
+            "street": prop_row["street"],
+            "district": prop_row["district"],
+            "city": prop_row["city"],
+            "state": prop_row["state"],
+            "postal_code": prop_row["postal_code"],
+            "country": prop_row["country"],
+        },
+        "location": {
+            "latitude": prop_row["latitude"],
+            "longitude": prop_row["longitude"],
+        },
+        "area_sqft": prop_row["area_sqft"],
+        "price_usd": prop_row["price_usd"],
+        "room_counts": {
+            "bedroom": prop_row["bedroom_count"],
+            "bathroom": prop_row["bathroom_count"],
+            "kitchen": prop_row["kitchen_count"],
+            "living_room": prop_row["living_room_count"],
+            "dining_room": prop_row["dining_room_count"],
+            "garage": prop_row["garage_count"],
+        },
+        "attributes": {
+            "home_type": prop_row["home_type"],
+            "rent_estimate": prop_row["rent_estimate"],
+            "year_built": prop_row["year_built"],
+            "lot_size_sqft": prop_row["lot_size_sqft"],
+            "stories": prop_row["stories"],
+        },
+        "description": prop_row["description"],
+        "schools": schools,
+        "total_features": len(all_features),
+        "all_features": sorted(all_features),
+        "rooms": rooms,
+        "created_at": prop_row["created_at"].isoformat() if prop_row["created_at"] else None,
+        "updated_at": prop_row["updated_at"].isoformat() if prop_row["updated_at"] else None,
+    }
