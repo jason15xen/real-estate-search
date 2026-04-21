@@ -149,14 +149,9 @@ async def apply_hard_filters(
                 conditions.append(f"stories <= ${param_idx}")
                 params.append(criterion.max_stories)
                 param_idx += 1
-            if criterion.has_pool is not None:
-                conditions.append(f"has_pool = ${param_idx}")
-                params.append(criterion.has_pool)
-                param_idx += 1
-            if criterion.has_waterfront is not None:
-                conditions.append(f"has_waterfront = ${param_idx}")
-                params.append(criterion.has_waterfront)
-                param_idx += 1
+            # has_pool / has_waterfront intentionally NOT used.
+            # Pool and waterfront must be treated as features (feature matching only)
+            # to ensure positive + negative search results sum to the total set.
 
     where_clause = " AND ".join(conditions) if conditions else "TRUE"
     query = f"SELECT id FROM properties WHERE {where_clause}"

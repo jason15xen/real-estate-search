@@ -67,8 +67,62 @@ so it matches broadly. Only map to a specific feature when the user is clearly s
    If the user mentions a feature that has NO close match in the known features, \
 still include it using the user's original wording. NEVER drop a feature from the query.
    room_context ties the feature to a specific room type. Set it ONLY when \
-the feature is explicitly described as INSIDE a specific room type.
+the user EXPLICITLY names a room type as a CONTAINER for the feature \
+(pattern: "<ROOM TYPE> with <FEATURE>" or "<FEATURE> in the <ROOM TYPE>").
+   DO NOT set room_context just because a feature shares its name with a room type \
+(e.g. "pool", "kitchen", "garage" used as a FEATURE). These refer to the feature itself, \
+not a containing room.
+   Correct usage:
+     "kitchen with granite countertops"   → feature=granite countertops, room_context="Kitchen"
+     "bedrooms with accent walls"         → feature=accent walls, room_context="Bedroom"
+     "hardwood floors in the living room" → feature=hardwood floors, room_context="Living Room"
+   Incorrect usage (DO NOT DO THIS):
+     "with pool"                → room_context=null   (NOT "Pool")
+     "with covered pool"        → room_context=null   (NOT "Pool")
+     "with uncovered pool"      → room_context=null   (NOT "Pool")
+     "with garage"              → room_context=null   (NOT "Garage")
+     "3 bedrooms with a fireplace" → room_context=null (bedroom count is separate; fireplace is not IN the bedroom here)
    negated=true means the property must NOT have this feature.
+
+   NEGATION SEMANTICS — READ CAREFULLY:
+
+   There are TWO KINDS of negation. You MUST distinguish them:
+
+   (A) ATOMIC NEGATION — the user doesn't want the thing at all.
+       Phrasing cues: "no X", "without X", "not X", "excluding X" \
+when X stands alone with no modifier.
+       Emit ONE negated criterion for X only.
+       Examples:
+         "no pool"           → [negated(pool)]
+         "without garage"    → [negated(garage)]
+         "not waterfront"    → [negated(waterfront)]
+
+   (B) MODIFIER NEGATION — the user DOES want the thing, but NOT with a specific attribute.
+       Phrasing cues: a compound noun where a negative prefix/word modifies \
+an attribute of a thing the user wants (e.g., "uncovered pool", "unfenced yard", \
+"open-air pool", "gas-free fireplace", "pool without cover", "fireplace without gas").
+       Emit TWO criteria:
+         1. POSITIVE criterion for the BASE thing (it must exist)
+         2. NEGATED criterion for the unwanted ATTRIBUTE
+       Examples:
+         "with uncovered pool"       → [positive(pool), negated(covered pool)]
+         "pool without screen"       → [positive(pool), negated(screened pool)]
+         "open-air pool"             → [positive(pool), negated(covered pool)]
+         "fireplace without gas"     → [positive(fireplace), negated(gas fireplace)]
+         "unfenced backyard"         → [positive(backyard), negated(fenced backyard)]
+         "non-granite countertops"   → [positive(countertops), negated(granite countertops)]
+
+   HOW TO DECIDE (A) vs (B):
+     - If the negated word stands alone with no described object → (A) atomic
+     - If the negation attaches to a MODIFIER of a thing the user wants → (B) modifier
+     - Rule of thumb: if removing the negation still leaves something the user wants \
+(e.g., "uncovered pool" → still wants a pool), it's MODIFIER NEGATION.
+     - If removing the negation leaves nothing wanted (e.g., "no pool" → wants no pool), \
+it's ATOMIC NEGATION.
+
+   NEVER expand negations to related/similar features the user did not mention. \
+For example, "without granite" must NOT also negate "quartz" — only the exact thing \
+the user said.
 
 3. price — Price range constraint.
    Fields: min_price (int|null), max_price (int|null)
@@ -91,45 +145,30 @@ the feature is explicitly described as INSIDE a specific room type.
    Fields: home_type (string|null), min_rent (int|null), max_rent (int|null), \
 min_year_built (int|null), max_year_built (int|null), \
 min_lot_sqft (int|null), max_lot_sqft (int|null), \
-min_stories (int|null), max_stories (int|null), \
-has_pool (bool|null), has_waterfront (bool|null)
+min_stories (int|null), max_stories (int|null)
    VALID home_type values: SINGLE_FAMILY, CONDO, TOWNHOUSE, MANUFACTURED, MULTI_FAMILY
    Only set home_type when the user's term CLEARLY maps to one of these values.
    If ambiguous (e.g. "apartment", "home", "house", "property"), do NOT set home_type.
    Mapping: "condo" → CONDO, "townhouse" → TOWNHOUSE, "single family" → SINGLE_FAMILY, \
 "manufactured home" → MANUFACTURED, "duplex"/"multi family" → MULTI_FAMILY
    "under $2k/mo" or "rent under 2000" → max_rent=2000
-   "with pool" or "swimming pool" → has_pool=true
-   "waterfront" or "on the water" → has_waterfront=true
    "built after 2000" → min_year_built=2000
    "single story" → max_stories=1
+   IMPORTANT: There is NO has_pool or has_waterfront field on the `property` criterion.
+   "pool", "swimming pool", "waterfront", "on the water" are FEATURES. \
+Use the `feature` criterion type for them — never emit them as property attributes.
 
 Return JSON with this exact structure:
 {{
   "criteria": [ ... list of criterion objects, each with a "type" field ... ],
-  "reconstructed_queries": [
-    "predefined feature1 predefined feature2 ...",
-    "predefined feature3 predefined feature4 ..."
-  ],
+  "reconstructed_queries": [],
   "understood_intent": "Brief summary of what you understood the user is looking for"
 }}
 
-The "reconstructed_queries" field is CRITICAL. Each entry must contain EXACTLY ONE \
-feature variant — a single predefined feature name from the KNOWN FEATURES list.
-
-For each feature the user mentions, look through the KNOWN FEATURES and find ALL terms \
-that are related or synonymous. Generate a SEPARATE entry for EACH related term.
-
-RULES for reconstructed_queries:
-  - Each entry is ONE feature name only (no room types, no negations, no combinations)
-  - Include ALL related/synonymous features from the KNOWN FEATURES list
-  - NEVER drop a feature the user mentioned
-  - If no match exists in KNOWN FEATURES, include the user's original wording
-
-Examples:
-  User: "house with swimming pool"
-  KNOWN FEATURES contain: "pool", "in-ground pool", "private pool", "swimming pool"
-  reconstructed_queries: ["swimming pool", "pool", "in-ground pool", "private pool"]
+IMPORTANT: `reconstructed_queries` is DEPRECATED. Always return an empty array `[]` \
+for this field. Do NOT expand synonyms or related features — the server computes \
+feature alternatives deterministically from the database. Returning anything other \
+than `[]` is wasted output that will be discarded.
 
   User: "3 bedroom home with granite counters"
   KNOWN FEATURES contain: "granite countertops"
@@ -150,13 +189,11 @@ Important rules:
 Map synonyms, abbreviations, and alternate phrasings to the exact known feature name.
 - Only extract criteria that are explicitly stated or clearly implied.
 - Do NOT invent criteria the user did not mention.
-- room_context rules:
-  Set room_context ONLY when the feature is explicitly described as INSIDE a specific room type.
-  "bedrooms with accent walls" → room_context="Bedroom"
-  "a kitchen with granite countertops" → room_context="Kitchen"
-  Set room_context=null when the feature is a general property feature:
-  "3 bedrooms with a fireplace" → room_context=null
-  "2 bedrooms and hardwood floors" → room_context=null
+- room_context rules (see FEATURE section above for the full rule):
+  Set room_context ONLY when the user names a room type as a CONTAINER via the pattern \
+"<ROOM TYPE> with <FEATURE>" or "<FEATURE> in the <ROOM TYPE>".
+  NEVER set room_context because a feature name coincides with a room type. \
+For "pool", "garage", "kitchen", "bedroom" used as features, room_context=null.
 - When the user says "without", "no", "exclude", or "not", set negated=true.
   "2 bedrooms without stone tile" → feature="stone tile", negated=true
   "no pool" → the closest known feature, negated=true
@@ -176,7 +213,7 @@ async def _call_llm(client, system_prompt: str, query: str) -> str | None:
     """Call Azure OpenAI and return raw text. Returns None on failure."""
     response = await client.chat.completions.create(
         model=settings.azure_openai_deployment,
-        max_completion_tokens=4096,
+        max_completion_tokens=16384,
         temperature=0,
         response_format={"type": "json_object"},
         messages=[
@@ -283,8 +320,6 @@ async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
                     max_lot_sqft=c.get("max_lot_sqft"),
                     min_stories=c.get("min_stories"),
                     max_stories=c.get("max_stories"),
-                    has_pool=c.get("has_pool"),
-                    has_waterfront=c.get("has_waterfront"),
                 ))
             else:
                 logger.warning(f"Unknown criterion type: {criterion_type}")

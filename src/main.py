@@ -28,6 +28,7 @@ from config.settings import settings
 from src.data.database import close_pool, get_pool
 from src.data.feature_registry import registry
 from src.img_analyzer.router import router as img_analyzer_router
+from src.models.search import ParsedQuery
 from src.search.orchestrator import search
 
 logging.basicConfig(
@@ -183,11 +184,19 @@ class Bounds(BaseModel):
 class SearchRequest(BaseModel):
     query: str
     bounds: Bounds | None = None
+    debug: bool = False
+
+
+class DebugInfo(BaseModel):
+    parsed_query: ParsedQuery
+    stats: dict
+    bounds_applied: bool
 
 
 class SearchResponse(BaseModel):
     query: str
     zillowProperties: list[str]
+    debug: DebugInfo | None = None
 
 
 @app.post("/search", response_model=SearchResponse)
@@ -197,12 +206,20 @@ async def search_properties(request: SearchRequest):
         bounds_dict = request.bounds.model_dump() if request.bounds else None
         result = await search(request.query, pool, bounds=bounds_dict)
 
-        # Extract GUIDs from results
         guids = [r["Id"] for r in result["results"]]
+
+        debug_info = None
+        if request.debug:
+            debug_info = DebugInfo(
+                parsed_query=result["parsed_query"],
+                stats=result["stats"],
+                bounds_applied=bounds_dict is not None,
+            )
 
         return SearchResponse(
             query=request.query,
             zillowProperties=guids,
+            debug=debug_info,
         )
     except Exception as e:
         logger.error(f"Search failed for query '{request.query}': {e}")

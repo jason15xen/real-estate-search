@@ -57,6 +57,50 @@ class FeatureRegistry:
     def get_features_by_room(self, room_type: str) -> list[str]:
         return sorted(self.features_by_room_type.get(room_type, set()))
 
+    def get_feature_alternatives(self, base: str) -> list[str]:
+        """
+        Deterministically compute all known features that mean "the property HAS `base`".
+
+        - Starts from registry features that include every word of `base`.
+        - Excludes tangential forms (views, game tables, accessories alone, \
+neighborhood/neighbor references, "room for" placeholders).
+        - Result is deterministic and identical for positive or negated queries, \
+which guarantees: |with X| + |without X| = |total|.
+        """
+        base_lower = base.lower().strip()
+        if not base_lower:
+            return []
+        base_words = set(base_lower.split())
+        if not base_words:
+            return []
+
+        EXCLUSION_SUBSTRINGS = {
+            "view", "viewing",
+            "table", "tables",
+            "community", "communities",
+            "nearby", "neighbor", "neighboring", "neighborhood",
+            "room for", "space for", "ready for",
+            "potential",
+        }
+
+        result: list[str] = [base] if base not in self.features else []
+        for feat in self.features:
+            feat_lower = feat.lower()
+            feat_words = set(feat_lower.split())
+            if not base_words.issubset(feat_words):
+                continue
+            if any(ex in feat_lower for ex in EXCLUSION_SUBSTRINGS):
+                continue
+            result.append(feat)
+
+        seen = set()
+        unique = []
+        for f in result:
+            if f not in seen:
+                seen.add(f)
+                unique.append(f)
+        return sorted(unique)
+
 
 # Global singleton
 registry = FeatureRegistry()

@@ -67,8 +67,6 @@ class PropertyCriterion(BaseModel):
     max_lot_sqft: int | None = None
     min_stories: int | None = None
     max_stories: int | None = None
-    has_pool: bool | None = None
-    has_waterfront: bool | None = None
 
 
 Criterion = (
