@@ -190,6 +190,7 @@ class SearchRequest(BaseModel):
 class DebugInfo(BaseModel):
     parsed_query: ParsedQuery
     stats: dict
+    filter_steps: list[dict]
     bounds_applied: bool
 
 
@@ -204,7 +205,7 @@ async def search_properties(request: SearchRequest):
     try:
         pool = await get_pool()
         bounds_dict = request.bounds.model_dump() if request.bounds else None
-        result = await search(request.query, pool, bounds=bounds_dict)
+        result = await search(request.query, pool, bounds=bounds_dict, debug=request.debug)
 
         guids = [r["Id"] for r in result["results"]]
 
@@ -213,6 +214,7 @@ async def search_properties(request: SearchRequest):
             debug_info = DebugInfo(
                 parsed_query=result["parsed_query"],
                 stats=result["stats"],
+                filter_steps=result["filter_steps"] or [],
                 bounds_applied=bounds_dict is not None,
             )
 

@@ -14,7 +14,15 @@ import logging
 import asyncpg
 
 from src.data.feature_registry import registry
-from src.models.search import FeatureCriterion
+from src.models.search import (
+    AreaCriterion,
+    FeatureCriterion,
+    LocationCriterion,
+    PriceCriterion,
+    PropertyCriterion,
+    ProximityCriterion,
+    RoomCountCriterion,
+)
 from src.search.filter_engine import apply_hard_filters
 from src.search.geo_search import apply_proximity_filters
 from src.search.query_parser import parse_query
@@ -219,30 +227,138 @@ async def _load_properties(pool: asyncpg.Pool, property_ids: list[int]) -> list[
         return properties
 
 
+def _criterion_labels(criterion) -> list[str]:
+    """Short human-readable labels for each distinct SQL condition a criterion produces."""
+    labels: list[str] = []
+    if isinstance(criterion, RoomCountCriterion):
+        if criterion.exact_count is not None:
+            labels.append(f"{criterion.room_type}=={criterion.exact_count}")
+        if criterion.min_count is not None:
+            labels.append(f"{criterion.room_type}>={criterion.min_count}")
+        if criterion.max_count is not None:
+            labels.append(f"{criterion.room_type}<={criterion.max_count}")
+    elif isinstance(criterion, PriceCriterion):
+        if criterion.min_price is not None:
+            labels.append(f"price>={criterion.min_price}")
+        if criterion.max_price is not None:
+            labels.append(f"price<={criterion.max_price}")
+    elif isinstance(criterion, AreaCriterion):
+        if criterion.min_sqft is not None:
+            labels.append(f"area>={criterion.min_sqft}")
+        if criterion.max_sqft is not None:
+            labels.append(f"area<={criterion.max_sqft}")
+    elif isinstance(criterion, LocationCriterion):
+        for attr in ("city", "state", "country", "district"):
+            val = getattr(criterion, attr)
+            if val:
+                labels.append(f"{attr}={val}")
+    elif isinstance(criterion, PropertyCriterion):
+        for attr, op in [
+            ("home_type", "="), ("min_rent", ">="), ("max_rent", "<="),
+            ("min_year_built", ">="), ("max_year_built", "<="),
+            ("min_lot_sqft", ">="), ("max_lot_sqft", "<="),
+            ("min_stories", ">="), ("max_stories", "<="),
+        ]:
+            val = getattr(criterion, attr)
+            if val is not None:
+                labels.append(f"{attr}{op}{val}")
+    return labels
+
+
+async def _collect_hard_filter_steps(
+    pool: asyncpg.Pool,
+    criteria: list,
+    bounds: dict | None,
+) -> list[dict]:
+    """
+    Progressively apply bounds, then each hard filter criterion one at a time,
+    recording the count after each step. Used only in debug mode.
+    """
+    steps: list[dict] = []
+
+    async with pool.acquire() as conn:
+        total = await conn.fetchval("SELECT count(*) FROM properties")
+    steps.append({"step": "total_properties", "count": int(total)})
+
+    applied: list = []
+    prev = int(total)
+
+    if bounds:
+        count = len(await apply_hard_filters(pool, applied, bounds=bounds))
+        steps.append({
+            "step": "bounds",
+            "count": count,
+            "dropped": prev - count,
+        })
+        prev = count
+
+    hard_types = (RoomCountCriterion, PriceCriterion, AreaCriterion,
+                  LocationCriterion, PropertyCriterion)
+    for c in criteria:
+        if not isinstance(c, hard_types):
+            continue
+        applied.append(c)
+        labels = _criterion_labels(c) or [c.type.value if hasattr(c, "type") else type(c).__name__]
+        count = len(await apply_hard_filters(pool, applied, bounds=bounds))
+        steps.append({
+            "step": ", ".join(labels),
+            "count": count,
+            "dropped": prev - count,
+        })
+        prev = count
+
+    return steps
+
+
 async def search(
     query: str,
     pool: asyncpg.Pool,
     bounds: dict | None = None,
+    debug: bool = False,
 ) -> dict:
     """
     Executes the full search pipeline using PostgreSQL.
 
     If bounds (with north/south/east/west) is provided, properties outside
     the bounding box are excluded during Phase 2 (hard filters).
+
+    If debug=True, a per-step count breakdown is included in the result.
     """
     # Phase 1: Parse query
     logger.info(f"Phase 1: Parsing query: '{query}'")
     parsed_query = await parse_query(query)
     logger.info(f"Parsed {len(parsed_query.criteria)} criteria: {parsed_query.understood_intent}")
 
+    filter_steps: list[dict] = []
+
     # Phase 2: Hard filters (PostgreSQL indexed) — includes map bounds if provided
     logger.info(f"Phase 2: Hard filters (PostgreSQL){' + map bounds' if bounds else ''}")
+    if debug:
+        filter_steps.extend(
+            await _collect_hard_filter_steps(pool, parsed_query.criteria, bounds)
+        )
     property_ids = await apply_hard_filters(pool, parsed_query.criteria, bounds=bounds)
     after_hard_filter_count = len(property_ids)
 
-    # Phase 3: Proximity filters (PostGIS)
+    # Phase 3: Proximity filters (PostGIS) — applied one criterion at a time so
+    # each proximity step can be recorded for debug.
     logger.info("Phase 3: Proximity filters (PostGIS)")
-    property_ids = await apply_proximity_filters(pool, property_ids, parsed_query.criteria)
+    proximity_criteria = [c for c in parsed_query.criteria if isinstance(c, ProximityCriterion)]
+    if debug and not proximity_criteria:
+        filter_steps.append({
+            "step": "proximity_skipped",
+            "count": after_hard_filter_count,
+            "dropped": 0,
+        })
+    for pc in proximity_criteria:
+        before = len(property_ids)
+        property_ids = await apply_proximity_filters(pool, property_ids, [pc])
+        if debug:
+            filter_steps.append({
+                "step": f"proximity: {pc.landmark_name} (<= {pc.max_distance_miles}mi)",
+                "count": len(property_ids),
+                "dropped": before - len(property_ids),
+            })
     after_proximity_count = len(property_ids)
 
     # Phase 4: Feature matching with alternatives computed from the DB registry
@@ -257,9 +373,33 @@ async def search(
         )
         if alternatives:
             logger.info(f"Feature alternatives: {alternatives}")
-        property_ids = await _match_features(
-            pool, property_ids, feature_criteria, alternatives or None
-        )
+        if debug:
+            # Apply each feature criterion one at a time to track progressive drops
+            current_ids = set(property_ids)
+            async with pool.acquire() as conn:
+                for fc in feature_criteria:
+                    before = len(current_ids)
+                    alts = alternatives.get(fc.feature, [fc.feature])
+                    matched = await _match_feature_set(
+                        conn, list(current_ids), fc.feature, alts, fc.room_context
+                    )
+                    if fc.negated:
+                        current_ids = current_ids - matched
+                        op = "NOT"
+                    else:
+                        current_ids = current_ids & matched
+                        op = "HAS"
+                    room_ctx = f" in {fc.room_context}" if fc.room_context else ""
+                    filter_steps.append({
+                        "step": f"feature: {op} '{fc.feature}'{room_ctx} (alts={len(alts)})",
+                        "count": len(current_ids),
+                        "dropped": before - len(current_ids),
+                    })
+            property_ids = list(current_ids)
+        else:
+            property_ids = await _match_features(
+                pool, property_ids, feature_criteria, alternatives or None
+            )
     after_feature_count = len(property_ids)
 
     # Replace the LLM's noisy reconstructed_queries with the deterministic
@@ -284,4 +424,5 @@ async def search(
         "results": results,
         "parsed_query": parsed_query,
         "stats": stats,
+        "filter_steps": filter_steps if debug else None,
     }
