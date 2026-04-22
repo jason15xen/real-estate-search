@@ -62,16 +62,31 @@ async def _match_feature_set(
     room_context: str | None,
 ) -> set[int]:
     """
-    Match the UNION of a feature and all its alternatives against room_instances.
+    Match the UNION of a feature and all its alternatives against room_instances
+    in a SINGLE SQL query using the GIN-indexed `features` TEXT[] column with
+    the overlap operator (&&).
+
     Used identically for positive and negated criteria — guarantees symmetry:
         |with X| + |without X| = |total|
     """
-    union_ids: set[int] = set()
     terms = alternatives if alternatives else [feature]
-    for term in terms:
-        matched = await _match_single_feature(conn, property_ids, term, room_context)
-        union_ids.update(matched)
-    return union_ids
+    if not terms:
+        return set()
+
+    if room_context:
+        rows = await conn.fetch("""
+            SELECT DISTINCT property_id FROM room_instances
+            WHERE property_id = ANY($1)
+              AND room_type = $2
+              AND features && $3::text[]
+        """, property_ids, room_context, terms)
+    else:
+        rows = await conn.fetch("""
+            SELECT DISTINCT property_id FROM room_instances
+            WHERE property_id = ANY($1)
+              AND features && $2::text[]
+        """, property_ids, terms)
+    return {row["property_id"] for row in rows}
 
 
 async def _match_features(
