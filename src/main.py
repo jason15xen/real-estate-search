@@ -207,7 +207,7 @@ async def search_properties(request: SearchRequest):
         bounds_dict = request.bounds.model_dump() if request.bounds else None
         result = await search(request.query, pool, bounds=bounds_dict, debug=request.debug)
 
-        guids = [r["Id"] for r in result["results"]]
+        guids = result["guids"]
 
         debug_info = None
         if request.debug:

@@ -30,7 +30,7 @@ async def get_pool() -> asyncpg.Pool:
         # Retry connection up to 15 times (DB may still be initializing)
         for attempt in range(1, 16):
             try:
-                _pool = await asyncpg.create_pool(dsn=dsn, min_size=2, max_size=10)
+                _pool = await asyncpg.create_pool(dsn=dsn, min_size=5, max_size=10)
                 logger.info("Database pool connected")
                 return _pool
             except (OSError, asyncpg.exceptions.ConnectionDoesNotExistError) as e:

@@ -9,6 +9,7 @@ Pipeline:
   5. Return results
 """
 
+import asyncio
 import logging
 
 import asyncpg
@@ -98,36 +99,49 @@ async def _match_features(
     """
     Filters property IDs by feature criteria.
 
-    For each criterion (positive or negated), the SAME feature set (feature +
-    its alternatives from reconstructed_queries) is used. This guarantees:
-        |properties matching with X| + |properties matching without X| = |total|
+    Each criterion's match is queried against the SAME initial input set in
+    PARALLEL (separate pool connections via asyncio.gather). Results are then
+    combined in Python via set intersection (positive) or subtraction (negated).
 
-    Only room_instances.features_text is consulted — description text is NOT
-    used, to keep matching strictly tied to "features stored in the database".
+    Set-theory equivalence with sequential narrowing:
+        Sequential: ((I ∩ M_1) ∩ M_2) - M_3
+        Parallel:    (I ∩ M_1_full ∩ M_2_full) - M_3_full
+    where M_i_full = match against full input I.
+    Both produce identical final sets because intersection/subtraction are
+    associative and commutative on sets.
+
+    For each criterion (positive or negated), the SAME feature set (feature +
+    its alternatives from the registry) is used. This guarantees:
+        |properties matching with X| + |properties matching without X| = |total|
     """
     if not property_ids or not feature_criteria:
         return property_ids
 
-    result_ids = set(property_ids)
     feature_alternatives = feature_alternatives or {}
+    initial_ids = property_ids  # query each criterion against the same input
 
-    async with pool.acquire() as conn:
-        for fc in feature_criteria:
-            id_list = list(result_ids)
-            alts = feature_alternatives.get(fc.feature, [fc.feature])
-            matched = await _match_feature_set(
-                conn, id_list, fc.feature, alts, fc.room_context
+    async def _run(fc: FeatureCriterion) -> set[int]:
+        alts = feature_alternatives.get(fc.feature, [fc.feature])
+        async with pool.acquire() as conn:
+            return await _match_feature_set(
+                conn, initial_ids, fc.feature, alts, fc.room_context
             )
-            if fc.negated:
-                logger.info(
-                    f"NEGATED '{fc.feature}' (alts={alts}) excluded {len(matched)} properties"
-                )
-                result_ids = result_ids - matched
-            else:
-                logger.info(
-                    f"POSITIVE '{fc.feature}' (alts={alts}) matched {len(matched)} properties"
-                )
-                result_ids = result_ids & matched
+
+    matches = await asyncio.gather(*[_run(fc) for fc in feature_criteria])
+
+    result_ids = set(property_ids)
+    for fc, matched in zip(feature_criteria, matches):
+        alts = feature_alternatives.get(fc.feature, [fc.feature])
+        if fc.negated:
+            logger.info(
+                f"NEGATED '{fc.feature}' (alts={len(alts)}) excluded {len(matched)} properties"
+            )
+            result_ids = result_ids - matched
+        else:
+            logger.info(
+                f"POSITIVE '{fc.feature}' (alts={len(alts)}) matched {len(matched)} properties"
+            )
+            result_ids = result_ids & matched
 
     return list(result_ids)
 
@@ -153,93 +167,22 @@ def _build_alternatives(
     }
 
 
-async def _load_properties(pool: asyncpg.Pool, property_ids: list[int]) -> list[dict]:
-    """Load full property data from PostgreSQL for the final results."""
+async def _load_guids(pool: asyncpg.Pool, property_ids: list[int]) -> list[str]:
+    """Load only the GUIDs for matched property IDs — a single SELECT query.
+
+    /search returns only GUIDs to clients, so loading full property data
+    (rooms, schools, etc.) just to extract the GUID is wasted work. This
+    lightweight loader replaces the previous N+1 _load_properties for the
+    /search hot path.
+    """
     if not property_ids:
         return []
-
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT
-                p.id, p.guid, p.name, p.street, p.district, p.city, p.state,
-                p.postal_code, p.country,
-                ST_Y(p.geom::geometry) as latitude,
-                ST_X(p.geom::geometry) as longitude,
-                p.area_sqft, p.price_usd,
-                p.bedroom_count, p.bathroom_count, p.kitchen_count,
-                p.living_room_count, p.dining_room_count, p.garage_count
-            FROM properties p
-            WHERE p.id = ANY($1)
-            ORDER BY p.id
-        """, property_ids)
-
-        properties = []
-        for row in rows:
-            prop_id = row["id"]
-
-            # Load room instances
-            room_rows = await conn.fetch("""
-                SELECT room_type, instance_index, features
-                FROM room_instances
-                WHERE property_id = $1
-                ORDER BY room_type, instance_index
-            """, prop_id)
-
-            # Group by room type
-            rooms_map: dict[str, list[list[str]]] = {}
-            for rr in room_rows:
-                rt = rr["room_type"]
-                if rt not in rooms_map:
-                    rooms_map[rt] = []
-                rooms_map[rt].append(list(rr["features"]))
-
-            rooms = []
-            for room_type, instances in rooms_map.items():
-                rooms.append({
-                    "Type": room_type,
-                    "Count": len(instances),
-                    "Instances": [{"Features": feats} for feats in instances],
-                })
-
-            # Load nearby schools
-            school_rows = await conn.fetch("""
-                SELECT school_name, rating, grades, distance_miles, link
-                FROM property_schools
-                WHERE property_id = $1
-                ORDER BY distance_miles
-            """, prop_id)
-
-            schools = [
-                {
-                    "Name": sr["school_name"],
-                    "Rating": sr["rating"],
-                    "Grades": sr["grades"],
-                    "DistanceMiles": float(sr["distance_miles"]),
-                    "Link": sr["link"],
-                }
-                for sr in school_rows
-            ]
-
-            properties.append({
-                "Id": row["guid"],
-                "Name": row["name"],
-                "Address": {
-                    "Street": row["street"],
-                    "District": row["district"],
-                    "City": row["city"],
-                    "State": row["state"],
-                    "PostalCode": row["postal_code"],
-                    "Country": row["country"],
-                    "Latitude": row["latitude"],
-                    "Longitude": row["longitude"],
-                },
-                "AreaSqft": row["area_sqft"],
-                "PriceUSD": row["price_usd"],
-                "Rooms": rooms,
-                "Schools": schools,
-            })
-
-        return properties
+        rows = await conn.fetch(
+            "SELECT guid FROM properties WHERE id = ANY($1) ORDER BY id",
+            property_ids,
+        )
+    return [row["guid"] for row in rows]
 
 
 def _criterion_labels(criterion) -> list[str]:
@@ -423,20 +366,20 @@ async def search(
         {alt for alts in alternatives.values() for alt in alts}
     )
 
-    # Load full property data for results
-    results = await _load_properties(pool, property_ids)
+    # Load only the GUIDs (lightweight — /search returns only GUIDs)
+    guids = await _load_guids(pool, property_ids)
 
     stats = {
         "after_hard_filters": after_hard_filter_count,
         "after_proximity_filters": after_proximity_count,
         "after_feature_match": after_feature_count,
-        "final_results": len(results),
+        "final_results": len(guids),
     }
 
     logger.info(f"Pipeline complete: {stats}")
 
     return {
-        "results": results,
+        "guids": guids,
         "parsed_query": parsed_query,
         "stats": stats,
         "filter_steps": filter_steps if debug else None,

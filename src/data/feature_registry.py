@@ -18,9 +18,18 @@ class FeatureRegistry:
         self.features: set[str] = set()
         self.room_types: set[str] = set()
         self.features_by_room_type: dict[str, set[str]] = {}
+        # Pure-function cache: same registry state + same base → same result.
+        # Cleared on every build_from_db() call.
+        self._alternatives_cache: dict[str, list[str]] = {}
 
     async def build_from_db(self, pool: asyncpg.Pool) -> None:
         """Load unique features and room types from PostgreSQL."""
+        # Reset registry state — old cached alternatives are no longer valid.
+        self.features = set()
+        self.room_types = set()
+        self.features_by_room_type = {}
+        self._alternatives_cache = {}
+
         async with pool.acquire() as conn:
             # Get all unique room types
             rows = await conn.fetch(
@@ -61,17 +70,26 @@ class FeatureRegistry:
         """
         Deterministically compute all known features that mean "the property HAS `base`".
 
+        Result is cached because the function is PURE — same registry state +
+        same base always produces the same output. Cache is cleared whenever
+        build_from_db() runs, so it can never go stale.
+
         - Starts from registry features that include every word of `base`.
         - Excludes tangential forms (views, game tables, accessories alone, \
 neighborhood/neighbor references, "room for" placeholders).
         - Result is deterministic and identical for positive or negated queries, \
 which guarantees: |with X| + |without X| = |total|.
         """
+        if base in self._alternatives_cache:
+            return self._alternatives_cache[base]
+
         base_lower = base.lower().strip()
         if not base_lower:
+            self._alternatives_cache[base] = []
             return []
         base_words = set(base_lower.split())
         if not base_words:
+            self._alternatives_cache[base] = []
             return []
 
         EXCLUSION_SUBSTRINGS = {
@@ -99,7 +117,9 @@ which guarantees: |with X| + |without X| = |total|.
             if f not in seen:
                 seen.add(f)
                 unique.append(f)
-        return sorted(unique)
+        sorted_result = sorted(unique)
+        self._alternatives_cache[base] = sorted_result
+        return sorted_result
 
 
 # Global singleton
