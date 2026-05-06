@@ -57,6 +57,20 @@ ROOM_COUNT_COLUMNS = {
 }
 
 
+def _normalize_listing_terms(raw: str | None) -> list[str]:
+    """'Cash,Conventional,VA Loan' -> ['cash','conventional','va_loan']."""
+    if not raw or not isinstance(raw, str):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for term in raw.split(","):
+        norm = "_".join(term.strip().lower().split())
+        if norm and norm not in seen:
+            seen.add(norm)
+            out.append(norm)
+    return out
+
+
 def _build_rooms_from_photos(photos: list[dict]) -> dict[str, list[list[str]]]:
     """
     Group extracted features by RoomType from processed photos.
@@ -163,6 +177,7 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
             has_pool = bool(reso_facts.get("hasPrivatePool"))
             has_waterfront = bool(reso_facts.get("hasWaterfrontView"))
             description = record.get("description")
+            financing = _normalize_listing_terms(reso_facts.get("listingTerms"))
 
             # Original GUID from data.json
             guid = item.get("Id", "")
@@ -190,6 +205,7 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
                         home_type=$19, rent_estimate=$20, year_built=$21,
                         lot_size_sqft=$22, stories=$23,
                         has_pool=$24, has_waterfront=$25, description=$26,
+                        financing=$27,
                         updated_at=NOW()
                     WHERE id = $1
                 """,
@@ -212,6 +228,7 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
                     home_type, rent_estimate, year_built,
                     lot_size, stories_val,
                     has_pool, has_waterfront, description,
+                    financing,
                 )
                 prop_id = existing_id
                 stats["updated_properties"] += 1
@@ -225,12 +242,14 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
                         living_room_count, dining_room_count, garage_count,
                         home_type, rent_estimate, year_built,
                         lot_size_sqft, stories,
-                        has_pool, has_waterfront, description
+                        has_pool, has_waterfront, description,
+                        financing
                     ) VALUES (
                         $1, $2, $3, $4, $5, $6, $7, $8,
                         ST_MakePoint($9, $10)::geography,
                         $11, $12, $13, $14, $15, $16, $17, $18,
-                        $19, $20, $21, $22, $23, $24, $25, $26
+                        $19, $20, $21, $22, $23, $24, $25, $26,
+                        $27
                     ) RETURNING id
                 """,
                     guid,
@@ -252,6 +271,7 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
                     home_type, rent_estimate, year_built,
                     lot_size, stories_val,
                     has_pool, has_waterfront, description,
+                    financing,
                 )
 
             stats["total_properties"] += 1

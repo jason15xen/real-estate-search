@@ -101,13 +101,18 @@ which guarantees: |with X| + |without X| = |total|.
             "potential",
         }
 
+        # If the user explicitly searches for a term that contains an exclusion
+        # substring (e.g. "community pool", "family-friendly community", "pool view"),
+        # don't apply that particular exclusion — it would defeat the user's intent.
+        effective_exclusions = {ex for ex in EXCLUSION_SUBSTRINGS if ex not in base_lower}
+
         result: list[str] = [base] if base not in self.features else []
         for feat in self.features:
             feat_lower = feat.lower()
             feat_words = set(feat_lower.split())
             if not base_words.issubset(feat_words):
                 continue
-            if any(ex in feat_lower for ex in EXCLUSION_SUBSTRINGS):
+            if any(ex in feat_lower for ex in effective_exclusions):
                 continue
             result.append(feat)
 

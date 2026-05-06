@@ -149,8 +149,16 @@ min_stories (int|null), max_stories (int|null)
    VALID home_type values: SINGLE_FAMILY, CONDO, TOWNHOUSE, MANUFACTURED, MULTI_FAMILY
    Only set home_type when the user's term CLEARLY maps to one of these values.
    If ambiguous (e.g. "apartment", "home", "house", "property"), do NOT set home_type.
-   Mapping: "condo" → CONDO, "townhouse" → TOWNHOUSE, "single family" → SINGLE_FAMILY, \
-"manufactured home" → MANUFACTURED, "duplex"/"multi family" → MULTI_FAMILY
+   Mapping:
+     "condo" → CONDO
+     "townhouse" → TOWNHOUSE
+     "single family" / "single-family home" / "family home" / "family house" / "family residence" / "starter home" → SINGLE_FAMILY
+     "manufactured home" / "mobile home" → MANUFACTURED
+     "duplex" / "multi family" / "multi-family" / "two-family" → MULTI_FAMILY
+   IMPORTANT: When the user describes a HOME TYPE phrase (e.g. "family home", "starter home", \
+"single-family residence"), emit it ONLY as a `property` criterion with `home_type` set. \
+Do NOT also emit a `feature` criterion for the same phrase. \
+"family home" is a home type, NOT a feature like "family-friendly community".
    "under $2k/mo" or "rent under 2000" → max_rent=2000
    "built after 2000" → min_year_built=2000
    "single story" → max_stories=1

@@ -223,14 +223,30 @@ def _criterion_labels(criterion) -> list[str]:
     return labels
 
 
+_FILTER_STEP_LABELS = [
+    ("price_min", "price>={v}"),
+    ("price_max", "price<={v}"),
+    ("beds_min", "bedrooms>={v}"),
+    ("baths_min", "bathrooms>={v}"),
+    ("sqft_min", "area>={v}"),
+    ("sqft_max", "area<={v}"),
+    ("year_from", "year>={v}"),
+    ("year_to", "year<={v}"),
+    ("property_types", "home_type∈{v}"),
+    ("financing", "financing∋{v}"),
+]
+
+
 async def _collect_hard_filter_steps(
     pool: asyncpg.Pool,
     criteria: list,
     bounds: dict | None,
+    filters: dict | None = None,
 ) -> list[dict]:
     """
-    Progressively apply bounds, then each hard filter criterion one at a time,
-    recording the count after each step. Used only in debug mode.
+    Progressively apply bounds, then each filter key, then each LLM hard
+    criterion one at a time, recording the count after each step. Used only
+    in debug mode.
     """
     steps: list[dict] = []
 
@@ -239,6 +255,7 @@ async def _collect_hard_filter_steps(
     steps.append({"step": "total_properties", "count": int(total)})
 
     applied: list = []
+    partial_filters: dict = {}
     prev = int(total)
 
     if bounds:
@@ -250,6 +267,22 @@ async def _collect_hard_filter_steps(
         })
         prev = count
 
+    if filters:
+        for key, label_tpl in _FILTER_STEP_LABELS:
+            value = filters.get(key)
+            if value is None or value == [] or value == "":
+                continue
+            partial_filters[key] = value
+            count = len(await apply_hard_filters(
+                pool, applied, bounds=bounds, filters=partial_filters
+            ))
+            steps.append({
+                "step": f"filter: {label_tpl.format(v=value)}",
+                "count": count,
+                "dropped": prev - count,
+            })
+            prev = count
+
     hard_types = (RoomCountCriterion, PriceCriterion, AreaCriterion,
                   LocationCriterion, PropertyCriterion)
     for c in criteria:
@@ -257,7 +290,9 @@ async def _collect_hard_filter_steps(
             continue
         applied.append(c)
         labels = _criterion_labels(c) or [c.type.value if hasattr(c, "type") else type(c).__name__]
-        count = len(await apply_hard_filters(pool, applied, bounds=bounds))
+        count = len(await apply_hard_filters(
+            pool, applied, bounds=bounds, filters=filters
+        ))
         steps.append({
             "step": ", ".join(labels),
             "count": count,
@@ -272,6 +307,7 @@ async def search(
     query: str,
     pool: asyncpg.Pool,
     bounds: dict | None = None,
+    filters: dict | None = None,
     debug: bool = False,
 ) -> dict:
     """
@@ -279,6 +315,9 @@ async def search(
 
     If bounds (with north/south/east/west) is provided, properties outside
     the bounding box are excluded during Phase 2 (hard filters).
+
+    If filters is provided, those values override LLM-extracted hard filter
+    sub-fields (per-field override) — see apply_hard_filters for details.
 
     If debug=True, a per-step count breakdown is included in the result.
     """
@@ -289,13 +328,19 @@ async def search(
 
     filter_steps: list[dict] = []
 
-    # Phase 2: Hard filters (PostgreSQL indexed) — includes map bounds if provided
-    logger.info(f"Phase 2: Hard filters (PostgreSQL){' + map bounds' if bounds else ''}")
+    # Phase 2: Hard filters (PostgreSQL indexed) — includes map bounds + filters if provided
+    logger.info(
+        f"Phase 2: Hard filters (PostgreSQL)"
+        f"{' + map bounds' if bounds else ''}"
+        f"{' + filters' if filters else ''}"
+    )
     if debug:
         filter_steps.extend(
-            await _collect_hard_filter_steps(pool, parsed_query.criteria, bounds)
+            await _collect_hard_filter_steps(pool, parsed_query.criteria, bounds, filters)
         )
-    property_ids = await apply_hard_filters(pool, parsed_query.criteria, bounds=bounds)
+    property_ids = await apply_hard_filters(
+        pool, parsed_query.criteria, bounds=bounds, filters=filters
+    )
     after_hard_filter_count = len(property_ids)
 
     # Phase 3: Proximity filters (PostGIS) — applied one criterion at a time so

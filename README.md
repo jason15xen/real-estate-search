@@ -62,23 +62,44 @@ uvicorn src.main:app --reload --port 8888
 
 ### `POST /search`
 
-Natural language property search with optional map bounds filter.
+Natural language property search with optional map bounds and structured filters.
 
 **Request:**
 ```json
 {
-  "query": "3 bedroom home with hardwood floors under $500k in Seattle",
+  "query": "Family home near good schools",
   "bounds": {
     "north": 47.7,
     "south": 47.5,
     "east": -122.2,
     "west": -122.4
-  }
+  },
+  "filters": {
+    "price_min": 500000,
+    "price_max": 550000,
+    "beds_min": 1,
+    "baths_min": 2,
+    "property_types": ["SINGLE_FAMILY", "CONDO"],
+    "financing": ["cash", "fha"],
+    "sqft_min": 255,
+    "sqft_max": 555,
+    "year_from": 1990,
+    "year_to": 2010
+  },
+  "debug": true
 }
 ```
 
-- `query` — natural language search string (required)
-- `bounds` — optional map viewport (north/south/east/west as strings). When provided, only properties inside the rectangle are returned. Combines with other criteria via AND.
+- `query` — natural language search (required). LLM extracts features, proximity, location, and any hard filters not specified in `filters`.
+- `bounds` — optional. Map viewport (north/south/east/west as floats).
+- `filters` — optional. Explicit hard filters that **override** any matching field the LLM might extract from `query`. Per-field override:
+  - `price_min` / `price_max` (USD)
+  - `beds_min`, `baths_min` (min only)
+  - `property_types[]` — array of `SINGLE_FAMILY` / `CONDO` / `TOWNHOUSE` / `MANUFACTURED` / `MULTI_FAMILY` (case-insensitive). OR semantics.
+  - `financing[]` — e.g., `["cash", "fha", "va_loan"]`. OR semantics. Sourced from Zillow's `listingTerms`.
+  - `sqft_min` / `sqft_max`
+  - `year_from` / `year_to` (year_built bounds)
+- `debug` — when `true`, the response includes `parsed_query`, `stats`, `filter_steps` for inspection.
 
 **Response:**
 ```json
