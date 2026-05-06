@@ -48,6 +48,7 @@ CREATE TABLE properties (
     has_pool        BOOLEAN NOT NULL DEFAULT FALSE,
     has_waterfront  BOOLEAN NOT NULL DEFAULT FALSE,
     description     TEXT,                -- property description for text search fallback
+    financing       TEXT[] NOT NULL DEFAULT '{}',  -- normalized from Zillow listingTerms
 
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -108,6 +109,7 @@ CREATE INDEX idx_properties_lot_size ON properties(lot_size_sqft);
 CREATE INDEX idx_properties_has_pool ON properties(has_pool) WHERE has_pool = TRUE;
 CREATE INDEX idx_properties_has_waterfront ON properties(has_waterfront) WHERE has_waterfront = TRUE;
 CREATE INDEX idx_properties_description ON properties USING GIN(description gin_trgm_ops);
+CREATE INDEX idx_properties_financing_gin ON properties USING GIN(financing);
 
 -- Spatial index (Phase 3: Proximity)
 CREATE INDEX idx_properties_geom ON properties USING GIST(geom);

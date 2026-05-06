@@ -23,13 +23,18 @@ async def apply_hard_filters(
     pool: asyncpg.Pool,
     criteria: list[Criterion],
     bounds: dict | None = None,
+    filters: dict | None = None,
 ) -> list[int]:
     """
     Applies deterministic filters via PostgreSQL indexed queries.
     Returns a list of property IDs that pass ALL criteria.
 
-    If bounds (with north/south/east/west keys) is provided, filters to
-    properties whose geom falls inside the bounding box.
+    Args:
+      bounds:  optional dict with north/south/east/west keys.
+      filters: optional dict from the SearchRequest.filters payload.
+               Per-field override: any key here suppresses the corresponding
+               sub-condition extracted by the LLM (e.g. filters.price_max
+               replaces LLM PriceCriterion.max_price).
     """
     hard_criteria = [
         c for c in criteria
@@ -57,15 +62,75 @@ async def apply_hard_filters(
             params.extend([west, south, east, north])
             param_idx += 4
 
+    # Apply explicit filters first; track which atomic fields they cover so the
+    # LLM-extracted criteria below can skip the same fields.
+    covered: set[str] = set()
+    if filters:
+        if filters.get("price_min") is not None:
+            conditions.append(f"price_usd >= ${param_idx}")
+            params.append(filters["price_min"])
+            param_idx += 1
+            covered.add("price_min")
+        if filters.get("price_max") is not None:
+            conditions.append(f"price_usd <= ${param_idx}")
+            params.append(filters["price_max"])
+            param_idx += 1
+            covered.add("price_max")
+        if filters.get("beds_min") is not None:
+            conditions.append(f"bedroom_count >= ${param_idx}")
+            params.append(filters["beds_min"])
+            param_idx += 1
+            covered.add("beds_min")
+        if filters.get("baths_min") is not None:
+            conditions.append(f"bathroom_count >= ${param_idx}")
+            params.append(filters["baths_min"])
+            param_idx += 1
+            covered.add("baths_min")
+        if filters.get("sqft_min") is not None:
+            conditions.append(f"area_sqft >= ${param_idx}")
+            params.append(filters["sqft_min"])
+            param_idx += 1
+            covered.add("sqft_min")
+        if filters.get("sqft_max") is not None:
+            conditions.append(f"area_sqft <= ${param_idx}")
+            params.append(filters["sqft_max"])
+            param_idx += 1
+            covered.add("sqft_max")
+        if filters.get("year_from") is not None:
+            conditions.append(f"year_built >= ${param_idx}")
+            params.append(filters["year_from"])
+            param_idx += 1
+            covered.add("year_from")
+        if filters.get("year_to") is not None:
+            conditions.append(f"year_built <= ${param_idx}")
+            params.append(filters["year_to"])
+            param_idx += 1
+            covered.add("year_to")
+        if filters.get("property_types"):
+            conditions.append(f"UPPER(home_type) = ANY(${param_idx}::text[])")
+            params.append(filters["property_types"])
+            param_idx += 1
+            covered.add("property_types")
+        if filters.get("financing"):
+            conditions.append(f"financing && ${param_idx}::text[]")
+            params.append(filters["financing"])
+            param_idx += 1
+            covered.add("financing")
+
+    # LLM-extracted criteria. Skip any sub-condition that filters already cover.
     for criterion in hard_criteria:
         if isinstance(criterion, RoomCountCriterion):
             col = _room_type_to_column(criterion.room_type)
             if col:
+                room_min_field = {
+                    "bedroom": "beds_min",
+                    "bathroom": "baths_min",
+                }.get(criterion.room_type.lower())
                 if criterion.exact_count is not None:
                     conditions.append(f"{col} = ${param_idx}")
                     params.append(criterion.exact_count)
                     param_idx += 1
-                if criterion.min_count is not None:
+                if criterion.min_count is not None and room_min_field not in covered:
                     conditions.append(f"{col} >= ${param_idx}")
                     params.append(criterion.min_count)
                     param_idx += 1
@@ -75,21 +140,21 @@ async def apply_hard_filters(
                     param_idx += 1
 
         elif isinstance(criterion, PriceCriterion):
-            if criterion.min_price is not None:
+            if criterion.min_price is not None and "price_min" not in covered:
                 conditions.append(f"price_usd >= ${param_idx}")
                 params.append(criterion.min_price)
                 param_idx += 1
-            if criterion.max_price is not None:
+            if criterion.max_price is not None and "price_max" not in covered:
                 conditions.append(f"price_usd <= ${param_idx}")
                 params.append(criterion.max_price)
                 param_idx += 1
 
         elif isinstance(criterion, AreaCriterion):
-            if criterion.min_sqft is not None:
+            if criterion.min_sqft is not None and "sqft_min" not in covered:
                 conditions.append(f"area_sqft >= ${param_idx}")
                 params.append(criterion.min_sqft)
                 param_idx += 1
-            if criterion.max_sqft is not None:
+            if criterion.max_sqft is not None and "sqft_max" not in covered:
                 conditions.append(f"area_sqft <= ${param_idx}")
                 params.append(criterion.max_sqft)
                 param_idx += 1
@@ -113,7 +178,7 @@ async def apply_hard_filters(
                 param_idx += 1
 
         elif isinstance(criterion, PropertyCriterion):
-            if criterion.home_type:
+            if criterion.home_type and "property_types" not in covered:
                 conditions.append(f"UPPER(home_type) = UPPER(${param_idx})")
                 params.append(criterion.home_type)
                 param_idx += 1
@@ -125,11 +190,11 @@ async def apply_hard_filters(
                 conditions.append(f"rent_estimate <= ${param_idx}")
                 params.append(criterion.max_rent)
                 param_idx += 1
-            if criterion.min_year_built is not None:
+            if criterion.min_year_built is not None and "year_from" not in covered:
                 conditions.append(f"year_built >= ${param_idx}")
                 params.append(criterion.min_year_built)
                 param_idx += 1
-            if criterion.max_year_built is not None:
+            if criterion.max_year_built is not None and "year_to" not in covered:
                 conditions.append(f"year_built <= ${param_idx}")
                 params.append(criterion.max_year_built)
                 param_idx += 1
@@ -162,7 +227,8 @@ async def apply_hard_filters(
     property_ids = [row["id"] for row in rows]
     logger.info(
         f"Hard filter: {len(property_ids)} properties match "
-        f"({len(conditions)} conditions, bounds={'yes' if bounds else 'no'})"
+        f"({len(conditions)} conditions, bounds={'yes' if bounds else 'no'}, "
+        f"filters={'yes' if filters else 'no'})"
     )
     return property_ids
 

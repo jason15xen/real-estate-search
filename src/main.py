@@ -21,7 +21,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from starlette.responses import Response
 
 from config.settings import settings
@@ -181,9 +181,59 @@ class Bounds(BaseModel):
     west: float
 
 
+ALLOWED_HOME_TYPES = {"SINGLE_FAMILY", "CONDO", "TOWNHOUSE", "MANUFACTURED", "MULTI_FAMILY"}
+
+
+class Filters(BaseModel):
+    price_min: int | None = None
+    price_max: int | None = None
+    beds_min: int | None = None
+    baths_min: int | None = None
+    property_types: list[str] | None = None
+    financing: list[str] | None = None
+    sqft_min: int | None = None
+    sqft_max: int | None = None
+    year_from: int | None = None
+    year_to: int | None = None
+
+    @field_validator("property_types")
+    @classmethod
+    def _norm_property_types(cls, v):
+        if v is None:
+            return None
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for item in v:
+            up = str(item).strip().upper()
+            if up not in ALLOWED_HOME_TYPES:
+                raise ValueError(
+                    f"Invalid property_type '{item}'. "
+                    f"Allowed: {sorted(ALLOWED_HOME_TYPES)}"
+                )
+            if up not in seen:
+                seen.add(up)
+                normalized.append(up)
+        return normalized
+
+    @field_validator("financing")
+    @classmethod
+    def _norm_financing(cls, v):
+        if v is None:
+            return None
+        out: list[str] = []
+        seen: set[str] = set()
+        for item in v:
+            norm = "_".join(str(item).strip().lower().split())
+            if norm and norm not in seen:
+                seen.add(norm)
+                out.append(norm)
+        return out
+
+
 class SearchRequest(BaseModel):
     query: str
     bounds: Bounds | None = None
+    filters: Filters | None = None
     debug: bool = False
 
 
@@ -205,7 +255,19 @@ async def search_properties(request: SearchRequest):
     try:
         pool = await get_pool()
         bounds_dict = request.bounds.model_dump() if request.bounds else None
-        result = await search(request.query, pool, bounds=bounds_dict, debug=request.debug)
+        filters_dict = (
+            request.filters.model_dump(exclude_none=True) if request.filters else None
+        )
+        if filters_dict is not None and not filters_dict:
+            filters_dict = None  # treat empty {} as no filters
+
+        result = await search(
+            request.query,
+            pool,
+            bounds=bounds_dict,
+            filters=filters_dict,
+            debug=request.debug,
+        )
 
         guids = result["guids"]
 
