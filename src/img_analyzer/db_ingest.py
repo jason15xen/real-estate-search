@@ -71,17 +71,25 @@ def _normalize_listing_terms(raw: str | None) -> list[str]:
     return out
 
 
-def _build_rooms_from_photos(photos: list[dict]) -> dict[str, list[list[str]]]:
+def _build_rooms_from_photos(photos: list[dict]) -> dict[str, list[dict]]:
     """
     Group extracted features by RoomType from processed photos.
-    Returns: { room_type: [[features_photo_1], [features_photo_2], ...] }
+    Returns: { room_type: [
+        {"features": [...], "color": "white" | None},
+        ...
+    ]}
     """
-    rooms: dict[str, list[list[str]]] = defaultdict(list)
+    rooms: dict[str, list[dict]] = defaultdict(list)
     for photo in photos:
         room_type = photo.get("RoomType", "Unknown")
         features = photo.get("Features", [])
+        color = photo.get("Color")
+        if isinstance(color, str):
+            color = color.strip().lower() or None
+            if color in {"unknown", "n/a", "none", "null"}:
+                color = None
         if room_type and room_type != "Unknown" and features:
-            rooms[room_type].append(features)
+            rooms[room_type].append({"features": features, "color": color})
     return dict(rooms)
 
 
@@ -285,16 +293,18 @@ async def ingest_processed_data(pool: asyncpg.Pool) -> dict[str, int]:
 
                 stats["total_rooms"] += 1
 
-                for idx, features in enumerate(instances):
+                for idx, inst in enumerate(instances):
+                    features = inst["features"]
+                    color = inst.get("color")
                     features_text = ", ".join(features)
                     await conn.execute("""
                         INSERT INTO room_instances (
                             room_id, property_id, room_type,
-                            instance_index, features, features_text
-                        ) VALUES ($1, $2, $3, $4, $5, $6)
+                            instance_index, features, features_text, color
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
                     """,
                         room_id, prop_id, room_type,
-                        idx, features, features_text,
+                        idx, features, features_text, color,
                     )
                     stats["total_room_instances"] += 1
 

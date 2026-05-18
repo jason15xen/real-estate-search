@@ -72,6 +72,7 @@ CREATE TABLE room_instances (
     instance_index  INTEGER NOT NULL,
     features        TEXT[] NOT NULL,
     features_text   TEXT NOT NULL,
+    color           TEXT,                -- single dominant color from 13-color palette, NULL if not extracted yet
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -120,6 +121,8 @@ CREATE INDEX idx_room_instances_room_type ON room_instances(room_type);
 CREATE INDEX idx_room_instances_prop_room ON room_instances(property_id, room_type);
 CREATE INDEX idx_room_instances_features_gin ON room_instances USING GIN(features);
 CREATE INDEX idx_room_instances_features_text_trgm ON room_instances USING GIN(features_text gin_trgm_ops);
+CREATE INDEX idx_room_instances_color ON room_instances(color);
+CREATE INDEX idx_room_instances_room_color ON room_instances(room_type, color);
 
 -- School lookups
 CREATE INDEX idx_property_schools_property_id ON property_schools(property_id);

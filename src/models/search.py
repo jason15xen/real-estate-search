@@ -11,6 +11,7 @@ class CriterionType(str, Enum):
     LOCATION = "location"
     PROXIMITY = "proximity"
     PROPERTY = "property"
+    COLOR_ROOM = "color_room"
 
 
 class RoomCountCriterion(BaseModel):
@@ -69,6 +70,16 @@ class PropertyCriterion(BaseModel):
     max_stories: int | None = None
 
 
+class ColorRoomCriterion(BaseModel):
+    """The property must have at least one room of `room_type` whose dominant
+    color is `color`. Color is a single value from the 13-color palette.
+    """
+    type: CriterionType = CriterionType.COLOR_ROOM
+    color: str                  # one of: white, black, gray, brown, beige, blue, green, red, yellow, purple, pink, orange, gold
+    room_type: str              # Kitchen, Bedroom, Bathroom, Living Room, Dining Room, Exterior, Pool, Garage
+    negated: bool = False       # True = property must NOT have such a room
+
+
 Criterion = (
     RoomCountCriterion
     | FeatureCriterion
@@ -77,6 +88,7 @@ Criterion = (
     | LocationCriterion
     | ProximityCriterion
     | PropertyCriterion
+    | ColorRoomCriterion
 )
 
 

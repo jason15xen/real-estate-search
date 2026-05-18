@@ -17,6 +17,7 @@ import asyncpg
 from src.data.feature_registry import registry
 from src.models.search import (
     AreaCriterion,
+    ColorRoomCriterion,
     FeatureCriterion,
     LocationCriterion,
     PriceCriterion,
@@ -165,6 +166,49 @@ def _build_alternatives(
         fc.feature: registry.get_feature_alternatives(fc.feature)
         for fc in feature_criteria
     }
+
+
+async def _match_color_rooms(
+    pool: asyncpg.Pool,
+    property_ids: list[int],
+    color_room_criteria: list[ColorRoomCriterion],
+) -> list[int]:
+    """
+    Filter property IDs by ColorRoomCriterion entries.
+
+    Each criterion is matched against room_instances using the dominant `color`
+    column (set per-room during image analysis). Positive criteria intersect,
+    negated criteria subtract — same semantics as feature matching.
+    """
+    if not property_ids or not color_room_criteria:
+        return property_ids
+
+    result_ids = set(property_ids)
+
+    async with pool.acquire() as conn:
+        for crit in color_room_criteria:
+            id_list = list(result_ids)
+            rows = await conn.fetch("""
+                SELECT DISTINCT property_id FROM room_instances
+                WHERE property_id = ANY($1)
+                  AND room_type = $2
+                  AND color = $3
+            """, id_list, crit.room_type, crit.color)
+            matched = {row["property_id"] for row in rows}
+            if crit.negated:
+                logger.info(
+                    f"COLOR ROOM NEGATED color={crit.color} room={crit.room_type} "
+                    f"excluded {len(matched)} properties"
+                )
+                result_ids = result_ids - matched
+            else:
+                logger.info(
+                    f"COLOR ROOM POSITIVE color={crit.color} room={crit.room_type} "
+                    f"matched {len(matched)} properties"
+                )
+                result_ids = result_ids & matched
+
+    return list(result_ids)
 
 
 async def _load_guids(pool: asyncpg.Pool, property_ids: list[int]) -> list[str]:
@@ -364,6 +408,40 @@ async def search(
             })
     after_proximity_count = len(property_ids)
 
+    # Phase 3.5: Color-room matching (room_instances.color column)
+    color_room_criteria = [
+        c for c in parsed_query.criteria if isinstance(c, ColorRoomCriterion)
+    ]
+    if color_room_criteria and property_ids:
+        logger.info("Phase 3.5: Color-room matching (PostgreSQL)")
+        if debug:
+            current = set(property_ids)
+            async with pool.acquire() as conn:
+                for crit in color_room_criteria:
+                    before = len(current)
+                    rows = await conn.fetch("""
+                        SELECT DISTINCT property_id FROM room_instances
+                        WHERE property_id = ANY($1)
+                          AND room_type = $2
+                          AND color = $3
+                    """, list(current), crit.room_type, crit.color)
+                    matched = {row["property_id"] for row in rows}
+                    if crit.negated:
+                        current = current - matched
+                        op = "NOT"
+                    else:
+                        current = current & matched
+                        op = "HAS"
+                    filter_steps.append({
+                        "step": f"color_room: {op} color={crit.color} in {crit.room_type}",
+                        "count": len(current),
+                        "dropped": before - len(current),
+                    })
+            property_ids = list(current)
+        else:
+            property_ids = await _match_color_rooms(pool, property_ids, color_room_criteria)
+    after_color_room_count = len(property_ids)
+
     # Phase 4: Feature matching with alternatives computed from the DB registry
     feature_criteria = [
         c for c in parsed_query.criteria if isinstance(c, FeatureCriterion)
@@ -376,6 +454,16 @@ async def search(
         )
         if alternatives:
             logger.info(f"Feature alternatives: {alternatives}")
+        # Sort criteria: positives before negateds; within each, shorter
+        # (base) features before longer (modifier) features. Final result is
+        # identical either way (set ops commute), but processing the BASE
+        # feature first makes the debug filter_steps narration logical:
+        #   "had a pool" → "and it's covered" (positive modifier)
+        #   "had a pool" → "but not covered" (negated modifier)
+        feature_criteria = sorted(
+            feature_criteria,
+            key=lambda fc: (fc.negated, len(fc.feature.split())),
+        )
         if debug:
             # Apply each feature criterion one at a time to track progressive drops
             current_ids = set(property_ids)
@@ -417,6 +505,7 @@ async def search(
     stats = {
         "after_hard_filters": after_hard_filter_count,
         "after_proximity_filters": after_proximity_count,
+        "after_color_room_match": after_color_room_count,
         "after_feature_match": after_feature_count,
         "final_results": len(guids),
     }

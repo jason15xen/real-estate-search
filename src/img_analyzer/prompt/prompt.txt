@@ -2,38 +2,63 @@
             Begin by carefully observing the image, and reason step-by-step through the following:
 
             - Identify the RoomType, selecting only from: Kitchen, Bedroom, Bathroom, Living Room, Dining Room, Exterior, Pool, Garage. If the scene does not clearly fit one of these categories, return "RoomType": "Unknown".
-            - Examine visual details to extract key search keywords that describe the room’s features. Each feature should be a concise term that a homebuyer might use in a search (e.g., “granite countertops”, “hardwood floors”, “soaking tub”, “vaulted ceiling”). Do not describe features in sentence form; use discrete, searchable keywords only.
+            - Identify the SINGLE dominant Color of the room (the primary color a viewer perceives), selecting EXACTLY one from this fixed palette:
+                white, black, gray, brown, beige, blue, green, red, yellow, purple, pink, orange, gold.
+              Normalize related colors: ivory/cream/eggshell → white, navy/teal/turquoise → blue, tan/khaki/taupe → beige, charcoal/silver → gray, mahogany/walnut/oak/wood-tone → brown, sage/olive/forest → green, burgundy/maroon/coral → red, mustard → yellow, lavender/violet → purple, salmon/rose → pink.
+              If no color clearly dominates, choose the single most prevalent one. If the photo is ambiguous, return "Color": "Unknown".
+            - Examine visual details to extract key search keywords that describe the room’s features. Each feature should be a concise term that a homebuyer might use in a search (e.g., "granite countertops", "hardwood floors", "soaking tub", "vaulted ceiling"). Do not describe features in sentence form; use discrete, searchable keywords only.
+              IMPORTANT: Color is captured in the dedicated "Color" field above. Do NOT prefix features with color words in the Features array (e.g., use "cabinets" NOT "white cabinets"; use "tile backsplash" NOT "blue tile backsplash"). Functional/material/style descriptors stay; standalone color words come out.
             - Identify notable architectural styles or design elements present in the scene as additional keywords if applicable.
-            - Analyze the color scheme and include major color-related keywords relevant to real estate searches (e.g., “white cabinetry”, “stainless appliances”, “neutral paint”).
-            - Detect and specify the design style era or timeframe reflected in the decor or construction (e.g., “mid-century modern”, “Victorian”, “1980s”, “contemporary”) and include as a searchable keyword.
+            - Detect and specify the design style era or timeframe reflected in the decor or construction (e.g., "mid-century modern", "Victorian", "1980s", "contemporary") and include as a searchable keyword.
 
             Before stating the "RoomType" conclusion, reason step-by-step from the observed visual cues and design traits that support your selection.
 
             Respond only in JSON format, following this strict schema:
             {
               "RoomType": "[one of: Kitchen, Bedroom, Bathroom, Living Room, Dining Room, Exterior, Pool, Garage, or Unknown]",
+              "Color": "[exactly one of: white, black, gray, brown, beige, blue, green, red, yellow, purple, pink, orange, gold, or Unknown]",
               "Features": ["[search keyword 1]", "[search keyword 2]", ...]
             }
 
             # Output Format
 
-            Return a single, well-structured JSON object (no extra text or commentary), strictly following the schema above, ensuring that "RoomType" is always selected from the permitted categories or set to "Unknown". The "Features" array should contain only concise, search-optimized keywords that accurately reflect the visible features.
+            Return a single, well-structured JSON object (no extra text or commentary), strictly following the schema above, ensuring that "RoomType" is always selected from the permitted categories or set to "Unknown", and "Color" is selected from the 13-color palette or set to "Unknown". The "Features" array should contain only concise, search-optimized keywords that accurately reflect the visible features (without standalone color prefixes).
 
             # Steps
 
             1. Observe the image, noting all relevant visual cues, materials, architectural and design elements.
-            2. Step through your reasoning process to determine the correct RoomType from the provided list. 
-            3. Extract all observable features as search keywords suited for real estate queries, ensuring each is distinct and not descriptive prose.
-            4. Review your reasoning and finalize the JSON object.
+            2. Step through your reasoning process to determine the correct RoomType from the provided list.
+            3. Identify the single dominant Color from the 13-color palette.
+            4. Extract all observable features as search keywords suited for real estate queries, ensuring each is distinct and not descriptive prose. Do NOT include standalone color words in feature names.
+            5. Review your reasoning and finalize the JSON object.
 
             # Examples
 
-            Example:
+            Example 1:
             Input: [Image of a kitchen with pastel tile, natural wood cabinets, and vintage appliances typical of the 1950s]
             Output:
             {
               "RoomType": "Kitchen",
-              "Features": ["checkerboard linoleum", "pastel tile", "natural wood cabinets", "vintage appliances", "tile backsplash", "1950s", "retro"]
+              "Color": "brown",
+              "Features": ["checkerboard linoleum", "pastel tile", "wood cabinets", "vintage appliances", "tile backsplash", "1950s", "retro"]
+            }
+
+            Example 2:
+            Input: [Image of a modern kitchen with white shaker cabinets, white quartz countertops, white subway tile backsplash, and stainless appliances]
+            Output:
+            {
+              "RoomType": "Kitchen",
+              "Color": "white",
+              "Features": ["shaker cabinets", "quartz countertops", "subway tile backsplash", "stainless appliances", "modern", "contemporary"]
+            }
+
+            Example 3:
+            Input: [Image of a bathroom with navy blue subway tile, marble countertop, and brass fixtures]
+            Output:
+            {
+              "RoomType": "Bathroom",
+              "Color": "blue",
+              "Features": ["subway tile", "marble countertop", "brass fixtures", "modern"]
             }
 
             For real examples, the Features array should include all distinctive, searchable items evident in the image. Enclose each as a concise keyword phrase that a homebuyer might search for. Actual reasoning and feature coverage should be as comprehensive as possible.)
@@ -42,12 +67,13 @@
 
             - If a photo does not clearly belong to one of the accepted room types, set "RoomType": "Unknown."
             - Never include any categories outside of the specified list for RoomType.
-            - The “Features” array should only include search-friendly keywords describing the room’s observed attributes (materials, styles, eras, colors, fixtures, etc).
+            - "Color" MUST be exactly one of the 13 palette colors or "Unknown" — no other values.
+            - Color goes into the "Color" field ONLY. Do NOT also include the color word in the Features array.
+              "Features" should describe functional/material/style attributes (e.g., "shaker cabinets", "granite countertops", "hardwood floors") without color prefixes.
             - Do not include attributes that are not visible or verifiable from the photo.
             - CRITICAL: Only extract features that belong to THIS property. If a photo shows a neighbor's pool, fence, yard, or any adjacent property's features visible in the background, do NOT include those. Only include features that are clearly part of the listed property itself.
             - Do not use complete sentences or prose in the Features array; only concise, relevant keyword phrases.
             - Reason step-by-step before finalizing conclusions, but only output the JSON.
 
-            Reminder: Focus on providing accurate, visually-supported search keywords for features, and always reason through your conclusions before providing the RoomType and Features in your JSON response.
+            Reminder: Focus on providing accurate, visually-supported search keywords for features, and always reason through your conclusions before providing the RoomType, Color, and Features in your JSON response.
 
-            

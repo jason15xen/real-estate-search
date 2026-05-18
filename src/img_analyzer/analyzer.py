@@ -21,6 +21,37 @@ PROMPT_DIR = Path(__file__).parent / "prompt"
 PROCESSED_DIR = Path(__file__).resolve().parent.parent / "processed"
 
 
+ALLOWED_COLORS = {
+    "white", "black", "gray", "brown", "beige", "blue", "green",
+    "red", "yellow", "purple", "pink", "orange", "gold",
+}
+
+
+def _normalize_color(raw: str | None) -> str | None:
+    """Coerce LLM's color output to the 13-color palette. Returns None if not recognized."""
+    if not raw or not isinstance(raw, str):
+        return None
+    cleaned = raw.strip().lower()
+    if cleaned in ALLOWED_COLORS:
+        return cleaned
+    if cleaned in {"", "unknown", "n/a", "none", "null"}:
+        return None
+    # Best-effort fallback mapping for common synonyms the LLM might still emit
+    SYNONYMS = {
+        "ivory": "white", "cream": "white", "eggshell": "white", "off-white": "white",
+        "navy": "blue", "teal": "blue", "turquoise": "blue",
+        "tan": "beige", "khaki": "beige", "taupe": "beige", "sand": "beige",
+        "charcoal": "gray", "silver": "gray", "grey": "gray",
+        "wood": "brown", "wood-tone": "brown", "walnut": "brown", "oak": "brown", "mahogany": "brown",
+        "sage": "green", "olive": "green", "forest": "green",
+        "burgundy": "red", "maroon": "red", "coral": "red",
+        "mustard": "yellow",
+        "lavender": "purple", "violet": "purple",
+        "salmon": "pink", "rose": "pink",
+    }
+    return SYNONYMS.get(cleaned)
+
+
 def _load_prompt() -> str:
     return (PROMPT_DIR / "prompt.txt").read_text(encoding="utf-8")
 
@@ -68,14 +99,17 @@ async def analyze_single_image(url: str, system_prompt: str) -> PhotoResult:
 
     try:
         data = json.loads(raw)
+        color_raw = data.get("Color")
+        color = _normalize_color(color_raw)
         return PhotoResult(
             photo_url=url,
             room_type=data.get("RoomType", "Unknown"),
+            color=color,
             features=data.get("Features", []),
         )
     except (json.JSONDecodeError, KeyError) as e:
         logger.error(f"Failed to parse vision response for {url}: {e}")
-        return PhotoResult(photo_url=url, room_type="Unknown", features=[])
+        return PhotoResult(photo_url=url, room_type="Unknown", color=None, features=[])
 
 
 async def analyze_photos(
@@ -117,7 +151,7 @@ async def analyze_photos(
                 return (idx, result)
             except Exception as e:
                 logger.error(f"Vision API error for {url}: {e}")
-                return (idx, PhotoResult(photo_url=url, room_type="Unknown", features=[]))
+                return (idx, PhotoResult(photo_url=url, room_type="Unknown", color=None, features=[]))
 
     pairs = await asyncio.gather(*[_limited(i, u) for i, u in indexed_urls])
     # Sort by original index
@@ -145,6 +179,7 @@ def inject_features(raw_data: list[dict], results_map: dict[str, list[PhotoResul
                 if result_idx < len(photo_results):
                     pr = photo_results[result_idx]
                     photo["RoomType"] = pr.room_type
+                    photo["Color"] = pr.color
                     photo["Features"] = pr.features
                 result_idx += 1  # Always increment for photos with JEPGs
 

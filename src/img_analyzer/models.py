@@ -39,6 +39,7 @@ class PropertyItem(BaseModel):
 class PhotoResult(BaseModel):
     photo_url: str
     room_type: str
+    color: str | None = None  # one of 13 palette colors, or None / "Unknown"
     features: list[str]
 
 

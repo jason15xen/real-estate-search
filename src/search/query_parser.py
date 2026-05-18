@@ -19,6 +19,7 @@ from src.data.feature_registry import registry
 from src.llm_client import get_async_client
 from src.models.search import (
     AreaCriterion,
+    ColorRoomCriterion,
     FeatureCriterion,
     LocationCriterion,
     ParsedQuery,
@@ -165,6 +166,41 @@ Do NOT also emit a `feature` criterion for the same phrase. \
    IMPORTANT: There is NO has_pool or has_waterfront field on the `property` criterion.
    "pool", "swimming pool", "waterfront", "on the water" are FEATURES. \
 Use the `feature` criterion type for them — never emit them as property attributes.
+
+8. color_room — The user wants a room with a specific dominant COLOR.
+   Fields: color (string), room_type (string), negated (bool)
+   Use this WHENEVER the user describes a room by its color, e.g. "white kitchen",
+   "blue bathroom", "gray bedroom". Color is a room ATTRIBUTE, not a feature.
+   VALID color values (exactly one, normalize synonyms):
+     white, black, gray, brown, beige, blue, green, red, yellow, purple, pink, orange, gold
+   Color synonym normalization:
+     ivory/cream/eggshell/off-white → "white"
+     navy/teal/turquoise/light blue/dark blue → "blue"
+     tan/khaki/taupe/sand → "beige"
+     charcoal/silver/light gray/dark gray → "gray"
+     wood/walnut/oak/mahogany/wood-tone → "brown"
+     sage/olive/forest/light green/dark green → "green"
+     burgundy/maroon/coral/light red/dark red → "red"
+     mustard/light yellow/pale yellow → "yellow"
+     lavender/violet/light purple/dark purple → "purple"
+     salmon/rose/light pink → "pink"
+   VALID room_type values: Kitchen, Bedroom, Bathroom, Living Room, Dining Room, Exterior, Pool, Garage
+   Match pattern: "<color> <room_type>" or "<room_type> in <color>" or "<color>-toned <room_type>".
+   Examples:
+     "white kitchen"           → color_room(color="white", room_type="Kitchen")
+     "blue bathroom"           → color_room(color="blue", room_type="Bathroom")
+     "modern white kitchen"    → color_room(color="white", room_type="Kitchen")
+                                  PLUS feature(feature="modern", room_context="Kitchen")
+     "light purple kitchen"    → color_room(color="purple", room_type="Kitchen") (light purple → purple)
+     "taupe bathroom"          → color_room(color="beige", room_type="Bathroom") (taupe → beige)
+     "navy blue living room"   → color_room(color="blue", room_type="Living Room")
+     "no white kitchen"        → color_room(color="white", room_type="Kitchen", negated=true)
+   IMPORTANT:
+     - This is for ROOM COLORS only. If the user mentions a color attached to a specific
+       FEATURE (e.g. "kitchen with white cabinets", "blue tile backsplash"), use a `feature` criterion instead.
+     - If the user mentions a STYLE word in addition to a color (e.g. "modern white kitchen"),
+       emit BOTH: a `color_room` for the color AND a `feature` for the style.
+     - Do NOT emit a `feature` criterion that just contains a color name and a room type.
 
 Return JSON with this exact structure:
 {{
@@ -328,6 +364,12 @@ async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
                     max_lot_sqft=c.get("max_lot_sqft"),
                     min_stories=c.get("min_stories"),
                     max_stories=c.get("max_stories"),
+                ))
+            elif criterion_type == "color_room":
+                criteria.append(ColorRoomCriterion(
+                    color=str(c["color"]).strip().lower(),
+                    room_type=str(c["room_type"]).strip(),
+                    negated=c.get("negated", False),
                 ))
             else:
                 logger.warning(f"Unknown criterion type: {criterion_type}")
