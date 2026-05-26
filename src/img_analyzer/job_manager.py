@@ -14,26 +14,37 @@ logger = logging.getLogger(__name__)
 class Job:
     job_id: str
     status: str = "processing"  # "processing", "completed", "failed"
-    total_properties: int = 0
-    processed_properties: int = 0
+    total_properties: int = 0       # number of properties scheduled for analysis (after skip-filter)
+    processed_properties: int = 0   # number actually analyzed by Vision API
+    skipped_properties: int = 0     # number skipped because already analyzed before
     error: str | None = None
 
     @property
     def progress(self) -> str:
-        if self.total_properties == 0:
+        if self.total_properties == 0 and self.skipped_properties == 0:
             return ""
-        return f"{self.processed_properties}/{self.total_properties} properties"
+        base = f"{self.processed_properties}/{self.total_properties} properties"
+        if self.skipped_properties > 0:
+            return f"{base} (skipped {self.skipped_properties} already-analyzed)"
+        return base
 
 
 class JobManager:
     def __init__(self):
         self._jobs: dict[str, Job] = {}
 
-    def create_job(self, total_properties: int) -> Job:
+    def create_job(self, total_properties: int, skipped_properties: int = 0) -> Job:
         job_id = str(uuid.uuid4())
-        job = Job(job_id=job_id, total_properties=total_properties)
+        job = Job(
+            job_id=job_id,
+            total_properties=total_properties,
+            skipped_properties=skipped_properties,
+        )
         self._jobs[job_id] = job
-        logger.info(f"Job {job_id} created: {total_properties} properties")
+        logger.info(
+            f"Job {job_id} created: {total_properties} properties to analyze"
+            f", {skipped_properties} skipped (already analyzed)"
+        )
         return job
 
     def get_job(self, job_id: str) -> Job | None:

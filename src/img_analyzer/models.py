@@ -56,7 +56,9 @@ class ProcessResponse(BaseModel):
 
 
 class SaveResponse(BaseModel):
-    total_properties: int
+    total_properties: int       # total in processed/data.json
+    new_properties: int = 0     # newly inserted into DB
+    skipped_properties: int = 0  # already in DB, skipped
     total_rooms: int
     total_room_instances: int
     total_schools: int
@@ -66,7 +68,8 @@ class SaveResponse(BaseModel):
 class JobStatus(BaseModel):
     job_id: str
     status: str  # "processing", "completed", "failed"
-    progress: str = ""  # e.g. "5/27 properties"
+    progress: str = ""  # e.g. "5/27 properties (skipped 3 already-analyzed)"
     total_properties: int = 0
     processed_properties: int = 0
+    skipped_properties: int = 0
     error: str | None = None

@@ -7,7 +7,18 @@
               Normalize related colors: ivory/cream/eggshell → white, navy/teal/turquoise → blue, tan/khaki/taupe → beige, charcoal/silver → gray, mahogany/walnut/oak/wood-tone → brown, sage/olive/forest → green, burgundy/maroon/coral → red, mustard → yellow, lavender/violet → purple, salmon/rose → pink.
               If no color clearly dominates, choose the single most prevalent one. If the photo is ambiguous, return "Color": "Unknown".
             - Examine visual details to extract key search keywords that describe the room’s features. Each feature should be a concise term that a homebuyer might use in a search (e.g., "granite countertops", "hardwood floors", "soaking tub", "vaulted ceiling"). Do not describe features in sentence form; use discrete, searchable keywords only.
-              IMPORTANT: Color is captured in the dedicated "Color" field above. Do NOT prefix features with color words in the Features array (e.g., use "cabinets" NOT "white cabinets"; use "tile backsplash" NOT "blue tile backsplash"). Functional/material/style descriptors stay; standalone color words come out.
+              COLOR HANDLING — TWO DISTINCT THINGS:
+                1. The room's overall dominant color goes in the "Color" field (one of the 13 palette colors).
+                2. When a SPECIFIC OBJECT has a notable color, KEEP that color in its feature keyword,
+                   but the color word MUST be one of the 13 palette colors (normalize it).
+                   Examples: "blue cabinets", "white countertops", "green tile backsplash", "black appliances".
+                   Normalize object colors the SAME way as the room color:
+                     ivory/cream/eggshell → white, navy/teal/turquoise → blue, tan/khaki/taupe → beige,
+                     charcoal/silver → gray, mahogany/walnut/oak/wood-tone → brown, sage/olive/forest → green,
+                     burgundy/maroon/coral → red, mustard → yellow, lavender/violet → purple, salmon/rose → pink.
+                   So "teal cabinets" → "blue cabinets"; "cream vanity" → "white vanity".
+                3. If an object's color is unremarkable or not clearly distinguishable, omit the color and
+                   use just the functional keyword (e.g., "cabinets", "countertops").
             - Identify notable architectural styles or design elements present in the scene as additional keywords if applicable.
             - Detect and specify the design style era or timeframe reflected in the decor or construction (e.g., "mid-century modern", "Victorian", "1980s", "contemporary") and include as a searchable keyword.
 
@@ -22,43 +33,52 @@
 
             # Output Format
 
-            Return a single, well-structured JSON object (no extra text or commentary), strictly following the schema above, ensuring that "RoomType" is always selected from the permitted categories or set to "Unknown", and "Color" is selected from the 13-color palette or set to "Unknown". The "Features" array should contain only concise, search-optimized keywords that accurately reflect the visible features (without standalone color prefixes).
+            Return a single, well-structured JSON object (no extra text or commentary), strictly following the schema above, ensuring that "RoomType" is always selected from the permitted categories or set to "Unknown", and "Color" is selected from the 13-color palette or set to "Unknown". The "Features" array should contain concise, search-optimized keywords; object colors within feature names MUST also be from the 13-color palette (normalized).
 
             # Steps
 
             1. Observe the image, noting all relevant visual cues, materials, architectural and design elements.
             2. Step through your reasoning process to determine the correct RoomType from the provided list.
             3. Identify the single dominant Color from the 13-color palette.
-            4. Extract all observable features as search keywords suited for real estate queries, ensuring each is distinct and not descriptive prose. Do NOT include standalone color words in feature names.
+            4. Extract all observable features as search keywords suited for real estate queries, ensuring each is distinct and not descriptive prose. For objects with a notable color, keep the color (normalized to the 13-color palette) in the keyword, e.g. "blue cabinets".
             5. Review your reasoning and finalize the JSON object.
 
             # Examples
 
             Example 1:
-            Input: [Image of a kitchen with pastel tile, natural wood cabinets, and vintage appliances typical of the 1950s]
+            Input: [Image of a kitchen with checkerboard linoleum, natural wood cabinets, and vintage appliances typical of the 1950s]
             Output:
             {
               "RoomType": "Kitchen",
               "Color": "brown",
-              "Features": ["checkerboard linoleum", "pastel tile", "wood cabinets", "vintage appliances", "tile backsplash", "1950s", "retro"]
+              "Features": ["checkerboard linoleum", "brown cabinets", "vintage appliances", "tile backsplash", "1950s", "retro"]
             }
 
             Example 2:
-            Input: [Image of a modern kitchen with white shaker cabinets, white quartz countertops, white subway tile backsplash, and stainless appliances]
+            Input: [Image of a predominantly white modern kitchen with white shaker cabinets, white quartz countertops, white subway tile backsplash, and stainless appliances]
             Output:
             {
               "RoomType": "Kitchen",
               "Color": "white",
-              "Features": ["shaker cabinets", "quartz countertops", "subway tile backsplash", "stainless appliances", "modern", "contemporary"]
+              "Features": ["white shaker cabinets", "white quartz countertops", "white subway tile backsplash", "stainless appliances", "modern", "contemporary"]
             }
 
-            Example 3:
+            Example 3 (white kitchen with BLUE cabinets — room color and object color differ):
+            Input: [Image of a white kitchen with white walls and white countertops, but navy blue cabinets]
+            Output:
+            {
+              "RoomType": "Kitchen",
+              "Color": "white",
+              "Features": ["blue cabinets", "white countertops", "white walls", "subway tile backsplash", "stainless appliances", "modern"]
+            }
+
+            Example 4:
             Input: [Image of a bathroom with navy blue subway tile, marble countertop, and brass fixtures]
             Output:
             {
               "RoomType": "Bathroom",
               "Color": "blue",
-              "Features": ["subway tile", "marble countertop", "brass fixtures", "modern"]
+              "Features": ["blue subway tile", "marble countertop", "brass fixtures", "modern"]
             }
 
             For real examples, the Features array should include all distinctive, searchable items evident in the image. Enclose each as a concise keyword phrase that a homebuyer might search for. Actual reasoning and feature coverage should be as comprehensive as possible.)
@@ -68,8 +88,10 @@
             - If a photo does not clearly belong to one of the accepted room types, set "RoomType": "Unknown."
             - Never include any categories outside of the specified list for RoomType.
             - "Color" MUST be exactly one of the 13 palette colors or "Unknown" — no other values.
-            - Color goes into the "Color" field ONLY. Do NOT also include the color word in the Features array.
-              "Features" should describe functional/material/style attributes (e.g., "shaker cabinets", "granite countertops", "hardwood floors") without color prefixes.
+            - The room's overall dominant color → "Color" field. A specific object's notable color → kept inside its
+              feature keyword (e.g. "blue cabinets"), and that color word MUST also be one of the 13 palette colors.
+            - Any color word that appears in a feature keyword MUST be normalized to the 13-color palette
+              (e.g. "teal cabinets" → "blue cabinets", "cream vanity" → "white vanity"). Never use an out-of-palette color word.
             - Do not include attributes that are not visible or verifiable from the photo.
             - CRITICAL: Only extract features that belong to THIS property. If a photo shows a neighbor's pool, fence, yard, or any adjacent property's features visible in the background, do NOT include those. Only include features that are clearly part of the listed property itself.
             - Do not use complete sentences or prose in the Features array; only concise, relevant keyword phrases.

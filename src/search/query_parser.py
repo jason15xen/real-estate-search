@@ -186,21 +186,41 @@ Use the `feature` criterion type for them — never emit them as property attrib
      salmon/rose/light pink → "pink"
    VALID room_type values: Kitchen, Bedroom, Bathroom, Living Room, Dining Room, Exterior, Pool, Garage
    Match pattern: "<color> <room_type>" or "<room_type> in <color>" or "<color>-toned <room_type>".
+
+   CRITICAL DISTINCTION — room color vs object color:
+     - A color directly modifying a ROOM TYPE (no object) → color_room.
+         "white kitchen" → the KITCHEN is white → color_room(color="white", room_type="Kitchen")
+     - A color modifying a SPECIFIC OBJECT (cabinet, countertop, tile, vanity, wall, floor, etc.)
+       → feature criterion, with the color KEPT in the feature string and normalized to the 13 palette.
+         "blue cabinet"  → feature(feature="blue cabinets", room_context=<room if known>)
+         "white countertop" → feature(feature="white countertops", room_context=<room if known>)
+     - The color words in BOTH cases must be normalized to the 13 palette (teal→blue, cream→white, etc.).
+
    Examples:
      "white kitchen"           → color_room(color="white", room_type="Kitchen")
      "blue bathroom"           → color_room(color="blue", room_type="Bathroom")
-     "modern white kitchen"    → color_room(color="white", room_type="Kitchen")
-                                  PLUS feature(feature="modern", room_context="Kitchen")
      "light purple kitchen"    → color_room(color="purple", room_type="Kitchen") (light purple → purple)
      "taupe bathroom"          → color_room(color="beige", room_type="Bathroom") (taupe → beige)
      "navy blue living room"   → color_room(color="blue", room_type="Living Room")
      "no white kitchen"        → color_room(color="white", room_type="Kitchen", negated=true)
+     "modern white kitchen"    → color_room(color="white", room_type="Kitchen")
+                                  PLUS feature(feature="modern", room_context="Kitchen")
+     "white kitchen with blue cabinet"
+                               → color_room(color="white", room_type="Kitchen")
+                                  PLUS feature(feature="blue cabinets", room_context="Kitchen")
+     "white kitchen with cabinet" (object has no color)
+                               → color_room(color="white", room_type="Kitchen")
+                                  PLUS feature(feature="cabinets", room_context="Kitchen")
+     "gray bathroom with white vanity"
+                               → color_room(color="gray", room_type="Bathroom")
+                                  PLUS feature(feature="white vanity", room_context="Bathroom")
+     "kitchen with teal cabinets" (no room color stated)
+                               → feature(feature="blue cabinets", room_context="Kitchen") (teal → blue)
    IMPORTANT:
-     - This is for ROOM COLORS only. If the user mentions a color attached to a specific
-       FEATURE (e.g. "kitchen with white cabinets", "blue tile backsplash"), use a `feature` criterion instead.
-     - If the user mentions a STYLE word in addition to a color (e.g. "modern white kitchen"),
-       emit BOTH: a `color_room` for the color AND a `feature` for the style.
-     - Do NOT emit a `feature` criterion that just contains a color name and a room type.
+     - color_room is ONLY for a color describing the ROOM ITSELF (no object).
+     - A color describing an OBJECT stays in a `feature` (color normalized to the 13 palette).
+     - When the user gives BOTH a room color and a colored object (e.g. "white kitchen with blue cabinet"),
+       emit a color_room for the room AND a feature for the object.
 
 Return JSON with this exact structure:
 {{
