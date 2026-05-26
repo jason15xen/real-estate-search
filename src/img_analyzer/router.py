@@ -14,6 +14,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from src.img_analyzer.analyzer import (
     analyze_photos,
     inject_features,
+    load_processed_guids,
     save_processed,
 )
 from src.img_analyzer.db_ingest import ingest_processed_data
@@ -67,19 +68,39 @@ async def process_property_images(file: UploadFile = File(...)):
     Upload a JSON file (same format as data.json) to extract
     room types and features from property photos using GPT-5.1 vision.
 
+    Already-analyzed properties (by GUID, already present in
+    src/processed/data.json) are skipped — no Vision API calls.
+
     Returns immediately with a job ID. Poll GET /job/{job_id} for progress.
     """
     content = await file.read()
     raw_data: list[dict] = json.loads(content)
 
     # Parse into models for type-safe processing
-    properties = [PropertyItem(**item) for item in raw_data]
+    all_properties = [PropertyItem(**item) for item in raw_data]
 
-    logger.info(f"Starting background job for {len(properties)} properties from '{file.filename}'")
+    # Skip properties whose GUID is already analyzed in processed/data.json
+    already_analyzed = load_processed_guids()
+    properties_to_process = [p for p in all_properties if p.Id not in already_analyzed]
+    raw_to_process = [item for item in raw_data if item.get("Id") not in already_analyzed]
+    skipped_count = len(all_properties) - len(properties_to_process)
 
-    # Create job and start background processing
-    job = job_manager.create_job(total_properties=len(properties))
-    asyncio.create_task(_process_in_background(job.job_id, raw_data, properties))
+    logger.info(
+        f"Upload '{file.filename}': {len(all_properties)} properties total, "
+        f"{skipped_count} skipped (already analyzed), "
+        f"{len(properties_to_process)} to analyze"
+    )
+
+    # Create job and start background processing (even if 0 to process, so caller sees the skip count)
+    job = job_manager.create_job(
+        total_properties=len(properties_to_process),
+        skipped_properties=skipped_count,
+    )
+    if properties_to_process:
+        asyncio.create_task(_process_in_background(job.job_id, raw_to_process, properties_to_process))
+    else:
+        # Nothing to do — mark completed immediately
+        job_manager.complete_job(job.job_id)
 
     return JobStatus(
         job_id=job.job_id,
@@ -87,6 +108,7 @@ async def process_property_images(file: UploadFile = File(...)):
         progress=job.progress,
         total_properties=job.total_properties,
         processed_properties=job.processed_properties,
+        skipped_properties=job.skipped_properties,
     )
 
 
@@ -107,6 +129,7 @@ async def get_job_status(job_id: str):
         progress=job.progress,
         total_properties=job.total_properties,
         processed_properties=job.processed_properties,
+        skipped_properties=job.skipped_properties,
         error=job.error,
     )
 
@@ -136,10 +159,16 @@ async def save_processed_data_to_db():
 
         return SaveResponse(
             total_properties=stats["total_properties"],
+            new_properties=stats.get("new_properties", 0),
+            skipped_properties=stats.get("skipped_properties", 0),
             total_rooms=stats["total_rooms"],
             total_room_instances=stats["total_room_instances"],
             total_schools=stats["total_schools"],
-            message="Data saved to database. Feature registry rebuilt. Search is ready.",
+            message=(
+                f"{stats.get('new_properties', 0)} new properties inserted, "
+                f"{stats.get('skipped_properties', 0)} skipped (already in DB). "
+                "Feature registry rebuilt. Search is ready."
+            ),
         )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

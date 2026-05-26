@@ -186,6 +186,23 @@ def inject_features(raw_data: list[dict], results_map: dict[str, list[PhotoResul
     return raw_data
 
 
+def load_processed_guids() -> set[str]:
+    """Return the set of property GUIDs already analyzed and saved in
+    src/processed/data.json. Used to skip Vision API calls on re-uploads.
+
+    Returns an empty set if the file doesn't exist or can't be parsed.
+    """
+    output_path = PROCESSED_DIR / "data.json"
+    if not output_path.exists():
+        return set()
+    try:
+        existing_data = json.loads(output_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning(f"Could not read existing processed data: {e}")
+        return set()
+    return {item["Id"] for item in existing_data if isinstance(item, dict) and "Id" in item}
+
+
 def save_processed(data: list[dict]) -> Path:
     """Save the enriched JSON to src/processed/data.json, merging with existing data."""
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
