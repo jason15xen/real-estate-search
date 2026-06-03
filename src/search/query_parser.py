@@ -1,9 +1,12 @@
 """
-Query Parser — Uses Azure OpenAI to decompose natural language into structured search criteria.
+Query Parser — Uses Claude Opus 4.7 to decompose natural language into structured search criteria.
 
-The parser receives the full list of known features and room types from the data,
-so it can map user input to exact feature names. This eliminates the need for
-vector search and LLM validation.
+The parser receives the full list of known features and room types from the
+database, so it can map user input to exact feature names. This eliminates the
+need for vector search and LLM validation.
+
+Provider: Claude Opus 4.7 via Azure AI Foundry's Anthropic-compatible endpoint
+(see `get_claude_client()`). Image vision and geocoding stay on Azure GPT-5.1.
 
 Example: "a house with two bedrooms, wood flooring, and a hearth"
   → RoomCountCriterion(room_type="Bedroom", exact_count=2)
@@ -16,7 +19,7 @@ import logging
 
 from config.settings import settings
 from src.data.feature_registry import registry
-from src.llm_client import get_async_client
+from src.llm_client import get_claude_client
 from src.models.search import (
     AreaCriterion,
     ColorRoomCriterion,
@@ -274,25 +277,27 @@ def _build_system_prompt() -> str:
 
 
 async def _call_llm(client, system_prompt: str, query: str) -> str | None:
-    """Call Azure OpenAI and return raw text. Returns None on failure."""
-    response = await client.chat.completions.create(
-        model=settings.azure_openai_deployment,
-        max_completion_tokens=16384,
-        temperature=0,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": query},
-        ],
+    """Call Claude Opus 4.7 and return raw text. Returns None on failure.
+
+    Opus 4.7 constraints: no `temperature` / `top_p` / `top_k` (would 400),
+    no `budget_tokens` (adaptive thinking is the only thinking mode and is
+    off by default — fine for this lightweight extraction task). The system
+    prompt is passed at the top level, not inside `messages`.
+    """
+    response = await client.messages.create(
+        model=settings.azure_openai_deployment_for_query,
+        max_tokens=16384,
+        system=system_prompt,
+        messages=[{"role": "user", "content": query}],
     )
-    raw_text = response.choices[0].message.content
-    if not raw_text or not raw_text.strip():
+    if not response.content:
         return None
-    return raw_text.strip()
+    raw_text = "".join(b.text for b in response.content if b.type == "text").strip()
+    return raw_text or None
 
 
 async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
-    client = get_async_client()
+    client = get_claude_client()
     system_prompt = _build_system_prompt()
 
     raw_text = None

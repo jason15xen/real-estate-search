@@ -30,7 +30,10 @@ async def get_pool() -> asyncpg.Pool:
         # Retry connection up to 15 times (DB may still be initializing)
         for attempt in range(1, 16):
             try:
-                _pool = await asyncpg.create_pool(dsn=dsn, min_size=5, max_size=10)
+                # Each process (web tier + worker) has its own pool. The web
+                # tier reserves one connection for the LISTEN feature_change
+                # callback, so the effective query pool is max_size - 1.
+                _pool = await asyncpg.create_pool(dsn=dsn, min_size=5, max_size=20)
                 logger.info("Database pool connected")
                 return _pool
             except (OSError, asyncpg.exceptions.ConnectionDoesNotExistError) as e:

@@ -1,7 +1,9 @@
 """
-Pydantic models for the image analyzer endpoint.
+Pydantic models for the image-analyzer ingest flow.
 
-Request format matches data.json — raw Zillow property records.
+The single endpoint is POST /process; it accepts a list of `PropertyInput`
+({id, data}). `PropertyItem` is the internal shape passed to the analyzer
+and primary-table writers.
 """
 
 from pydantic import BaseModel
@@ -43,33 +45,50 @@ class PhotoResult(BaseModel):
     features: list[str]
 
 
-class PropertyResult(BaseModel):
+class PropertyInput(BaseModel):
+    """Request item shape for POST /process.
+
+    - `id`: property's database identifier (GUID)
+    - `data`: the full Zillow property record (address, price, originalPhotos,
+      schools, resoFacts, etc.)
+    """
     id: str
-    total_photos: int
-    processed_photos: int
-    rooms: list[PhotoResult]
+    data: dict
 
-
-class ProcessResponse(BaseModel):
-    total_properties: int
-    results: list[PropertyResult]
-
-
-class SaveResponse(BaseModel):
-    total_properties: int       # total in processed/data.json
-    new_properties: int = 0     # newly inserted into DB
-    skipped_properties: int = 0  # already in DB, skipped
-    total_rooms: int
-    total_room_instances: int
-    total_schools: int
-    message: str
-
-
-class JobStatus(BaseModel):
-    job_id: str
-    status: str  # "processing", "completed", "failed"
-    progress: str = ""  # e.g. "5/27 properties (skipped 3 already-analyzed)"
-    total_properties: int = 0
-    processed_properties: int = 0
-    skipped_properties: int = 0
-    error: str | None = None
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "id": "abc-123-def-456",
+                "data": {
+                    "address": {
+                        "streetAddress": "123 Main St",
+                        "city": "Titusville",
+                        "state": "FL",
+                        "zipcode": "32796",
+                        "subdivision": "Sample Subdivision",
+                    },
+                    "latitude": 28.6,
+                    "longitude": -80.8,
+                    "price": 500000,
+                    "bedrooms": 3,
+                    "bathrooms": 2,
+                    "livingArea": 1800,
+                    "homeType": "SINGLE_FAMILY",
+                    "yearBuilt": 1995,
+                    "description": "...",
+                    "originalPhotos": [
+                        {"mixedSources": {"jpeg": [{"url": "https://...", "width": 1536}]}}
+                    ],
+                    "schools": [
+                        {"name": "Example School", "rating": 8, "grades": "K-5", "distance": 0.6, "link": "..."}
+                    ],
+                    "resoFacts": {
+                        "stories": 1,
+                        "hasPrivatePool": True,
+                        "hasWaterfrontView": False,
+                        "listingTerms": "Cash,Conventional,FHA"
+                    },
+                },
+            }
+        }
+    }

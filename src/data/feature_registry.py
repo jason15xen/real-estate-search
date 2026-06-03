@@ -23,22 +23,25 @@ class FeatureRegistry:
         self._alternatives_cache: dict[str, list[str]] = {}
 
     async def build_from_db(self, pool: asyncpg.Pool) -> None:
-        """Load unique features and room types from PostgreSQL."""
-        # Reset registry state — old cached alternatives are no longer valid.
-        self.features = set()
-        self.room_types = set()
-        self.features_by_room_type = {}
-        self._alternatives_cache = {}
+        """Load unique features and room types from PostgreSQL.
+
+        Builds the new state in local sets first and only swaps it into the
+        instance attributes at the end. A concurrent /search calling
+        get_feature_alternatives() therefore always sees a fully-populated
+        registry — either the old one or the new one, never a half-cleared
+        in-between state.
+        """
+        new_features: set[str] = set()
+        new_room_types: set[str] = set()
+        new_by_room: dict[str, set[str]] = {}
 
         async with pool.acquire() as conn:
-            # Get all unique room types
             rows = await conn.fetch(
                 "SELECT DISTINCT room_type FROM room_instances ORDER BY room_type"
             )
             for row in rows:
-                self.room_types.add(row["room_type"])
+                new_room_types.add(row["room_type"])
 
-            # Get all unique features per room type
             rows = await conn.fetch("""
                 SELECT DISTINCT room_type, unnest(features) AS feature
                 FROM room_instances
@@ -47,10 +50,14 @@ class FeatureRegistry:
             for row in rows:
                 feature = row["feature"]
                 room_type = row["room_type"]
-                self.features.add(feature)
-                if room_type not in self.features_by_room_type:
-                    self.features_by_room_type[room_type] = set()
-                self.features_by_room_type[room_type].add(feature)
+                new_features.add(feature)
+                new_by_room.setdefault(room_type, set()).add(feature)
+
+        # Atomic swap — single attribute assignment per field, no torn read.
+        self.features = new_features
+        self.room_types = new_room_types
+        self.features_by_room_type = new_by_room
+        self._alternatives_cache = {}
 
         logger.info(
             f"Feature registry: {len(self.features)} unique features, "

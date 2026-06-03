@@ -76,6 +76,19 @@ CREATE TABLE room_instances (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Raw ingest staging table — receives every incoming property record
+-- via POST /process. A background worker continuously picks up rows whose
+-- status is not 'processed' and syncs them into the primary tables above.
+CREATE TABLE raw_properties (
+    id           TEXT PRIMARY KEY,
+    data         JSONB NOT NULL,
+    status       TEXT NOT NULL CHECK (status IN ('unprocessed','image_only_processed','processed')),
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_raw_properties_status ON raw_properties(status);
+
+
 -- Nearby schools per property (from Zillow data)
 CREATE TABLE property_schools (
     id              SERIAL PRIMARY KEY,

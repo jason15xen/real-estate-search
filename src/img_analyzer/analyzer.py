@@ -1,9 +1,9 @@
 """
 Image Analyzer — Sends property photos to GPT-5.1 vision to extract
-room types and features for real estate search indexing.
+room types, dominant color, and features for real estate search indexing.
 
-Results are injected back into the original JSON data and saved
-to src/processed/data.json.
+Results are returned in-memory and persisted by the background worker
+into the primary tables (no data.json side-channel).
 """
 
 import asyncio
@@ -18,7 +18,6 @@ from src.img_analyzer.models import Photo, PhotoResult
 logger = logging.getLogger(__name__)
 
 PROMPT_DIR = Path(__file__).parent / "prompt"
-PROCESSED_DIR = Path(__file__).resolve().parent.parent / "processed"
 
 
 ALLOWED_COLORS = {
@@ -184,46 +183,3 @@ def inject_features(raw_data: list[dict], results_map: dict[str, list[PhotoResul
                 result_idx += 1  # Always increment for photos with JEPGs
 
     return raw_data
-
-
-def load_processed_guids() -> set[str]:
-    """Return the set of property GUIDs already analyzed and saved in
-    src/processed/data.json. Used to skip Vision API calls on re-uploads.
-
-    Returns an empty set if the file doesn't exist or can't be parsed.
-    """
-    output_path = PROCESSED_DIR / "data.json"
-    if not output_path.exists():
-        return set()
-    try:
-        existing_data = json.loads(output_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError) as e:
-        logger.warning(f"Could not read existing processed data: {e}")
-        return set()
-    return {item["Id"] for item in existing_data if isinstance(item, dict) and "Id" in item}
-
-
-def save_processed(data: list[dict]) -> Path:
-    """Save the enriched JSON to src/processed/data.json, merging with existing data."""
-    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    output_path = PROCESSED_DIR / "data.json"
-
-    existing: dict[str, dict] = {}
-    if output_path.exists():
-        try:
-            existing_data = json.loads(output_path.read_text(encoding="utf-8"))
-            existing = {item["Id"]: item for item in existing_data if "Id" in item}
-        except json.JSONDecodeError:
-            logger.warning("Could not parse existing data.json; starting fresh")
-
-    for item in data:
-        existing[item["Id"]] = item
-
-    merged = list(existing.values())
-
-    output_path.write_text(
-        json.dumps(merged, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-    logger.info(f"Saved processed data → {output_path} ({len(merged)} total, {len(data)} upserted)")
-    return output_path

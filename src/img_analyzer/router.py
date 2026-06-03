@@ -1,176 +1,98 @@
 """
-Image Analyzer Router — POST /process, GET /job/{job_id}, POST /saveprocesseddata
+Image Analyzer Router
 
-/process runs in background and returns a job ID immediately.
-Poll GET /job/{job_id} to check progress.
+This module exposes the single ingest endpoint POST /process plus a small
+read-only endpoint to inspect the raw staging table.
+
+Ingest flow:
+    POST /process   ──►  raw_properties  ──►  (background worker)  ──►  primary tables
+                         ^                    ^
+                         |                    └── continuous async worker
+                         └── status: unprocessed | image_only_processed | processed
+
+The previous endpoints (POST /properties, PUT /properties,
+POST /saveprocesseddata, GET /job/*, GET /jobs) are intentionally removed —
+all add/update traffic flows through POST /process.
 """
 
-import asyncio
-import json
+from __future__ import annotations
+
 import logging
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Body
 
-from src.img_analyzer.analyzer import (
-    analyze_photos,
-    inject_features,
-    load_processed_guids,
-    save_processed,
-)
-from src.img_analyzer.db_ingest import ingest_processed_data
-from src.img_analyzer.job_manager import job_manager
-from src.img_analyzer.models import (
-    JobStatus,
-    PropertyItem,
-    PropertyResult,
-    SaveResponse,
-)
+from src.data.database import get_pool
+from src.img_analyzer.models import PropertyInput
+from src.img_analyzer.raw_db import get_status_counts, upsert_raw_property
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Image Analyzer"])
 
 
-async def _process_in_background(
-    job_id: str,
-    raw_data: list[dict],
-    properties: list[PropertyItem],
-) -> None:
-    """Background task: analyze photos, inject features, save results."""
-    try:
-        results_map: dict[str, list] = {}
+@router.post("/process", status_code=202)
+async def process_properties(items: list[PropertyInput] = Body(...)):
+    """Single ingest endpoint — add OR update properties in bulk.
 
-        for prop in properties:
-            photos = prop.ZillowPropertyRecord.originalPhotos
-            logger.info(f"[Job {job_id}] Property {prop.Id}: {len(photos)} photos")
+    Body: JSON array of `{id, data}` objects where `data` is the full Zillow
+    property record (including `originalPhotos`, `schools`, `resoFacts`, etc.).
 
-            rooms = await analyze_photos(
-                property_id=prop.Id,
-                photos=photos,
-            )
+    Each item lands in the raw_properties staging table with a status that
+    tells the background worker how much work to do:
 
-            results_map[prop.Id] = rooms
-            job_manager.update_progress(job_id)
+        ┌──────────────────────────────────────────────────────────────┐
+        │ id is new                  → status = unprocessed            │
+        │ id exists, photos changed  → status = unprocessed            │
+        │ id exists, photos unchanged → status = image_only_processed  │
+        └──────────────────────────────────────────────────────────────┘
 
-        # Inject features into original data and save
-        enriched = inject_features(raw_data, results_map)
-        save_processed(enriched)
-
-        job_manager.complete_job(job_id)
-    except Exception as e:
-        logger.error(f"[Job {job_id}] Failed: {e}")
-        job_manager.fail_job(job_id, str(e))
-
-
-@router.post("/process", response_model=JobStatus)
-async def process_property_images(file: UploadFile = File(...)):
+    The endpoint returns immediately with summary counts. The worker handles
+    Vision API analysis and writes to the primary search tables in the
+    background. Poll GET /process/status if you want to see the queue depth.
     """
-    Upload a JSON file (same format as data.json) to extract
-    room types and features from property photos using GPT-5.1 vision.
+    pool = await get_pool()
+    counts = {"unprocessed_new": 0, "unprocessed_changed": 0, "image_only_processed": 0, "failed": 0}
 
-    Already-analyzed properties (by GUID, already present in
-    src/processed/data.json) are skipped — no Vision API calls.
+    async with pool.acquire() as conn:
+        for it in items:
+            try:
+                # Distinguish "new" vs "changed" for the response by checking
+                # existence before the upsert (best-effort, tracked separately
+                # from the actual status assignment which lives in raw_db).
+                exists = await conn.fetchval(
+                    "SELECT 1 FROM raw_properties WHERE id = $1", str(it.id)
+                )
+                status = await upsert_raw_property(conn, str(it.id), it.data or {})
+                if status == "image_only_processed":
+                    counts["image_only_processed"] += 1
+                elif status == "unprocessed":
+                    if exists:
+                        counts["unprocessed_changed"] += 1
+                    else:
+                        counts["unprocessed_new"] += 1
+            except Exception as e:
+                logger.exception(f"/process failed for id={it.id}: {e}")
+                counts["failed"] += 1
 
-    Returns immediately with a job ID. Poll GET /job/{job_id} for progress.
-    """
-    content = await file.read()
-    raw_data: list[dict] = json.loads(content)
-
-    # Parse into models for type-safe processing
-    all_properties = [PropertyItem(**item) for item in raw_data]
-
-    # Skip properties whose GUID is already analyzed in processed/data.json
-    already_analyzed = load_processed_guids()
-    properties_to_process = [p for p in all_properties if p.Id not in already_analyzed]
-    raw_to_process = [item for item in raw_data if item.get("Id") not in already_analyzed]
-    skipped_count = len(all_properties) - len(properties_to_process)
-
-    logger.info(
-        f"Upload '{file.filename}': {len(all_properties)} properties total, "
-        f"{skipped_count} skipped (already analyzed), "
-        f"{len(properties_to_process)} to analyze"
-    )
-
-    # Create job and start background processing (even if 0 to process, so caller sees the skip count)
-    job = job_manager.create_job(
-        total_properties=len(properties_to_process),
-        skipped_properties=skipped_count,
-    )
-    if properties_to_process:
-        asyncio.create_task(_process_in_background(job.job_id, raw_to_process, properties_to_process))
-    else:
-        # Nothing to do — mark completed immediately
-        job_manager.complete_job(job.job_id)
-
-    return JobStatus(
-        job_id=job.job_id,
-        status=job.status,
-        progress=job.progress,
-        total_properties=job.total_properties,
-        processed_properties=job.processed_properties,
-        skipped_properties=job.skipped_properties,
-    )
+    return {
+        "total": len(items),
+        "added": counts["unprocessed_new"],
+        "updated_with_photo_changes": counts["unprocessed_changed"],
+        "updated_without_photo_changes": counts["image_only_processed"],
+        "failed": counts["failed"],
+        "message": "Ingested into raw staging; background worker will sync to search index.",
+    }
 
 
-@router.get("/job/{job_id}", response_model=JobStatus)
-async def get_job_status(job_id: str):
-    """
-    Check the status of a background processing job.
-
-    Poll this endpoint until status is "completed" or "failed".
-    """
-    job = job_manager.get_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-
-    return JobStatus(
-        job_id=job.job_id,
-        status=job.status,
-        progress=job.progress,
-        total_properties=job.total_properties,
-        processed_properties=job.processed_properties,
-        skipped_properties=job.skipped_properties,
-        error=job.error,
-    )
-
-
-@router.post("/saveprocesseddata", response_model=SaveResponse)
-async def save_processed_data_to_db():
-    """
-    Read the processed data from src/processed/data.json, convert it
-    to the PostgreSQL schema, and insert into the database.
-
-    Run this AFTER /process has completed and saved the enriched data.
-    The search pipeline (/search) will then use this data.
-    """
-    from src.data.database import get_pool
-    from src.data.feature_registry import registry
-
-    try:
-        pool = await get_pool()
-        stats = await ingest_processed_data(pool)
-
-        # Rebuild feature registry so search uses the new data
-        await registry.build_from_db(pool)
-        logger.info(
-            f"Registry rebuilt: {len(registry.features)} features, "
-            f"{len(registry.room_types)} room types"
-        )
-
-        return SaveResponse(
-            total_properties=stats["total_properties"],
-            new_properties=stats.get("new_properties", 0),
-            skipped_properties=stats.get("skipped_properties", 0),
-            total_rooms=stats["total_rooms"],
-            total_room_instances=stats["total_room_instances"],
-            total_schools=stats["total_schools"],
-            message=(
-                f"{stats.get('new_properties', 0)} new properties inserted, "
-                f"{stats.get('skipped_properties', 0)} skipped (already in DB). "
-                "Feature registry rebuilt. Search is ready."
-            ),
-        )
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/process/status")
+async def process_status():
+    """Quick view of the raw staging queue: how many rows are pending vs done."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        counts = await get_status_counts(conn)
+    return {
+        "unprocessed": counts.get("unprocessed", 0),
+        "image_only_processed": counts.get("image_only_processed", 0),
+        "processed": counts.get("processed", 0),
+        "total": sum(counts.values()),
+    }

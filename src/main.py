@@ -52,10 +52,95 @@ async def lifespan(app: FastAPI):
         f"{len(registry.room_types)} room types"
     )
 
+    # The background worker runs in its OWN container (see docker-compose.yml).
+    # The web tier just LISTENs for 'feature_change' notifications so the
+    # in-memory feature registry stays fresh when the worker discovers new
+    # room features.
+    #
+    # A supervisor task holds one dedicated pool connection, heartbeats every
+    # 30s with a cheap SELECT, and auto-reconnects on failure. This way a
+    # Postgres restart / network blip / dropped TCP session can't leave the
+    # web tier silently deaf to NOTIFYs.
+    supervisor = _ListenerSupervisor(pool)
+    supervisor_task = asyncio.create_task(supervisor.run())
+    logger.info("LISTEN feature_change supervisor started")
+
     yield
+
+    await supervisor.stop()
+    supervisor_task.cancel()
+    try:
+        await supervisor_task
+    except asyncio.CancelledError:
+        pass
+    logger.info("Feature-change listener stopped")
 
     await close_pool()
     logger.info("Database pool closed")
+
+
+async def _on_feature_change(_connection, _pid, channel, _payload):
+    logger.info(f"Received NOTIFY {channel} → rebuilding feature registry")
+    try:
+        pool = await get_pool()
+        await registry.build_from_db(pool)
+        logger.info(
+            f"Registry refreshed: {len(registry.features)} features, "
+            f"{len(registry.room_types)} room types"
+        )
+    except Exception as e:
+        logger.error(f"Registry rebuild after notify failed: {e}")
+
+
+class _ListenerSupervisor:
+    """Holds a dedicated LISTEN connection and reconnects on failure.
+
+    The asyncpg pool can't auto-recover a LISTEN connection because LISTEN
+    state lives on the server-side session — if the session dies, the
+    subscription dies with it. We probe every HEARTBEAT_SEC with a trivial
+    SELECT; if it raises, we drop the connection and re-acquire+re-LISTEN.
+    """
+
+    HEARTBEAT_SEC = 30
+    RECONNECT_BACKOFF_SEC = 2
+
+    def __init__(self, pool):
+        self._pool = pool
+        self._stopping = False
+
+    async def stop(self) -> None:
+        self._stopping = True
+
+    async def run(self) -> None:
+        while not self._stopping:
+            conn = None
+            try:
+                conn = await self._pool.acquire()
+                await conn.add_listener("feature_change", _on_feature_change)
+                logger.info("LISTENing for feature_change notifications")
+                while not self._stopping:
+                    await asyncio.sleep(self.HEARTBEAT_SEC)
+                    # Cheap probe; raises if the underlying session is gone.
+                    await conn.fetchval("SELECT 1")
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.warning(
+                    f"Listener connection lost ({type(e).__name__}: {e}); "
+                    f"reconnecting in {self.RECONNECT_BACKOFF_SEC}s"
+                )
+            finally:
+                if conn is not None:
+                    try:
+                        await conn.remove_listener("feature_change", _on_feature_change)
+                    except Exception:
+                        pass
+                    try:
+                        await self._pool.release(conn, discard=True)
+                    except Exception:
+                        pass
+            if not self._stopping:
+                await asyncio.sleep(self.RECONNECT_BACKOFF_SEC)
 
 
 app = FastAPI(

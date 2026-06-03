@@ -17,13 +17,13 @@ services:
       retries: 15
 
   app:
+    image: realestatesearch:local
     build: .
     ports:
       - "8888:8888"
     env_file:
       - .env
     volumes:
-      - ./src/processed:/app/src/processed
       - ./log:/app/log
     environment:
       POSTGRES_HOST: db
@@ -31,6 +31,34 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      # Hits /health, which runs SELECT count(*) FROM properties — so this also
+      # verifies the DB pool is alive, not just that uvicorn responds.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8888/health', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Background processor — drains raw_properties → primary tables.
+  # Runs in its own container so the web tier (app) never competes with
+  # the Vision API for connections or CPU. Same image + build context as `app`,
+  # so Compose dedups the build into a single image. NOT dependent on `app`
+  # at runtime — the worker only needs the database.
+  worker:
+    image: realestatesearch:local
+    build: .
+    command: ["python", "-m", "src.img_analyzer.worker_main"]
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata:

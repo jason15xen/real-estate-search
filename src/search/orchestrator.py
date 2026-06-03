@@ -32,30 +32,6 @@ from src.search.query_parser import parse_query
 logger = logging.getLogger(__name__)
 
 
-async def _match_single_feature(
-    conn,
-    property_ids: list[int],
-    feature: str,
-    room_context: str | None,
-) -> set[int]:
-    """Match a single feature keyword against room_instances. Returns matched IDs."""
-    keyword = f"%{feature.lower()}%"
-    if room_context:
-        rows = await conn.fetch("""
-            SELECT DISTINCT property_id FROM room_instances
-            WHERE property_id = ANY($1)
-            AND room_type = $2
-            AND LOWER(features_text) LIKE $3
-        """, property_ids, room_context, keyword)
-    else:
-        rows = await conn.fetch("""
-            SELECT DISTINCT property_id FROM room_instances
-            WHERE property_id = ANY($1)
-            AND LOWER(features_text) LIKE $2
-        """, property_ids, keyword)
-    return {row["property_id"] for row in rows}
-
-
 async def _match_feature_set(
     conn,
     property_ids: list[int],
