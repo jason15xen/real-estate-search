@@ -144,8 +144,13 @@ app.add_middleware(
 app.include_router(img_analyzer_router)
 
 
-LOG_DIR = Path("/app/log")
-LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_DIR = Path(settings.log_dir)
+try:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+except OSError as e:
+    # Don't abort startup/import if the log dir isn't writable (e.g. local dev,
+    # tests). Request logging just no-ops — see _append_log_entry's guard.
+    logger.warning(f"Could not create log dir {LOG_DIR}: {e}; request logging disabled")
 MAX_BODY_LOG_BYTES = 200_000
 _log_write_lock = asyncio.Lock()
 
@@ -186,22 +191,17 @@ def _decode_body(raw: bytes, content_type: str) -> dict | str | None:
 
 def _weekly_log_path() -> Path:
     year, week, _ = datetime.now(timezone.utc).isocalendar()
-    return LOG_DIR / f"{year}-W{week:02d}.json"
+    return LOG_DIR / f"{year}-W{week:02d}.jsonl"
 
 
 async def _append_log_entry(entry: dict) -> None:
+    if not LOG_DIR.is_dir():
+        return  # log dir unavailable (see startup warning) — skip silently
+    # Append one JSON object per line — O(1) per request, no whole-file rewrite.
+    line = json.dumps(entry, ensure_ascii=False) + "\n"
     async with _log_write_lock:
-        path = _weekly_log_path()
-        entries: list[dict] = []
-        if path.exists():
-            try:
-                existing = json.loads(path.read_text(encoding="utf-8"))
-                if isinstance(existing, list):
-                    entries = existing
-            except json.JSONDecodeError:
-                logger.warning(f"Log file {path.name} is corrupt, starting fresh")
-        entries.append(entry)
-        path.write_text(json.dumps(entries, indent=2, ensure_ascii=False), encoding="utf-8")
+        with _weekly_log_path().open("a", encoding="utf-8") as f:
+            f.write(line)
 
 
 @app.middleware("http")
@@ -354,8 +354,8 @@ async def search_properties(request: SearchRequest):
             debug=debug_info,
         )
     except Exception as e:
-        logger.error(f"Search failed for query '{request.query}': {e}")
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+        logger.exception(f"Search failed for query '{request.query}': {e}")
+        raise HTTPException(status_code=500, detail="Search failed due to an internal error.")
 
 
 @app.get("/health")

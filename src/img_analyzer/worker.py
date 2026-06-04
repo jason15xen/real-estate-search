@@ -384,8 +384,8 @@ async def _process_one_row(pool: asyncpg.Pool, row: asyncpg.Record) -> bool:
         return False
 
 
-async def _worker_iteration(pool: asyncpg.Pool) -> int:
-    """Process one batch; returns rows handled (0 = nothing to do).
+async def _worker_iteration(pool: asyncpg.Pool) -> tuple[int, int]:
+    """Process one batch; returns (claimed, succeeded). claimed=0 means no work.
 
     Only triggers a feature-registry rebuild when an unprocessed or partial row
     succeeded — those are the only paths that add room_instances/features.
@@ -394,12 +394,13 @@ async def _worker_iteration(pool: asyncpg.Pool) -> int:
         async with conn.transaction():
             rows = await claim_pending_batch(conn, limit=WORKER_BATCH_SIZE)
     if not rows:
-        return 0
+        return 0, 0
 
     results = await asyncio.gather(
         *[_process_one_row(pool, row) for row in rows],
         return_exceptions=True,
     )
+    succeeded = sum(1 for ok in results if ok is True)
 
     features_may_have_changed = any(
         ok is True
@@ -415,7 +416,7 @@ async def _worker_iteration(pool: asyncpg.Pool) -> int:
         except Exception as e:
             logger.warning(f"Worker: NOTIFY feature_change failed: {e}")
 
-    return len(rows)
+    return len(rows), succeeded
 
 
 async def run_worker_forever() -> None:
@@ -424,9 +425,13 @@ async def run_worker_forever() -> None:
     while True:
         try:
             pool = await get_pool()
-            n = await _worker_iteration(pool)
-            if n == 0:
+            claimed, succeeded = await _worker_iteration(pool)
+            if claimed == 0:
                 await asyncio.sleep(WORKER_IDLE_SLEEP_SECONDS)
+            elif succeeded == 0:
+                # Claimed rows but none made progress (all failed or raced).
+                # Back off instead of hot-looping on the same rows.
+                await asyncio.sleep(WORKER_ERROR_SLEEP_SECONDS)
         except asyncio.CancelledError:
             logger.info("Background worker received cancellation; exiting")
             raise

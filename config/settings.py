@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     postgres_db: str = "real_estate"
 
     log_level: str = "INFO"
+    log_dir: str = "/app/log"  # request/response log location; override for local dev
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

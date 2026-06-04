@@ -149,23 +149,26 @@ async def analyze_photos(
 
 
 def inject_features(raw_data: list[dict], results_map: dict[str, list[PhotoResult]]) -> list[dict]:
-    """Inject RoomType/Color/Features into each originalPhotos entry."""
+    """Inject RoomType/Color/Features into each originalPhotos entry.
+
+    Matched by photo URL (not position): analyze_photos skips photos whose best
+    JPEG URL is empty, so positional indexing would shift results onto the wrong
+    photos. A photo with no analyzed result is simply left untouched.
+    """
     for prop in raw_data:
         prop_id = prop.get("Id", "")
-        photo_results = results_map.get(prop_id, [])
-        photos = (
-            prop.get("ZillowPropertyRecord", {}).get("originalPhotos", [])
-        )
+        by_url = {r.photo_url: r for r in results_map.get(prop_id, [])}
+        photos = prop.get("ZillowPropertyRecord", {}).get("originalPhotos", [])
 
-        result_idx = 0
         for photo in photos:
             jpegs = photo.get("mixedSources", {}).get("jpeg", [])
-            if jpegs:
-                if result_idx < len(photo_results):
-                    pr = photo_results[result_idx]
-                    photo["RoomType"] = pr.room_type
-                    photo["Color"] = pr.color
-                    photo["Features"] = pr.features
-                result_idx += 1  # increment for every photo with JPEGs
+            if not jpegs:
+                continue
+            best = max(jpegs, key=lambda j: j.get("width", 0))
+            pr = by_url.get(best.get("url") or "")
+            if pr:
+                photo["RoomType"] = pr.room_type
+                photo["Color"] = pr.color
+                photo["Features"] = pr.features
 
     return raw_data

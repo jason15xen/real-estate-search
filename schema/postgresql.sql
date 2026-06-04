@@ -76,7 +76,13 @@ CREATE TABLE room_instances (
     photo_url       TEXT,                -- canonical (highest-res JPEG) URL of the photo this room was derived from
                                           -- NULL for rows created before partial-update support; treated as "unknown origin"
                                           -- so any new POST /process for that property triggers a full re-analyze.
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- One instance per (property, room_type, index). The worker computes
+    -- instance_index carefully; this makes a double-insert a hard error
+    -- rather than silent duplicate rooms. (Fresh-DB constraint — dedupe any
+    -- legacy duplicates before applying to an existing database.)
+    CONSTRAINT uq_room_instance UNIQUE (property_id, room_type, instance_index)
 );
 
 -- Raw ingest staging table — receives every incoming property record via

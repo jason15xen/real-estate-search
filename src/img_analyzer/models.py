@@ -4,8 +4,11 @@ from pydantic import BaseModel
 
 
 class PhotoSource(BaseModel):
-    url: str
-    width: int
+    # Defaults so a malformed source entry can't fail validation and wedge the
+    # worker in a retry loop — the URL extractors already tolerate missing
+    # url/width, and empty urls are skipped downstream in analyze_photos.
+    url: str = ""
+    width: int = 0
 
 
 class MixedSources(BaseModel):
