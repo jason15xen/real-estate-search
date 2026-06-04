@@ -51,23 +51,37 @@ async def process_properties(items: list[PropertyInput] = Body(...)):
     background. Poll GET /process/status if you want to see the queue depth.
     """
     pool = await get_pool()
-    counts = {"unprocessed_new": 0, "unprocessed_changed": 0, "image_only_processed": 0, "failed": 0}
+    counts = {
+        "unprocessed_new": 0,
+        "unprocessed_full_rebuild": 0,
+        "partial": 0,
+        "image_only_processed": 0,
+        "failed": 0,
+    }
+    partial_diffs: list[dict] = []
 
     async with pool.acquire() as conn:
         for it in items:
             try:
-                # Distinguish "new" vs "changed" for the response by checking
-                # existence before the upsert (best-effort, tracked separately
-                # from the actual status assignment which lives in raw_db).
                 exists = await conn.fetchval(
                     "SELECT 1 FROM raw_properties WHERE id = $1", str(it.id)
                 )
-                status = await upsert_raw_property(conn, str(it.id), it.data or {})
+                status, image_diff = await upsert_raw_property(
+                    conn, str(it.id), it.data or {}
+                )
                 if status == "image_only_processed":
                     counts["image_only_processed"] += 1
+                elif status == "partial_image_only_processed":
+                    counts["partial"] += 1
+                    if image_diff:
+                        partial_diffs.append({
+                            "id": str(it.id),
+                            "added": len(image_diff.get("added", [])),
+                            "removed": len(image_diff.get("removed", [])),
+                        })
                 elif status == "unprocessed":
                     if exists:
-                        counts["unprocessed_changed"] += 1
+                        counts["unprocessed_full_rebuild"] += 1
                     else:
                         counts["unprocessed_new"] += 1
             except Exception as e:
@@ -77,9 +91,11 @@ async def process_properties(items: list[PropertyInput] = Body(...)):
     return {
         "total": len(items),
         "added": counts["unprocessed_new"],
-        "updated_with_photo_changes": counts["unprocessed_changed"],
+        "updated_with_all_photos_changed": counts["unprocessed_full_rebuild"],
+        "updated_with_partial_photo_changes": counts["partial"],
         "updated_without_photo_changes": counts["image_only_processed"],
         "failed": counts["failed"],
+        "partial_diffs": partial_diffs,
         "message": "Ingested into raw staging; background worker will sync to search index.",
     }
 
@@ -93,6 +109,7 @@ async def process_status():
     return {
         "unprocessed": counts.get("unprocessed", 0),
         "image_only_processed": counts.get("image_only_processed", 0),
+        "partial_image_only_processed": counts.get("partial_image_only_processed", 0),
         "processed": counts.get("processed", 0),
         "total": sum(counts.values()),
     }

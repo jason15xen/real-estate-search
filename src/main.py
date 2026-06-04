@@ -406,6 +406,7 @@ async def get_property(guid: str):
             SELECT room_type, instance_index, features
             FROM room_instances
             WHERE property_id = $1
+              AND room_type != 'Unknown'    -- hide internal photo-URL claim stubs
             ORDER BY room_type, instance_index
         """, prop_row["id"])
 

@@ -73,16 +73,29 @@ CREATE TABLE room_instances (
     features        TEXT[] NOT NULL,
     features_text   TEXT NOT NULL,
     color           TEXT,                -- single dominant color from 13-color palette, NULL if not extracted yet
+    photo_url       TEXT,                -- canonical (highest-res JPEG) URL of the photo this room was derived from
+                                          -- NULL for rows created before partial-update support; treated as "unknown origin"
+                                          -- so any new POST /process for that property triggers a full re-analyze.
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Raw ingest staging table — receives every incoming property record
--- via POST /process. A background worker continuously picks up rows whose
--- status is not 'processed' and syncs them into the primary tables above.
+-- Raw ingest staging table — receives every incoming property record via
+-- POST /process. A background worker continuously picks up rows whose status
+-- is not 'processed' and syncs them into the primary tables above.
+--
+-- The "what changed" diff for the partial-image path is NOT stored here.
+-- It's derivable any time from (data.originalPhotos URLs) ⊖ (room_instances.photo_url
+-- for this property), so the worker recomputes it at processing time — that
+-- makes the worker idempotent under racy /process traffic.
 CREATE TABLE raw_properties (
     id           TEXT PRIMARY KEY,
     data         JSONB NOT NULL,
-    status       TEXT NOT NULL CHECK (status IN ('unprocessed','image_only_processed','processed')),
+    status       TEXT NOT NULL CHECK (status IN (
+                     'unprocessed',
+                     'image_only_processed',
+                     'partial_image_only_processed',
+                     'processed'
+                 )),
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
