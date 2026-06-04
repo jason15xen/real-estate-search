@@ -1,10 +1,4 @@
-"""
-Pydantic models for the image-analyzer ingest flow.
-
-The single endpoint is POST /process; it accepts a list of `PropertyInput`
-({id, data}). `PropertyItem` is the internal shape passed to the analyzer
-and primary-table writers.
-"""
+"""Pydantic models for the image-analyzer ingest flow."""
 
 from pydantic import BaseModel
 
@@ -21,7 +15,8 @@ class MixedSources(BaseModel):
 
 class Photo(BaseModel):
     caption: str = ""
-    mixedSources: MixedSources
+    # Default empty so photos missing this key don't fail validation (would wedge worker in retry loop)
+    mixedSources: MixedSources = MixedSources()
 
 
 class ZillowPropertyRecord(BaseModel):
@@ -41,17 +36,12 @@ class PropertyItem(BaseModel):
 class PhotoResult(BaseModel):
     photo_url: str
     room_type: str
-    color: str | None = None  # one of 13 palette colors, or None / "Unknown"
+    color: str | None = None  # one of 13 palette colors, or None
     features: list[str]
 
 
 class PropertyInput(BaseModel):
-    """Request item shape for POST /process.
-
-    - `id`: property's database identifier (GUID)
-    - `data`: the full Zillow property record (address, price, originalPhotos,
-      schools, resoFacts, etc.)
-    """
+    """POST /process item: id (GUID) + full Zillow property record."""
     id: str
     data: dict
 

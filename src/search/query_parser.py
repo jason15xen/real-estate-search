@@ -1,17 +1,5 @@
-"""
-Query Parser — Uses Claude Opus 4.7 to decompose natural language into structured search criteria.
-
-The parser receives the full list of known features and room types from the
-database, so it can map user input to exact feature names. This eliminates the
-need for vector search and LLM validation.
-
-Provider: Claude Opus 4.7 via Azure AI Foundry's Anthropic-compatible endpoint
-(see `get_claude_client()`). Image vision and geocoding stay on Azure GPT-5.1.
-
-Example: "a house with two bedrooms, wood flooring, and a hearth"
-  → RoomCountCriterion(room_type="Bedroom", exact_count=2)
-  → FeatureCriterion(feature="hardwood floors")   ← mapped from "wood flooring"
-  → FeatureCriterion(feature="fireplace")          ← mapped from "hearth"
+"""Query parser: Claude Opus 4.7 (Azure AI Foundry) maps NL queries to structured criteria,
+using the DB's known features/room types so no vector search is needed.
 """
 
 import json
@@ -237,18 +225,6 @@ for this field. Do NOT expand synonyms or related features — the server comput
 feature alternatives deterministically from the database. Returning anything other \
 than `[]` is wasted output that will be discarded.
 
-  User: "3 bedroom home with granite counters"
-  KNOWN FEATURES contain: "granite countertops"
-  reconstructed_queries: ["granite countertops"]
-
-  User: "kitchen with tile floor"
-  KNOWN FEATURES contain: "tile flooring", "porcelain tile flooring", "ceramic tile flooring"
-  reconstructed_queries: ["tile flooring", "porcelain tile flooring", "ceramic tile flooring"]
-
-  User: "house with wood floors and a tub"
-  KNOWN FEATURES contain: "hardwood flooring", "wood flooring", "soaking tub", "freestanding tub"
-  reconstructed_queries: ["hardwood flooring", "wood flooring", "soaking tub", "freestanding tub"]
-
 Important rules:
 - If the user says "two bedrooms", that means exact_count=2 for Bedroom.
 - If the user says "at least 3 bathrooms", that means min_count=3 for Bathroom.
@@ -277,12 +253,10 @@ def _build_system_prompt() -> str:
 
 
 async def _call_llm(client, system_prompt: str, query: str) -> str | None:
-    """Call Claude Opus 4.7 and return raw text. Returns None on failure.
+    """Call Claude Opus 4.7, return raw text or None.
 
-    Opus 4.7 constraints: no `temperature` / `top_p` / `top_k` (would 400),
-    no `budget_tokens` (adaptive thinking is the only thinking mode and is
-    off by default — fine for this lightweight extraction task). The system
-    prompt is passed at the top level, not inside `messages`.
+    Opus 4.7: no temperature/top_p/top_k or budget_tokens (would 400); system
+    prompt goes top-level, not in messages.
     """
     response = await client.messages.create(
         model=settings.azure_openai_deployment_for_query,
@@ -312,7 +286,7 @@ async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
 
             logger.debug(f"Raw LLM response: {raw_text[:500]}")
 
-            # Strip markdown code fences if present
+            # Strip markdown code fences
             clean = raw_text
             if clean.startswith("```"):
                 lines = clean.split("\n")
@@ -320,7 +294,7 @@ async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
                 clean = "\n".join(lines).strip()
 
             parsed = json.loads(clean)
-            break  # Success
+            break
         except (json.JSONDecodeError, KeyError, IndexError) as e:
             logger.warning(
                 f"Failed to parse LLM response (attempt {attempt + 1}/{max_retries}): {e}\n"

@@ -1,6 +1,4 @@
-"""
-Database connection pool — shared across the application.
-"""
+"""Shared database connection pool."""
 
 import asyncio
 import logging
@@ -20,19 +18,17 @@ async def get_pool() -> asyncpg.Pool:
     if _pool is not None:
         return _pool
     async with _pool_lock:
-        # Double-check after acquiring lock
+        # Double-check lock.
         if _pool is not None:
             return _pool
         dsn = (
             f"postgresql://{settings.postgres_user}:{settings.postgres_password}"
             f"@{settings.postgres_host}:{settings.postgres_port}/{settings.postgres_db}"
         )
-        # Retry connection up to 15 times (DB may still be initializing)
+        # Retry up to 15 times (DB may still be initializing).
         for attempt in range(1, 16):
             try:
-                # Each process (web tier + worker) has its own pool. The web
-                # tier reserves one connection for the LISTEN feature_change
-                # callback, so the effective query pool is max_size - 1.
+                # Web tier reserves one conn for the LISTEN feature_change callback.
                 _pool = await asyncpg.create_pool(dsn=dsn, min_size=5, max_size=20)
                 logger.info("Database pool connected")
                 return _pool

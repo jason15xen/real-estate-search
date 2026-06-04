@@ -25,8 +25,8 @@ class RoomCountCriterion(BaseModel):
 class FeatureCriterion(BaseModel):
     type: CriterionType = CriterionType.FEATURE
     feature: str
-    room_context: str | None = None  # e.g., "bedroom" — feature must be in this room type
-    negated: bool = False  # True = property must NOT have this feature
+    room_context: str | None = None  # room type the feature must be in
+    negated: bool = False  # True = must NOT have feature
 
 
 class PriceCriterion(BaseModel):
@@ -59,7 +59,7 @@ class ProximityCriterion(BaseModel):
 
 class PropertyCriterion(BaseModel):
     type: CriterionType = CriterionType.PROPERTY
-    home_type: str | None = None          # SINGLE_FAMILY, CONDO, TOWNHOUSE, MANUFACTURED, MULTI_FAMILY
+    home_type: str | None = None  # SINGLE_FAMILY, CONDO, TOWNHOUSE, MANUFACTURED, MULTI_FAMILY
     min_rent: int | None = None
     max_rent: int | None = None
     min_year_built: int | None = None
@@ -71,13 +71,11 @@ class PropertyCriterion(BaseModel):
 
 
 class ColorRoomCriterion(BaseModel):
-    """The property must have at least one room of `room_type` whose dominant
-    color is `color`. Color is a single value from the 13-color palette.
-    """
+    """Property has a room of `room_type` with dominant color `color`."""
     type: CriterionType = CriterionType.COLOR_ROOM
-    color: str                  # one of: white, black, gray, brown, beige, blue, green, red, yellow, purple, pink, orange, gold
+    color: str                  # white, black, gray, brown, beige, blue, green, red, yellow, purple, pink, orange, gold
     room_type: str              # Kitchen, Bedroom, Bathroom, Living Room, Dining Room, Exterior, Pool, Garage
-    negated: bool = False       # True = property must NOT have such a room
+    negated: bool = False       # True = must NOT have such a room
 
 
 Criterion = (
@@ -95,5 +93,5 @@ Criterion = (
 class ParsedQuery(BaseModel):
     original_query: str
     criteria: list[Criterion]
-    reconstructed_queries: list[str] = []  # query rebuilt using predefined DB features
-    understood_intent: str  # LLM's summary of what it understood
+    reconstructed_queries: list[str] = []  # query rebuilt from DB features
+    understood_intent: str  # LLM's intent summary

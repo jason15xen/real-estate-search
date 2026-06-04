@@ -1,43 +1,21 @@
 """
-Raw Properties Staging — single source of intake for /process.
-
-Every incoming property record lands here first. A background worker
-continuously moves rows from raw_properties → primary tables (properties,
-rooms, room_instances, property_schools).
+Raw Properties Staging — intake for /process. A background worker moves rows
+from raw_properties → primary tables (properties, rooms, room_instances,
+property_schools).
 
 Status lifecycle:
-  unprocessed                  → new record, OR existing one where ALL photos
-                                  changed / there's no primary row yet — worker
-                                  re-analyzes every photo.
-  image_only_processed         → existing record, photo set IDENTICAL to what's
-                                  already in primary — worker refreshes scalars
-                                  and schools only, no Vision API.
-  partial_image_only_processed → existing record, photo set CHANGED but only
-                                  partially — worker recomputes the diff at
-                                  processing time against current primary
-                                  state, analyzes only the newly-added photos
-                                  and deletes room_instances for removed ones.
-  processed                    → fully synced to primary tables; worker has
-                                  nothing to do.
+  unprocessed                  → new, or all photos changed / no primary row; re-analyze all.
+  image_only_processed         → photo set identical; refresh scalars+schools only, no Vision.
+  partial_image_only_processed → photos partially changed; analyze added, drop removed.
+  processed                    → fully synced; nothing to do.
 
-Design note — no stored diff:
-  We deliberately do NOT persist the photo diff. The truth lives in two
-  places already: raw_properties.data (desired photo set) and
-  room_instances.photo_url (currently processed photo set). The diff is just
-  set arithmetic over those — computed transiently in upsert (to pick the
-  right status + report counts in the /process response) and recomputed
-  freshly by the worker at processing time. That makes the worker idempotent
-  under concurrent /process writes: regardless of how many partial updates
-  pile up while one is mid-flight, each worker run only does work that's
-  actually still needed.
+No stored diff: truth is raw_properties.data (desired) vs room_instances.photo_url
+(current). Diff is set arithmetic, computed transiently in upsert and recomputed by
+the worker at processing time, keeping the worker idempotent under concurrent writes.
 
 Concurrency invariants:
-  * upsert never DOWNGRADES away from 'unprocessed' — if the worker hasn't
-    yet seen a queued full-process, the next request preserves it.
-  * claim_pending_batch returns each row's updated_at; the worker passes it
-    back into mark_processed so a concurrent /process write (which bumps
-    updated_at) causes mark_processed to no-op — the next iteration picks
-    up the new data.
+  * upsert never downgrades away from 'unprocessed' (preserves queued vision work).
+  * mark_processed no-ops if updated_at changed since claim, so concurrent writes are reprocessed.
 """
 
 from __future__ import annotations
@@ -52,11 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 def extract_photo_urls_from_data(data: dict) -> list[str]:
-    """Highest-resolution JPEG URL per photo from a `data` payload (a Zillow
-    record). This is the same canonical-URL extractor used to populate
-    room_instances.photo_url, so diffs round-trip without normalization
-    issues.
-    """
+    """Highest-res JPEG URL per photo; same extractor as room_instances.photo_url so diffs round-trip."""
     urls: list[str] = []
     for photo in (data.get("originalPhotos") or []):
         jpegs = ((photo.get("mixedSources") or {}).get("jpeg") or [])
@@ -69,19 +43,9 @@ def extract_photo_urls_from_data(data: dict) -> list[str]:
     return urls
 
 
-# Back-compat alias (older code referenced the private name).
-_extract_photo_urls_from_data = extract_photo_urls_from_data
-
-
 async def primary_photo_urls(conn, property_guid: str) -> set[str]:
-    """The set of photo URLs already represented in the primary tables for
-    this property — read from room_instances.photo_url.
-
-    Returns an empty set if the property doesn't exist in primary yet, OR if
-    it exists but its rooms were created before photo_url tracking (legacy
-    rows have NULL photo_url, so we treat their photo set as unknown and
-    fall back to full re-analyze).
-    """
+    """Photo URLs already in primary (room_instances.photo_url). Empty if absent or
+    legacy NULL photo_url rows (treated as unknown → full re-analyze)."""
     rows = await conn.fetch(
         """
         SELECT DISTINCT ri.photo_url
@@ -98,24 +62,15 @@ async def upsert_raw_property(
     conn,
     item_id: str,
     new_data: dict,
-) -> tuple[str, dict | None]:
-    """Insert or update a single raw_properties row.
+) -> tuple[str, dict | None, bool]:
+    """Insert or update a raw_properties row.
 
-    Returns (final_status, diff_info_or_None). The diff_info is only used by
-    the caller (the /process router) to report per-id counts in the response
-    — it is NOT stored. The worker recomputes the diff itself at processing
-    time, against live primary state.
+    Returns (final_status, diff_info_or_None, existed_before). diff_info is for the
+    /process response only (not stored; worker recomputes against live primary state).
 
-    Decision tree:
-      - row doesn't exist                                → INSERT, status='unprocessed'
-      - primary has no processed photo URLs yet          → UPDATE, status='unprocessed'
-      - photos identical to primary                      → UPDATE, status='image_only_processed'
-      - photos partially different                       → UPDATE, status='partial_image_only_processed'
-      - photos completely different (no overlap)         → UPDATE, status='unprocessed'
-
-    Override: if the previous raw status was 'unprocessed' (worker hasn't
-    yet consumed the queued full analyze), we DON'T downgrade — pending
-    vision work is preserved.
+    Status: no row → unprocessed; no primary URLs → unprocessed; photos identical →
+    image_only_processed; partial overlap → partial_image_only_processed; no overlap →
+    unprocessed. Never downgrades a prior 'unprocessed' (preserves queued vision work).
     """
     existing = await conn.fetchrow(
         "SELECT status FROM raw_properties WHERE id = $1", item_id
@@ -133,7 +88,7 @@ async def upsert_raw_property(
             item_id,
             new_data_json,
         )
-        return "unprocessed", None
+        return "unprocessed", None, False
 
     primary_urls = await primary_photo_urls(conn, item_id)
 
@@ -171,19 +126,15 @@ async def upsert_raw_property(
         new_data_json,
         new_status,
     )
-    return new_status, diff_info
+    return new_status, diff_info, True
 
 
 async def claim_pending_batch(
     conn,
     limit: int = 5,
 ) -> list[asyncpg.Record]:
-    """Claim up to `limit` raw rows that need processing.
-
-    Uses SELECT ... FOR UPDATE SKIP LOCKED so concurrent workers don't claim
-    the same row. Returns each row's `updated_at` so the worker can pass it
-    back into mark_processed for optimistic-concurrency guarding.
-    """
+    """Claim up to `limit` pending rows via FOR UPDATE SKIP LOCKED. Returns updated_at
+    for optimistic-concurrency guarding in mark_processed."""
     rows = await conn.fetch(
         """
         SELECT id, data, status, updated_at
@@ -203,13 +154,8 @@ async def claim_pending_batch(
 
 
 async def mark_processed(conn, item_id: str, expected_updated_at: datetime) -> bool:
-    """Flip status to 'processed' ONLY if the row hasn't changed since claim.
-
-    Returns True on success, False if a concurrent /process write moved
-    updated_at — in which case the row stays pending and the next worker
-    iteration re-processes it (idempotently, since the worker recomputes
-    the diff itself).
-    """
+    """Set status='processed' only if updated_at is unchanged since claim. Returns False
+    if a concurrent write moved it; the row stays pending for the next (idempotent) run."""
     result = await conn.execute(
         """
         UPDATE raw_properties

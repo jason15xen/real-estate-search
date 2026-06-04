@@ -2,15 +2,14 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Azure OpenAI — used for image vision analysis (GPT-5.1) and geocoding fallback.
+    # Azure OpenAI (GPT-5.1) — vision analysis and geocoding.
     azure_openai_api_key: str = ""
     azure_openai_endpoint: str = ""
     azure_openai_deployment: str = "gpt-5.1"
     azure_openai_model: str = "gpt-5.1"
     azure_openai_api_version: str = "2025-04-01-preview"
 
-    # Claude (Anthropic-compatible endpoint via Azure AI Foundry) — used
-    # exclusively for /search query parsing (Opus 4.7).
+    # Claude (Azure AI Foundry Anthropic endpoint) — /search query parsing (Opus 4.7).
     azure_openai_api_key_for_query: str = ""
     azure_openai_endpoint_for_query: str = ""
     azure_openai_deployment_for_query: str = "claude-opus-4-7-dev"

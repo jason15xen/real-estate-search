@@ -1,10 +1,5 @@
-"""
-Feature Registry — Collects all unique feature names and room types from PostgreSQL
-at startup and stores them in memory.
-
-This allows the query parser to map user input to exact feature names,
-eliminating the need for vector search and LLM validation.
-"""
+"""Feature Registry — caches unique feature names and room types from PostgreSQL,
+letting the query parser map user input to exact names without vector search."""
 
 import logging
 
@@ -18,18 +13,14 @@ class FeatureRegistry:
         self.features: set[str] = set()
         self.room_types: set[str] = set()
         self.features_by_room_type: dict[str, set[str]] = {}
-        # Pure-function cache: same registry state + same base → same result.
-        # Cleared on every build_from_db() call.
+        # Pure-function cache; cleared on every build_from_db().
         self._alternatives_cache: dict[str, list[str]] = {}
 
     async def build_from_db(self, pool: asyncpg.Pool) -> None:
         """Load unique features and room types from PostgreSQL.
 
-        Builds the new state in local sets first and only swaps it into the
-        instance attributes at the end. A concurrent /search calling
-        get_feature_alternatives() therefore always sees a fully-populated
-        registry — either the old one or the new one, never a half-cleared
-        in-between state.
+        Builds new state locally, then atomic-swaps it in so a concurrent
+        reader always sees a fully-populated registry (old or new, never torn).
         """
         new_features: set[str] = set()
         new_room_types: set[str] = set()
@@ -53,7 +44,7 @@ class FeatureRegistry:
                 new_features.add(feature)
                 new_by_room.setdefault(room_type, set()).add(feature)
 
-        # Atomic swap — single attribute assignment per field, no torn read.
+        # Atomic swap — no torn read.
         self.features = new_features
         self.room_types = new_room_types
         self.features_by_room_type = new_by_room
@@ -74,18 +65,11 @@ class FeatureRegistry:
         return sorted(self.features_by_room_type.get(room_type, set()))
 
     def get_feature_alternatives(self, base: str) -> list[str]:
-        """
-        Deterministically compute all known features that mean "the property HAS `base`".
+        """Return all known features meaning "property HAS `base`".
 
-        Result is cached because the function is PURE — same registry state +
-        same base always produces the same output. Cache is cleared whenever
-        build_from_db() runs, so it can never go stale.
-
-        - Starts from registry features that include every word of `base`.
-        - Excludes tangential forms (views, game tables, accessories alone, \
-neighborhood/neighbor references, "room for" placeholders).
-        - Result is deterministic and identical for positive or negated queries, \
-which guarantees: |with X| + |without X| = |total|.
+        Pure and cached. Matches features containing every word of `base`,
+        excluding tangential forms (views, tables, neighborhood, placeholders).
+        Deterministic and same for positive/negated, so |with X|+|without X|=total.
         """
         if base in self._alternatives_cache:
             return self._alternatives_cache[base]
@@ -108,9 +92,7 @@ which guarantees: |with X| + |without X| = |total|.
             "potential",
         }
 
-        # If the user explicitly searches for a term that contains an exclusion
-        # substring (e.g. "community pool", "family-friendly community", "pool view"),
-        # don't apply that particular exclusion — it would defeat the user's intent.
+        # Skip exclusions present in the query itself (e.g. "community pool").
         effective_exclusions = {ex for ex in EXCLUSION_SUBSTRINGS if ex not in base_lower}
 
         result: list[str] = [base] if base not in self.features else []
@@ -134,5 +116,4 @@ which guarantees: |with X| + |without X| = |total|.
         return sorted_result
 
 
-# Global singleton
 registry = FeatureRegistry()

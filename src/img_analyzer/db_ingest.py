@@ -1,25 +1,12 @@
 """
-Database Ingestion — Converts processed Zillow data (with extracted features)
-into the PostgreSQL schema used by the search pipeline.
+Database Ingestion — convert processed Zillow data into the PostgreSQL schema.
 
-Mapping:
-  Zillow data                    → DB Schema
-  ─────────────────────────────────────────────────────
-  address.streetAddress          → properties.street
-  address.subdivision            → properties.district
-  address.city                   → properties.city
-  address.state                  → properties.state
-  address.zipcode                → properties.postal_code
-  "US"                           → properties.country
-  longitude, latitude            → properties.geom (PostGIS)
-  livingArea                     → properties.area_sqft
-  price                          → properties.price_usd
-  bedrooms                       → properties.bedroom_count
-  bathrooms                      → properties.bathroom_count
-  resoFacts.rooms                → room counts (kitchen, dining, etc.)
-
-  originalPhotos[].RoomType      → room_instances.room_type
-  originalPhotos[].Features      → room_instances.features / features_text
+Zillow → DB mapping:
+  address.* → properties street/district/city/state/postal_code; "US" → country
+  longitude,latitude → geom (PostGIS); livingArea → area_sqft; price → price_usd
+  bedrooms/bathrooms → bedroom_count/bathroom_count
+  resoFacts.rooms → kitchen/dining/etc. counts
+  originalPhotos[].RoomType/Features → room_instances.room_type / features(_text)
 """
 
 import logging
@@ -29,7 +16,7 @@ import asyncpg
 
 logger = logging.getLogger(__name__)
 
-# Map resoFacts.rooms roomType values to our room types
+# resoFacts.rooms roomType → our room types
 RESO_ROOM_MAP = {
     "MasterBedroom": "Bedroom",
     "Bedroom": "Bedroom",
@@ -42,7 +29,7 @@ RESO_ROOM_MAP = {
     "Garage": "Garage",
 }
 
-# Map our room types to DB columns
+# room types → DB columns
 ROOM_COUNT_COLUMNS = {
     "Bedroom": "bedroom_count",
     "Bathroom": "bathroom_count",
@@ -68,9 +55,7 @@ def _normalize_listing_terms(raw: str | None) -> list[str]:
 
 
 def _canonical_photo_url(photo: dict) -> str | None:
-    """Highest-resolution JPEG URL for a photo dict — used as the canonical
-    identifier when diffing image sets and storing on room_instances.photo_url.
-    """
+    """Highest-res JPEG URL for a photo; canonical id for diffing and room_instances.photo_url."""
     jpegs = ((photo.get("mixedSources") or {}).get("jpeg") or [])
     if not jpegs:
         return None
@@ -79,19 +64,10 @@ def _canonical_photo_url(photo: dict) -> str | None:
 
 
 def _build_rooms_from_photos(photos: list[dict]) -> dict[str, list[dict]]:
-    """
-    Group extracted features by RoomType from processed photos.
-    Returns: { room_type: [
-        {"features": [...], "color": "white" | None, "photo_url": "..." | None},
-        ...
-    ]}
+    """Group features by RoomType → {room_type: [{"features","color","photo_url"}]}.
 
-    Photos for which Vision returned an unusable result (room_type missing,
-    "Unknown", or empty features) are still kept — as stub entries under
-    the "Unknown" key with empty features. This "claims" their photo URL
-    in room_instances so subsequent diffs don't re-flag them as needing
-    re-analysis and burn Vision API quota in an infinite loop. Search
-    ignores "Unknown" room_type, so these stubs are invisible to users.
+    Unusable Vision results are kept as empty "Unknown" stubs to claim their photo URL
+    so diffs don't re-flag them (infinite re-analyze loop); search ignores "Unknown".
     """
     rooms: dict[str, list[dict]] = defaultdict(list)
     for photo in photos:
@@ -111,7 +87,7 @@ def _build_rooms_from_photos(photos: list[dict]) -> dict[str, list[dict]]:
                 "photo_url": photo_url,
             })
         elif photo_url:
-            # Vision unusable but we know the URL — claim it as a stub.
+            # Unusable Vision result: claim URL as stub to avoid infinite re-analyze.
             rooms["Unknown"].append({
                 "features": [],
                 "color": None,
@@ -121,20 +97,12 @@ def _build_rooms_from_photos(photos: list[dict]) -> dict[str, list[dict]]:
 
 
 def _get_room_counts(record: dict, room_counts_by_type: dict[str, int]) -> dict[str, int]:
-    """
-    Determine the 6 denormalized room-count column values for the properties table.
+    """Compute the 6 denormalized room-count columns.
 
-    Args:
-        record: a Zillow record (top-level `bedrooms`/`bathrooms`, optional
-                `resoFacts.rooms`, optional `resoFacts.hasGarage`).
-        room_counts_by_type: room_type → count from the appropriate source —
-                * full-process path: `{rt: len(photos)}` over `rooms_from_photos`
-                * partial / image_only paths: `{rt: COUNT(*)}` from live
-                  room_instances state
-
-    Priority: Bedroom/Bathroom from Zillow's stated counts (always).
-              Kitchen/Living/Dining/Garage: resoFacts.rooms > the provided
-              count source > hasGarage capacity fallback (Garage only).
+    room_counts_by_type: fallback source per room_type (photo counts on full path,
+    live room_instances counts on partial/image_only paths).
+    Priority: Bedroom/Bathroom from Zillow counts always; Kitchen/Living/Dining/Garage
+    from resoFacts.rooms > room_counts_by_type > hasGarage capacity (Garage only).
     """
     counts: dict[str, int] = {
         "Bedroom": int(record.get("bedrooms") or 0),
@@ -153,13 +121,12 @@ def _get_room_counts(record: dict, room_counts_by_type: dict[str, int]) -> dict[
     for room_type in ["Kitchen", "Dining Room", "Living Room", "Garage"]:
         counts[room_type] = reso_counts.get(room_type, 0)
 
-    # Fallback: if resoFacts had no count, use the provided source.
+    # Fallback to provided source when resoFacts had no count.
     for room_type, n in room_counts_by_type.items():
         if room_type in ROOM_COUNT_COLUMNS and counts.get(room_type, 0) == 0:
             counts[room_type] = n
 
-    # Garage capacity fallback from hasGarage flag (only kicks in when both
-    # resoFacts.rooms and the photo-derived count are zero).
+    # Garage fallback from hasGarage flag when no other count exists.
     if counts.get("Garage", 0) == 0:
         if reso_facts.get("hasGarage") or reso_facts.get("hasAttachedGarage"):
             capacity = reso_facts.get("garageParkingCapacity", 1) or 1
@@ -169,11 +136,7 @@ def _get_room_counts(record: dict, room_counts_by_type: dict[str, int]) -> dict[
 
 
 async def query_room_instance_counts(conn, property_id: int) -> dict[str, int]:
-    """Return {room_type: count} for current room_instances of a property.
-
-    Excludes 'Unknown' stubs (those exist only to claim photo URLs and are
-    not real rooms; they should not contribute to any denormalized count).
-    """
+    """{room_type: count} for a property's room_instances, excluding 'Unknown' stubs."""
     rows = await conn.fetch(
         """
         SELECT room_type, COUNT(*) AS n FROM room_instances
@@ -186,15 +149,8 @@ async def query_room_instance_counts(conn, property_id: int) -> dict[str, int]:
 
 
 async def refresh_property_room_counts(conn, existing_id: int, item: dict) -> None:
-    """Recompute Kitchen/Living/Dining/Garage on the properties row from
-    current room_instances state, using the same algorithm as the full path
-    (resoFacts.rooms > photo count > hasGarage flag).
-
-    Does NOT touch bedroom_count/bathroom_count — those come from Zillow's
-    stated bedrooms/bathrooms, set by update_property_scalars. Call this
-    AFTER update_property_scalars to ensure the full count picture is
-    consistent across all worker paths.
-    """
+    """Recompute Kitchen/Living/Dining/Garage from current room_instances. Leaves
+    bedroom/bathroom counts alone (set by update_property_scalars); call after it."""
     record = item.get("ZillowPropertyRecord", {}) or {}
     current_counts = await query_room_instance_counts(conn, existing_id)
     counts = _get_room_counts(record, current_counts)
@@ -216,16 +172,10 @@ async def refresh_property_room_counts(conn, existing_id: int, item: dict) -> No
     )
 
 
-# ===================================================================
-# Helpers for single-property create/update (used by POST/PUT /properties)
-# ===================================================================
+# Helpers for single-property create/update (POST/PUT /properties)
 
 def _extract_property_fields(item: dict) -> dict:
-    """Extract all DB-relevant scalar fields from a Zillow property dict.
-
-    Returns a normalized dict ready for INSERT/UPDATE comparison. The dict
-    contains the same key-value shape as the properties table columns.
-    """
+    """Extract DB-relevant scalar fields from a Zillow item, keyed like properties columns."""
     record = item.get("ZillowPropertyRecord", {}) or {}
     address = record.get("address", {}) or {}
     reso_facts = record.get("resoFacts", {}) or {}
@@ -308,16 +258,8 @@ async def update_property_scalars(
     existing_id: int,
     item: dict,
 ) -> None:
-    """Update non-photo-derived property columns only:
-    scalars (price, description, year_built, etc.) PLUS Bedroom/Bathroom
-    counts (which come from Zillow's stated `bedrooms`/`bathrooms` fields,
-    not from photo analysis).
-
-    Does NOT touch kitchen/living_room/dining_room/garage counts — those
-    reflect the actual photo-derived room_instances state and should only
-    change when room_instances change. Callers updating room_instances
-    (partial path, full re-process) refresh those columns separately.
-    """
+    """Update non-photo-derived columns: scalars plus Bedroom/Bathroom counts (from
+    Zillow). Leaves kitchen/living/dining/garage counts (refreshed by room-instance paths)."""
     record = item.get("ZillowPropertyRecord", {}) or {}
     fields = _extract_property_fields(item)
     await conn.execute("""
@@ -352,9 +294,7 @@ async def update_property_metadata(
     existing_id: int,
     item: dict,
 ) -> None:
-    """Update ONLY the properties row (scalar fields + room counts).
-    No changes to room_instances or property_schools.
-    """
+    """Update only the properties row (scalars + room counts); no child rows."""
     record = item.get("ZillowPropertyRecord", {}) or {}
     fields = _extract_property_fields(item)
     rooms_from_photos = _build_rooms_from_photos(record.get("originalPhotos", []) or [])
@@ -395,9 +335,7 @@ async def update_property_with_children(
     existing_id: int,
     item: dict,
 ) -> None:
-    """Full re-process: update properties row AND replace all child rows
-    (rooms, room_instances, property_schools). Used when photos or schools changed.
-    """
+    """Full re-process: update properties row and replace all child rows. Used when photos/schools changed."""
     await conn.execute("DELETE FROM property_schools WHERE property_id = $1", existing_id)
     await conn.execute("DELETE FROM room_instances WHERE property_id = $1", existing_id)
     await conn.execute("DELETE FROM rooms WHERE property_id = $1", existing_id)

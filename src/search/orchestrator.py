@@ -1,13 +1,4 @@
-"""
-Search Orchestrator — Coordinates the multi-phase search pipeline.
-
-Pipeline:
-  1. LLM Query Parser    → structured criteria (maps synonyms to known feature names)
-  2. Hard Filters        → PostgreSQL indexed queries
-  3. Proximity Filters   → PostGIS spatial queries
-  4. Feature Matching    → PostgreSQL array/text matching on room_instances
-  5. Return results
-"""
+"""Search orchestrator: parse query -> hard filters -> proximity -> color -> feature matching."""
 
 import asyncio
 import logging
@@ -39,14 +30,7 @@ async def _match_feature_set(
     alternatives: list[str],
     room_context: str | None,
 ) -> set[int]:
-    """
-    Match the UNION of a feature and all its alternatives against room_instances
-    in a SINGLE SQL query using the GIN-indexed `features` TEXT[] column with
-    the overlap operator (&&).
-
-    Used identically for positive and negated criteria — guarantees symmetry:
-        |with X| + |without X| = |total|
-    """
+    """Match feature + alternatives against room_instances via GIN-indexed `features &&`."""
     terms = alternatives if alternatives else [feature]
     if not terms:
         return set()
@@ -73,29 +57,12 @@ async def _match_features(
     feature_criteria: list[FeatureCriterion],
     feature_alternatives: dict[str, list[str]] | None = None,
 ) -> list[int]:
-    """
-    Filters property IDs by feature criteria.
-
-    Each criterion's match is queried against the SAME initial input set in
-    PARALLEL (separate pool connections via asyncio.gather). Results are then
-    combined in Python via set intersection (positive) or subtraction (negated).
-
-    Set-theory equivalence with sequential narrowing:
-        Sequential: ((I ∩ M_1) ∩ M_2) - M_3
-        Parallel:    (I ∩ M_1_full ∩ M_2_full) - M_3_full
-    where M_i_full = match against full input I.
-    Both produce identical final sets because intersection/subtraction are
-    associative and commutative on sets.
-
-    For each criterion (positive or negated), the SAME feature set (feature +
-    its alternatives from the registry) is used. This guarantees:
-        |properties matching with X| + |properties matching without X| = |total|
-    """
+    """Filter IDs by feature criteria: match each in parallel, then intersect (positive) / subtract (negated)."""
     if not property_ids or not feature_criteria:
         return property_ids
 
     feature_alternatives = feature_alternatives or {}
-    initial_ids = property_ids  # query each criterion against the same input
+    initial_ids = property_ids
 
     async def _run(fc: FeatureCriterion) -> set[int]:
         alts = feature_alternatives.get(fc.feature, [fc.feature])
@@ -125,16 +92,9 @@ async def _match_features(
 
 def _build_alternatives(
     feature_criteria: list[FeatureCriterion],
-    reconstructed_queries: list[str],  # kept for API compatibility, no longer consulted
+    reconstructed_queries: list[str],  # kept for API compat, unused
 ) -> dict[str, list[str]]:
-    """
-    Build a dict mapping each feature criterion's `feature` string → list of
-    alternatives, computed DETERMINISTICALLY from the in-memory feature registry.
-
-    The LLM's reconstructed_queries are intentionally ignored here so that
-    positive and negated queries get identical alternative sets. This guarantees
-        |with X| + |without X| = |total|
-    """
+    """Map each feature -> alternatives from the registry (deterministic; reconstructed_queries ignored)."""
     if not feature_criteria:
         return {}
 
@@ -149,13 +109,7 @@ async def _match_color_rooms(
     property_ids: list[int],
     color_room_criteria: list[ColorRoomCriterion],
 ) -> list[int]:
-    """
-    Filter property IDs by ColorRoomCriterion entries.
-
-    Each criterion is matched against room_instances using the dominant `color`
-    column (set per-room during image analysis). Positive criteria intersect,
-    negated criteria subtract — same semantics as feature matching.
-    """
+    """Filter IDs by room color: intersect (positive) / subtract (negated) on room_instances.color."""
     if not property_ids or not color_room_criteria:
         return property_ids
 
@@ -188,13 +142,7 @@ async def _match_color_rooms(
 
 
 async def _load_guids(pool: asyncpg.Pool, property_ids: list[int]) -> list[str]:
-    """Load only the GUIDs for matched property IDs — a single SELECT query.
-
-    /search returns only GUIDs to clients, so loading full property data
-    (rooms, schools, etc.) just to extract the GUID is wasted work. This
-    lightweight loader replaces the previous N+1 _load_properties for the
-    /search hot path.
-    """
+    """Load GUIDs for matched IDs in one SELECT (/search returns only GUIDs)."""
     if not property_ids:
         return []
     async with pool.acquire() as conn:
@@ -206,7 +154,7 @@ async def _load_guids(pool: asyncpg.Pool, property_ids: list[int]) -> list[str]:
 
 
 def _criterion_labels(criterion) -> list[str]:
-    """Short human-readable labels for each distinct SQL condition a criterion produces."""
+    """Human-readable labels for each SQL condition a criterion produces."""
     labels: list[str] = []
     if isinstance(criterion, RoomCountCriterion):
         if criterion.exact_count is not None:
@@ -263,11 +211,7 @@ async def _collect_hard_filter_steps(
     bounds: dict | None,
     filters: dict | None = None,
 ) -> list[dict]:
-    """
-    Progressively apply bounds, then each filter key, then each LLM hard
-    criterion one at a time, recording the count after each step. Used only
-    in debug mode.
-    """
+    """Debug-only: apply bounds/filters/criteria one at a time, recording count per step."""
     steps: list[dict] = []
 
     async with pool.acquire() as conn:
@@ -330,25 +274,17 @@ async def search(
     filters: dict | None = None,
     debug: bool = False,
 ) -> dict:
+    """Run the full search pipeline. bounds restricts to a bbox; filters override LLM
+    hard-filter sub-fields; debug adds a per-step count breakdown.
     """
-    Executes the full search pipeline using PostgreSQL.
-
-    If bounds (with north/south/east/west) is provided, properties outside
-    the bounding box are excluded during Phase 2 (hard filters).
-
-    If filters is provided, those values override LLM-extracted hard filter
-    sub-fields (per-field override) — see apply_hard_filters for details.
-
-    If debug=True, a per-step count breakdown is included in the result.
-    """
-    # Phase 1: Parse query
+    # Phase 1: Parse
     logger.info(f"Phase 1: Parsing query: '{query}'")
     parsed_query = await parse_query(query)
     logger.info(f"Parsed {len(parsed_query.criteria)} criteria: {parsed_query.understood_intent}")
 
     filter_steps: list[dict] = []
 
-    # Phase 2: Hard filters (PostgreSQL indexed) — includes map bounds + filters if provided
+    # Phase 2: Hard filters (incl. bounds + filters)
     logger.info(
         f"Phase 2: Hard filters (PostgreSQL)"
         f"{' + map bounds' if bounds else ''}"
@@ -363,8 +299,7 @@ async def search(
     )
     after_hard_filter_count = len(property_ids)
 
-    # Phase 3: Proximity filters (PostGIS) — applied one criterion at a time so
-    # each proximity step can be recorded for debug.
+    # Phase 3: Proximity (one at a time so each step is recorded for debug)
     logger.info("Phase 3: Proximity filters (PostGIS)")
     proximity_criteria = [c for c in parsed_query.criteria if isinstance(c, ProximityCriterion)]
     if debug and not proximity_criteria:
@@ -384,7 +319,7 @@ async def search(
             })
     after_proximity_count = len(property_ids)
 
-    # Phase 3.5: Color-room matching (room_instances.color column)
+    # Phase 3.5: Color-room matching
     color_room_criteria = [
         c for c in parsed_query.criteria if isinstance(c, ColorRoomCriterion)
     ]
@@ -418,7 +353,7 @@ async def search(
             property_ids = await _match_color_rooms(pool, property_ids, color_room_criteria)
     after_color_room_count = len(property_ids)
 
-    # Phase 4: Feature matching with alternatives computed from the DB registry
+    # Phase 4: Feature matching (alternatives from registry)
     feature_criteria = [
         c for c in parsed_query.criteria if isinstance(c, FeatureCriterion)
     ]
@@ -430,18 +365,14 @@ async def search(
         )
         if alternatives:
             logger.info(f"Feature alternatives: {alternatives}")
-        # Sort criteria: positives before negateds; within each, shorter
-        # (base) features before longer (modifier) features. Final result is
-        # identical either way (set ops commute), but processing the BASE
-        # feature first makes the debug filter_steps narration logical:
-        #   "had a pool" → "and it's covered" (positive modifier)
-        #   "had a pool" → "but not covered" (negated modifier)
+        # Sort positives-first, base-before-modifier so debug narration reads logically
+        # (result is identical either way since set ops commute).
         feature_criteria = sorted(
             feature_criteria,
             key=lambda fc: (fc.negated, len(fc.feature.split())),
         )
         if debug:
-            # Apply each feature criterion one at a time to track progressive drops
+            # Apply one at a time to track progressive drops
             current_ids = set(property_ids)
             async with pool.acquire() as conn:
                 for fc in feature_criteria:
@@ -469,13 +400,11 @@ async def search(
             )
     after_feature_count = len(property_ids)
 
-    # Replace the LLM's noisy reconstructed_queries with the deterministic
-    # alternatives actually used for matching — this makes the debug view honest.
+    # Replace LLM reconstructed_queries with the alternatives actually used (honest debug view)
     parsed_query.reconstructed_queries = sorted(
         {alt for alts in alternatives.values() for alt in alts}
     )
 
-    # Load only the GUIDs (lightweight — /search returns only GUIDs)
     guids = await _load_guids(pool, property_ids)
 
     stats = {

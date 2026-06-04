@@ -1,7 +1,4 @@
-"""
-Deterministic Filter Engine — Uses PostgreSQL indexed queries for
-room counts, price, area, and location filtering.
-"""
+"""Deterministic filter engine: PostgreSQL indexed queries for room counts, price, area, location."""
 
 import logging
 
@@ -25,16 +22,11 @@ async def apply_hard_filters(
     bounds: dict | None = None,
     filters: dict | None = None,
 ) -> list[int]:
-    """
-    Applies deterministic filters via PostgreSQL indexed queries.
-    Returns a list of property IDs that pass ALL criteria.
+    """Return property IDs passing ALL criteria.
 
-    Args:
-      bounds:  optional dict with north/south/east/west keys.
-      filters: optional dict from the SearchRequest.filters payload.
-               Per-field override: any key here suppresses the corresponding
-               sub-condition extracted by the LLM (e.g. filters.price_max
-               replaces LLM PriceCriterion.max_price).
+    bounds: optional north/south/east/west bbox.
+    filters: optional per-field overrides; any key here suppresses the matching
+    LLM-extracted sub-condition (e.g. filters.price_max replaces PriceCriterion.max_price).
     """
     hard_criteria = [
         c for c in criteria
@@ -62,8 +54,7 @@ async def apply_hard_filters(
             params.extend([west, south, east, north])
             param_idx += 4
 
-    # Apply explicit filters first; track which atomic fields they cover so the
-    # LLM-extracted criteria below can skip the same fields.
+    # Apply explicit filters first; track covered fields so LLM criteria skip them.
     covered: set[str] = set()
     if filters:
         if filters.get("price_min") is not None:
@@ -117,7 +108,7 @@ async def apply_hard_filters(
             param_idx += 1
             covered.add("financing")
 
-    # LLM-extracted criteria. Skip any sub-condition that filters already cover.
+    # LLM-extracted criteria; skip sub-conditions already covered by filters.
     for criterion in hard_criteria:
         if isinstance(criterion, RoomCountCriterion):
             col = _room_type_to_column(criterion.room_type)
@@ -214,9 +205,8 @@ async def apply_hard_filters(
                 conditions.append(f"stories <= ${param_idx}")
                 params.append(criterion.max_stories)
                 param_idx += 1
-            # has_pool / has_waterfront intentionally NOT used.
-            # Pool and waterfront must be treated as features (feature matching only)
-            # to ensure positive + negative search results sum to the total set.
+            # has_pool / has_waterfront deliberately skipped: handled as features so
+            # positive + negative results sum to the total set.
 
     where_clause = " AND ".join(conditions) if conditions else "TRUE"
     query = f"SELECT id FROM properties WHERE {where_clause}"

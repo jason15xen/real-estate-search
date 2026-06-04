@@ -1,10 +1,4 @@
-"""
-Geospatial Search — Uses school distance data and PostGIS for proximity queries.
-
-Strategy:
-  1. Check if the landmark matches a school name in property_schools table (fast, ~5ms)
-  2. If no school match, fall back to LLM geocoding + PostGIS ST_DWithin (slow, ~2-3s)
-"""
+"""Geospatial search: match landmark to school distances (fast), else LLM geocode + PostGIS ST_DWithin."""
 
 import json
 import logging
@@ -21,7 +15,7 @@ MILES_TO_METERS = 1609.344
 
 
 def _is_rating_query(landmark_name: str) -> bool:
-    """Check if the query is about school quality rather than a specific school."""
+    """True if query is about school quality, not a specific school."""
     quality_keywords = ["good school", "great school", "top school", "best school",
                         "highly rated school", "high rated school", "quality school"]
     name_lower = landmark_name.lower()
@@ -54,16 +48,11 @@ async def _filter_by_school(
     landmark_name: str,
     max_distance_miles: float,
 ) -> list[int] | None:
-    """
-    Try to filter by school distance data. Returns filtered IDs,
-    or None if the landmark doesn't match any school.
-    """
-    # Check if this is a quality/rating query (e.g. "good schools")
+    """Filter by school distance; None if landmark matches no school."""
     if _is_rating_query(landmark_name):
         return await _filter_by_school_rating(conn, property_ids, max_distance_miles)
 
-    # Check if any school matches this landmark name
-    # Use similarity() from pg_trgm for accurate fuzzy matching (threshold 0.3)
+    # Fuzzy-match school name via pg_trgm similarity (threshold 0.3)
     rows = await conn.fetch("""
         SELECT DISTINCT ps.property_id
         FROM property_schools ps
@@ -73,7 +62,7 @@ async def _filter_by_school(
     """, property_ids, landmark_name, max_distance_miles)
 
     if not rows:
-        # Check if the school exists at all (maybe just no matches within distance)
+        # School may exist but no properties within distance
         exists = await conn.fetchval("""
             SELECT EXISTS(
                 SELECT 1 FROM property_schools
@@ -82,12 +71,10 @@ async def _filter_by_school(
         """, landmark_name)
 
         if exists:
-            # School exists but no properties within distance
             logger.info(f"School '{landmark_name}' found but no properties within {max_distance_miles} miles")
             return []
         else:
-            # Not a school — fall back to geocoding
-            return None
+            return None  # not a school -> caller falls back to geocoding
 
     result = [row["property_id"] for row in rows]
     logger.info(f"School filter '{landmark_name}' within {max_distance_miles}mi: {len(result)} properties")
@@ -95,10 +82,7 @@ async def _filter_by_school(
 
 
 async def geocode_landmark(landmark_name: str) -> tuple[float, float] | None:
-    """
-    Uses Azure OpenAI to estimate the coordinates of a named landmark.
-    Fallback for non-school landmarks.
-    """
+    """Estimate landmark coordinates via Azure OpenAI (fallback for non-school landmarks)."""
     client = get_async_client()
     try:
         response = await client.chat.completions.create(
@@ -125,7 +109,13 @@ async def geocode_landmark(landmark_name: str) -> tuple[float, float] | None:
         if "error" in data:
             logger.warning(f"Could not geocode '{landmark_name}': {data['error']}")
             return None
-        return (data["latitude"], data["longitude"])
+        lat = float(data["latitude"])
+        lon = float(data["longitude"])
+        # Reject out-of-range coords so a bad LLM response can't break ST_MakePoint.
+        if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
+            logger.warning(f"Geocode for '{landmark_name}' out of range: ({lat}, {lon})")
+            return None
+        return (lat, lon)
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
         logger.error(f"Failed to geocode '{landmark_name}': {e}")
         return None
@@ -136,10 +126,7 @@ async def apply_proximity_filters(
     property_ids: list[int],
     criteria: list[Criterion],
 ) -> list[int]:
-    """
-    Filters property IDs by proximity.
-    First tries school distance data (instant), then falls back to PostGIS geocoding.
-    """
+    """Filter IDs by proximity: try school distances first, else PostGIS geocoding."""
     proximity_criteria = [c for c in criteria if isinstance(c, ProximityCriterion)]
     if not proximity_criteria:
         return property_ids
@@ -151,17 +138,16 @@ async def apply_proximity_filters(
 
     async with pool.acquire() as conn:
         for pc in proximity_criteria:
-            # Step 1: Try school distance data (fast)
+            # Step 1: school distance data (fast)
             school_result = await _filter_by_school(
                 conn, result_ids, pc.landmark_name, pc.max_distance_miles
             )
 
             if school_result is not None:
-                # School match found — use it
                 result_ids = school_result
                 continue
 
-            # Step 2: Fall back to LLM geocoding + PostGIS (slow)
+            # Step 2: fall back to LLM geocoding + PostGIS (slow)
             logger.info(f"'{pc.landmark_name}' not a school, falling back to geocoding")
             if pc.landmark_latitude is None or pc.landmark_longitude is None:
                 coords = await geocode_landmark(pc.landmark_name)

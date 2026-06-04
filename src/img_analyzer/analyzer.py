@@ -1,10 +1,4 @@
-"""
-Image Analyzer — Sends property photos to GPT-5.1 vision to extract
-room types, dominant color, and features for real estate search indexing.
-
-Results are returned in-memory and persisted by the background worker
-into the primary tables (no data.json side-channel).
-"""
+"""GPT-5.1 vision photo analyzer: extracts room type, color, and features."""
 
 import asyncio
 import json
@@ -27,7 +21,7 @@ ALLOWED_COLORS = {
 
 
 def _normalize_color(raw: str | None) -> str | None:
-    """Coerce LLM's color output to the 13-color palette. Returns None if not recognized."""
+    """Coerce LLM color output to the 13-color palette, else None."""
     if not raw or not isinstance(raw, str):
         return None
     cleaned = raw.strip().lower()
@@ -35,7 +29,7 @@ def _normalize_color(raw: str | None) -> str | None:
         return cleaned
     if cleaned in {"", "unknown", "n/a", "none", "null"}:
         return None
-    # Best-effort fallback mapping for common synonyms the LLM might still emit
+    # Fallback synonym mapping
     SYNONYMS = {
         "ivory": "white", "cream": "white", "eggshell": "white", "off-white": "white",
         "navy": "blue", "teal": "blue", "turquoise": "blue",
@@ -60,7 +54,7 @@ def _load_features() -> str:
 
 
 def _pick_jpeg_url(photo: Photo) -> str | None:
-    """Pick the highest resolution JPEG URL from a photo."""
+    """Highest-resolution JPEG URL from a photo."""
     jpegs = photo.mixedSources.jpeg
     if not jpegs:
         return None
@@ -68,7 +62,7 @@ def _pick_jpeg_url(photo: Photo) -> str | None:
 
 
 async def analyze_single_image(url: str, system_prompt: str) -> PhotoResult:
-    """Send one image URL to GPT-5.1 vision and parse the response."""
+    """Analyze one image URL via GPT-5.1 vision."""
     client = get_async_client()
 
     response = await client.chat.completions.create(
@@ -90,7 +84,7 @@ async def analyze_single_image(url: str, system_prompt: str) -> PhotoResult:
 
     raw = response.choices[0].message.content.strip()
 
-    # Strip markdown code fences if present
+    # Strip markdown code fences
     if raw.startswith("```"):
         lines = raw.split("\n")
         lines = [line for line in lines if not line.startswith("```")]
@@ -116,10 +110,7 @@ async def analyze_photos(
     photos: list[Photo],
     concurrency: int = 5,
 ) -> list[PhotoResult]:
-    """
-    Analyze all photos for a property using GPT-5.1 vision.
-    Uses a semaphore to limit concurrent API calls.
-    """
+    """Analyze all property photos via GPT-5.1 vision, semaphore-limited."""
     base_prompt = _load_prompt()
     feature_list = _load_features()
     system_prompt = (
@@ -128,7 +119,7 @@ async def analyze_photos(
         f"{feature_list}"
     )
 
-    # Build (index, url) pairs to preserve ordering with originalPhotos
+    # (index, url) pairs to preserve originalPhotos ordering
     indexed_urls: list[tuple[int, str]] = []
     for i, photo in enumerate(photos):
         url = _pick_jpeg_url(photo)
@@ -153,16 +144,12 @@ async def analyze_photos(
                 return (idx, PhotoResult(photo_url=url, room_type="Unknown", color=None, features=[]))
 
     pairs = await asyncio.gather(*[_limited(i, u) for i, u in indexed_urls])
-    # Sort by original index
     pairs_sorted = sorted(pairs, key=lambda p: p[0])
     return [r for _, r in pairs_sorted]
 
 
 def inject_features(raw_data: list[dict], results_map: dict[str, list[PhotoResult]]) -> list[dict]:
-    """
-    Inject extracted features into the original JSON data.
-    Each photo in originalPhotos gets RoomType and Features fields added.
-    """
+    """Inject RoomType/Color/Features into each originalPhotos entry."""
     for prop in raw_data:
         prop_id = prop.get("Id", "")
         photo_results = results_map.get(prop_id, [])
@@ -172,7 +159,6 @@ def inject_features(raw_data: list[dict], results_map: dict[str, list[PhotoResul
 
         result_idx = 0
         for photo in photos:
-            # Match by checking if this photo had a JPEG URL we analyzed
             jpegs = photo.get("mixedSources", {}).get("jpeg", [])
             if jpegs:
                 if result_idx < len(photo_results):
@@ -180,6 +166,6 @@ def inject_features(raw_data: list[dict], results_map: dict[str, list[PhotoResul
                     photo["RoomType"] = pr.room_type
                     photo["Color"] = pr.color
                     photo["Features"] = pr.features
-                result_idx += 1  # Always increment for photos with JEPGs
+                result_idx += 1  # increment for every photo with JPEGs
 
     return raw_data

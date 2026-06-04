@@ -1,12 +1,8 @@
-"""
-Standalone worker process.
+"""Standalone worker process, separate from the FastAPI web tier.
 
-Runs the background worker on its own — fully separated from the FastAPI web
-tier. Both processes connect to the same Postgres; coordination happens via
-the raw_properties queue + Postgres NOTIFY (`feature_change` channel).
-
-Started by the `worker` service in docker-compose.yml:
-    python -m src.img_analyzer.worker_main
+Both connect to the same Postgres; coordination is via the raw_properties queue
+and Postgres NOTIFY (feature_change). Started by the docker-compose `worker`
+service: `python -m src.img_analyzer.worker_main`.
 """
 from __future__ import annotations
 

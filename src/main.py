@@ -1,22 +1,16 @@
-"""
-Real Estate AI Search — FastAPI Application
+"""Real Estate AI Search — FastAPI app.
 
-An AI-powered search engine that returns ONLY properties matching ALL criteria.
-The system uses a multi-phase pipeline:
-
-  1. LLM parses query → structured criteria (maps synonyms to known feature names)
-  2. Hard filters → PostgreSQL indexed queries
-  3. Proximity filters → PostGIS spatial queries
-  4. Feature matching → PostgreSQL text matching on room_instances
-
-The result: accurate results, not just "similar" ones.
+Multi-phase pipeline returning only properties matching ALL criteria:
+1. LLM parses query → structured criteria (synonyms → known features)
+2. Hard filters (Postgres) 3. Proximity filters (PostGIS)
+4. Feature matching on room_instances.
 """
 
 import asyncio
 import json
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -40,11 +34,9 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize database pool
     pool = await get_pool()
     logger.info("Database pool initialized")
 
-    # Build feature registry from PostgreSQL
     logger.info("Building feature registry from database...")
     await registry.build_from_db(pool)
     logger.info(
@@ -52,15 +44,8 @@ async def lifespan(app: FastAPI):
         f"{len(registry.room_types)} room types"
     )
 
-    # The background worker runs in its OWN container (see docker-compose.yml).
-    # The web tier just LISTENs for 'feature_change' notifications so the
-    # in-memory feature registry stays fresh when the worker discovers new
-    # room features.
-    #
-    # A supervisor task holds one dedicated pool connection, heartbeats every
-    # 30s with a cheap SELECT, and auto-reconnects on failure. This way a
-    # Postgres restart / network blip / dropped TCP session can't leave the
-    # web tier silently deaf to NOTIFYs.
+    # Web tier LISTENs for 'feature_change' to keep the in-memory registry fresh;
+    # supervisor heartbeats + reconnects so a Postgres blip can't leave us deaf to NOTIFYs.
     supervisor = _ListenerSupervisor(pool)
     supervisor_task = asyncio.create_task(supervisor.run())
     logger.info("LISTEN feature_change supervisor started")
@@ -93,12 +78,10 @@ async def _on_feature_change(_connection, _pid, channel, _payload):
 
 
 class _ListenerSupervisor:
-    """Holds a dedicated LISTEN connection and reconnects on failure.
+    """Dedicated LISTEN connection that reconnects on failure.
 
-    The asyncpg pool can't auto-recover a LISTEN connection because LISTEN
-    state lives on the server-side session — if the session dies, the
-    subscription dies with it. We probe every HEARTBEAT_SEC with a trivial
-    SELECT; if it raises, we drop the connection and re-acquire+re-LISTEN.
+    LISTEN state lives on the server session, so the pool can't auto-recover it.
+    Probe every HEARTBEAT_SEC with SELECT 1; on error, re-acquire and re-LISTEN.
     """
 
     HEARTBEAT_SEC = 30
@@ -120,8 +103,7 @@ class _ListenerSupervisor:
                 logger.info("LISTENing for feature_change notifications")
                 while not self._stopping:
                     await asyncio.sleep(self.HEARTBEAT_SEC)
-                    # Cheap probe; raises if the underlying session is gone.
-                    await conn.fetchval("SELECT 1")
+                    await conn.fetchval("SELECT 1")  # raises if session is gone
             except asyncio.CancelledError:
                 raise
             except Exception as e:
@@ -153,7 +135,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    # Must be False with wildcard origin (CORS spec forbids the combo); API is token/cookie-free.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -168,7 +151,7 @@ _log_write_lock = asyncio.Lock()
 
 
 def _normalize_bounds(body: dict) -> dict:
-    """Ensure bounds values are logged as floats, even if the client sent strings."""
+    """Coerce bounds values to floats for logging."""
     bounds = body.get("bounds")
     if isinstance(bounds, dict):
         for key in ("north", "south", "east", "west"):
@@ -202,7 +185,7 @@ def _decode_body(raw: bytes, content_type: str) -> dict | str | None:
 
 
 def _weekly_log_path() -> Path:
-    year, week, _ = datetime.utcnow().isocalendar()
+    year, week, _ = datetime.now(timezone.utc).isocalendar()
     return LOG_DIR / f"{year}-W{week:02d}.json"
 
 
@@ -344,7 +327,7 @@ async def search_properties(request: SearchRequest):
             request.filters.model_dump(exclude_none=True) if request.filters else None
         )
         if filters_dict is not None and not filters_dict:
-            filters_dict = None  # treat empty {} as no filters
+            filters_dict = None  # empty {} = no filters
 
         result = await search(
             request.query,
@@ -406,7 +389,7 @@ async def get_property(guid: str):
             SELECT room_type, instance_index, features
             FROM room_instances
             WHERE property_id = $1
-              AND room_type != 'Unknown'    -- hide internal photo-URL claim stubs
+              AND room_type != 'Unknown'    -- hide internal claim stubs
             ORDER BY room_type, instance_index
         """, prop_row["id"])
 
