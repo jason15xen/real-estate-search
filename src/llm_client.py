@@ -20,6 +20,29 @@ def get_async_client() -> AsyncAzureOpenAI:
     )
 
 
+def _azure_resource_base(endpoint: str) -> str:
+    """Strip /openai[/v1] suffixes — AsyncAzureOpenAI builds the deployment URL
+    itself from the resource base. The .env value sometimes carries the full
+    /openai/v1/ path from the Azure Foundry portal."""
+    e = (endpoint or "").rstrip("/")
+    for suffix in ("/openai/v1", "/openai"):
+        if e.endswith(suffix):
+            e = e[: -len(suffix)]
+            break
+    return e
+
+
+@lru_cache(maxsize=1)
+def get_test_async_client() -> AsyncAzureOpenAI:
+    """Secondary Azure OpenAI client for /test/compare-vision A/B comparisons.
+    Reads TEST_AZURE_OPENAI_* env vars; falls back to the primary api_version."""
+    return AsyncAzureOpenAI(
+        api_key=settings.test_azure_openai_api_key,
+        azure_endpoint=_azure_resource_base(settings.test_azure_openai_endpoint),
+        api_version=settings.azure_openai_api_version,
+    )
+
+
 def _claude_base_url() -> str:
     """Normalize endpoint into an Anthropic base_url. The SDK appends
     /v1/messages itself, so strip that suffix (and trailing slashes)."""

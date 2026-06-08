@@ -1,0 +1,119 @@
+{
+  "first": {
+    "photo_url": "https://photos.zillowstatic.com/fp/ce9a744a03f0990485282e2a7d31e48c-uncropped_scaled_within_1536_1152.jpg",
+    "primary": {
+      "deployment": "gpt-5.1",
+      "model": "gpt-5.1",
+      "result": {
+        "photo_url": "https://photos.zillowstatic.com/fp/ce9a744a03f0990485282e2a7d31e48c-uncropped_scaled_within_1536_1152.jpg",
+        "room_type": "Exterior",
+        "color": "green",
+        "features": [
+          "community park",
+          "playground",
+          "tennis courts",
+          "basketball courts",
+          "walking paths",
+          "lakes",
+          "fenced green space",
+          "paved parking lot",
+          "suburban neighborhood",
+          "planned community",
+          "recreational amenities",
+          "contemporary"
+        ]
+      },
+      "parse_ok": true
+    },
+    "secondary": {
+      "deployment": "gpt-5.4-mini-ingestion",
+      "model": "gpt-5.4-mini",
+      "result": {
+        "photo_url": "https://photos.zillowstatic.com/fp/ce9a744a03f0990485282e2a7d31e48c-uncropped_scaled_within_1536_1152.jpg",
+        "room_type": "Exterior",
+        "color": "green",
+        "features": [
+          "community park",
+          "tennis courts",
+          "playground",
+          "lake",
+          "walking paths",
+          "white fence",
+          "parking lot",
+          "suburban neighborhood",
+          "aerial view",
+          "green space",
+          "recreational amenities",
+          "modern community"
+        ]
+      }
+    }
+  },
+  "second": {
+    "photo_url": "https://photos.zillowstatic.com/fp/ce9a744a03f0990485282e2a7d31e48c-uncropped_scaled_within_1536_1152.jpg",
+    "primary": {
+      "deployment": "gpt-5.1",
+      "model": "gpt-5.1",
+      "latency_seconds": 6.007,
+      "usage": {
+        "prompt_tokens": 4259,
+        "completion_tokens": 114,
+        "total_tokens": 4373,
+        "cached_input_tokens": 0
+      },
+      "result": {
+        "photo_url": "https://photos.zillowstatic.com/fp/ce9a744a03f0990485282e2a7d31e48c-uncropped_scaled_within_1536_1152.jpg",
+        "room_type": "Exterior",
+        "color": "green",
+        "features": [
+          "community amenities",
+          "tennis courts",
+          "basketball courts",
+          "playground",
+          "community park",
+          "walking paths",
+          "pond view",
+          "lakeside setting",
+          "open green space",
+          "fenced common areas",
+          "paved parking lot",
+          "suburban neighborhood",
+          "planned community",
+          "contemporary"
+        ]
+      },
+      "parse_ok": true
+    },
+    "secondary": {
+      "deployment": "gpt-5.4-mini-ingestion",
+      "model": "gpt-5.4-mini",
+      "latency_seconds": 3.854,
+      "usage": {
+        "prompt_tokens": 4435,
+        "completion_tokens": 96,
+        "total_tokens": 4531,
+        "cached_input_tokens": 0
+      },
+      "result": {
+        "photo_url": "https://photos.zillowstatic.com/fp/ce9a744a03f0990485282e2a7d31e48c-uncropped_scaled_within_1536_1152.jpg",
+        "room_type": "Exterior",
+        "color": "green",
+        "features": [
+          "tennis courts",
+          "playground",
+          "pond",
+          "suburban neighborhood",
+          "paved parking lot",
+          "white fencing",
+          "landscaped grounds",
+          "basketball courts",
+          "recreation area",
+          "aerial view",
+          "modern community",
+          "planned development"
+        ]
+      },
+      "parse_ok": true
+    }
+  }
+}

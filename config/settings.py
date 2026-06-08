@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     azure_openai_deployment_for_query: str = "claude-opus-4-7-dev"
     azure_openai_model_for_query: str = "claude-opus-4-7"
 
+    # Secondary Azure OpenAI deployment for A/B comparison (gpt-5.4-mini or
+    # whatever is configured). Used only by the /test/compare-vision endpoint
+    # — production vision analysis still uses the primary AZURE_OPENAI_*.
+    test_azure_openai_api_key: str = ""
+    test_azure_openai_endpoint: str = ""
+    test_azure_openai_deployment: str = ""
+    test_azure_openai_model: str = ""
+
     # PostgreSQL
     postgres_host: str = "localhost"
     postgres_port: int = 5432
