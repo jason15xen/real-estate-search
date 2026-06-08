@@ -22,6 +22,7 @@ from config.settings import settings
 from src.data.database import close_pool, get_pool
 from src.data.feature_registry import registry
 from src.img_analyzer.router import router as img_analyzer_router
+from src.img_analyzer.test_router import router as vision_test_router
 from src.models.search import ParsedQuery
 from src.search.orchestrator import search
 
@@ -142,6 +143,7 @@ app.add_middleware(
 )
 
 app.include_router(img_analyzer_router)
+app.include_router(vision_test_router)
 
 
 LOG_DIR = Path(settings.log_dir)
