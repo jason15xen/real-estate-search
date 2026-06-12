@@ -1,0 +1,440 @@
+[
+  {
+    "url": "https://photos.zillowstatic.com/fp/241fdd9ea6d44f14b4c41f3e3269d91c-uncropped_scaled_within_1536_1152.jpg",
+    "prod": {
+      "RoomType": "Bathroom",
+      "Color": "white",
+      "Features": [
+        "walk-in shower",
+        "tile shower surround",
+        "shower curtain",
+        "tile flooring",
+        "white vanity",
+        "shaker cabinets",
+        "solid surface countertop",
+        "undermount sink",
+        "single vanity",
+        "modern faucet",
+        "oval mirror",
+        "wall sconce lighting",
+        "open wall shelf",
+        "contemporary",
+        "recently renovated interior"
+      ]
+    },
+    "prod_in": 4259,
+    "prod_out": 121,
+    "test": {
+      "RoomType": "Bathroom",
+      "Color": "white",
+      "Features": [
+        "single vanity",
+        "white vanity",
+        "quartz countertop",
+        "walk-in shower",
+        "tile shower",
+        "glass shower enclosure",
+        "round mirror",
+        "light fixture",
+        "mosaic tile flooring",
+        "modern",
+        "contemporary"
+      ]
+    },
+    "test_in": 4411,
+    "test_out": 73
+  },
+  {
+    "url": "https://photos.zillowstatic.com/fp/b5eb7a82cafddb034800b0ee24261bf2-uncropped_scaled_within_1536_1152.jpg",
+    "prod": {
+      "RoomType": "Bathroom",
+      "Color": "white",
+      "Features": [
+        "single vanity",
+        "white vanity",
+        "white countertops",
+        "undermount sink",
+        "black faucet",
+        "black hardware",
+        "framed mirror",
+        "tile shower",
+        "walk-in shower",
+        "black shower fixtures",
+        "wall sconce lighting",
+        "towel bar",
+        "tile flooring",
+        "painted walls",
+        "contemporary",
+        "modern"
+      ]
+    },
+    "prod_in": 3979,
+    "prod_out": 122,
+    "test": {
+      "RoomType": "Bathroom",
+      "Color": "white",
+      "Features": [
+        "single vanity",
+        "white vanity",
+        "rectangular mirror",
+        "modern faucet",
+        "quartz countertop",
+        "undermount sink",
+        "black hardware",
+        "wall mirror",
+        "recessed lighting",
+        "painted walls",
+        "modern",
+        "contemporary"
+      ]
+    },
+    "test_in": 4189,
+    "test_out": 79
+  },
+  {
+    "url": "https://photos.zillowstatic.com/fp/b8054c72206ca630978de72585e335d5-uncropped_scaled_within_1536_1152.jpg",
+    "prod": {
+      "RoomType": "Bedroom",
+      "Color": "gray",
+      "Features": [
+        "ceiling fan",
+        "recessed ceiling light",
+        "laminate flooring",
+        "wood-look flooring",
+        "gray walls",
+        "white baseboards",
+        "two windows",
+        "blinds",
+        "wall tv mount",
+        "modern",
+        "contemporary"
+      ]
+    },
+    "prod_in": 4259,
+    "prod_out": 96,
+    "test": {
+      "RoomType": "Bedroom",
+      "Color": "gray",
+      "Features": [
+        "hardwood flooring",
+        "ceiling fan",
+        "painted walls",
+        "window blinds",
+        "baseboards",
+        "neutral interior",
+        "modern"
+      ]
+    },
+    "test_in": 4579,
+    "test_out": 55
+  },
+  {
+    "url": "https://photos.zillowstatic.com/fp/5a36049dda96bc3cdac01bf193dd88ed-uncropped_scaled_within_1536_1152.jpg",
+    "prod": {
+      "RoomType": "Bedroom",
+      "Color": "beige",
+      "Features": [
+        "children's bedroom",
+        "playroom",
+        "vinyl flooring",
+        "wood-look flooring",
+        "white walls",
+        "ceiling fan",
+        "closet",
+        "large window",
+        "sheer curtains",
+        "white trim",
+        "recessed wall vent",
+        "toy storage cubbies",
+        "built-in shelving",
+        "contemporary"
+      ]
+    },
+    "prod_in": 4259,
+    "prod_out": 116,
+    "test": {
+      "RoomType": "Bedroom",
+      "Color": "white",
+      "Features": [
+        "ceiling fan",
+        "carpet-free flooring",
+        "vinyl plank flooring",
+        "closet",
+        "window",
+        "natural light",
+        "painted walls",
+        "baseboards",
+        "modern"
+      ]
+    },
+    "test_in": 4411,
+    "test_out": 65
+  },
+  {
+    "url": "https://photos.zillowstatic.com/fp/fd9704e1995ad550b2afdf6603b88ba1-uncropped_scaled_within_1536_1152.jpg",
+    "prod": {
+      "RoomType": "Exterior",
+      "Color": "brown",
+      "Features": [
+        "screened porch",
+        "covered patio",
+        "patio door",
+        "metal roof",
+        "stone landscape border",
+        "concrete walkway",
+        "backyard lawn",
+        "single-story exterior",
+        "dog door",
+        "contemporary"
+      ]
+    },
+    "prod_in": 4259,
+    "prod_out": 90,
+    "test": {
+      "RoomType": "Exterior",
+      "Color": "gray",
+      "Features": [
+        "screened porch",
+        "metal roof",
+        "concrete walkway",
+        "sliding screen door",
+        "painted stucco exterior",
+        "screen enclosure",
+        "covered patio",
+        "single-story home",
+        "modern",
+        "contemporary"
+      ]
+    },
+    "test_in": 4579,
+    "test_out": 72
+  },
+  {
+    "url": "https://photos.zillowstatic.com/fp/23d3686fd6e2a359ec09e1c86b45b31f-uncropped_scaled_within_1536_1152.jpg",
+    "prod": {
+      "RoomType": "Exterior",
+      "Color": "beige",
+      "Features": [
+        "stucco exterior",
+        "beige exterior walls",
+        "slab foundation",
+        "single story",
+        "gable roof",
+        "asphalt shingle roof",
+        "covered eaves",
+        "double hung windows",
+        "screened porch",
+        "central air conditioning",
+        "outdoor HVAC unit",
+        "gas meter",
+        "exterior utility connections",
+        "rain gutters",
+        "downspouts",
+        "gravel landscaping border",
+        "utility side yard",
+        "1970s",
+        "traditional exterior"
+      ]
+    },
+    "prod_in": 4259,
+    "prod_out": 150,
+    "test": {
+      "RoomType": "Exterior",
+      "Color": "beige",
+      "Features": [
+        "stucco exterior",
+        "beige siding",
+        "gable roof",
+        "eaves",
+        "double-hung windows",
+        "HVAC condenser",
+        "utility meters",
+        "exposed piping",
+        "screened porch",
+        "gravel landscaping",
+        "concrete foundation",
+        "side yard"
+      ]
+    },
+    "test_in": 4579,
+    "test_out": 83
+  },
+  {
+    "url": "https://photos.zillowstatic.com/fp/79ed1592cba1ed162d625b6f7413d7d4-uncropped_scaled_within_1536_1152.jpg",
+    "prod": {
+      "RoomType": "Kitchen",
+      "Color": "white",
+      "Features": [
+        "white cabinets",
+        "stainless refrigerator",
+        "quartz countertops",
+        "tile backsplash",
+        "large window",
+        "vinyl plank flooring",
+        "pantry cabinets",
+        "coffee station",
+        "recessed lighting",
+        "contemporary",
+        "modern"
+      ]
+    },
+    "prod_in": 4259,
+    "prod_out": 95,
+    "test": {
+      "RoomType": "Kitchen",
+      "Color": "white",
+      "Features": [
+        "white cabinets",
+        "stainless steel refrigerator",
+        "hardwood flooring",
+        "window",
+        "natural light",
+        "built-in desk",
+        "recessed lighting",
+        "textured ceiling",
+        "modern",
+        "open layout"
+      ]
+    },
+    "test_in": 4411,
+    "test_out": 83
+  },
+  {
+    "url": "https://photos.zillowstatic.com/fp/d3eeb258436bebecae4f8d3e2a857225-uncropped_scaled_within_1536_1152.jpg",
+    "prod": {
+      "RoomType": "Kitchen",
+      "Color": "white",
+      "Features": [
+        "open kitchen",
+        "U-shaped kitchen",
+        "white shaker cabinets",
+        "white countertops",
+        "stainless dishwasher",
+        "double sink",
+        "tile backsplash",
+        "vinyl flooring",
+        "wood-look flooring",
+        "sliding glass doors",
+        "dining area",
+        "recessed lighting",
+        "modern light fixture",
+        "natural light emphasis",
+        "contemporary"
+      ]
+    },
+    "prod_in": 4259,
+    "prod_out": 121,
+    "test": {
+      "RoomType": "Kitchen",
+      "Color": "white",
+      "Features": [
+        "white shaker cabinets",
+        "white quartz countertops",
+        "island",
+        "double sink",
+        "stainless dishwasher",
+        "vinyl plank flooring",
+        "open floor plan",
+        "recessed lighting",
+        "modern",
+        "contemporary",
+        "dining area"
+      ]
+    },
+    "test_in": 4411,
+    "test_out": 91
+  },
+  {
+    "url": "https://photos.zillowstatic.com/fp/a9955f9f38bc87da9f6f5b24e0f0cd86-uncropped_scaled_within_1536_1152.jpg",
+    "prod": {
+      "RoomType": "Living Room",
+      "Color": "gray",
+      "Features": [
+        "open floor plan",
+        "living room",
+        "breakfast bar",
+        "fireplace",
+        "tile fireplace surround",
+        "built-in shelving",
+        "built-in cabinetry",
+        "wood-look flooring",
+        "vinyl flooring",
+        "recessed lighting",
+        "ceiling fan",
+        "pendant lighting",
+        "sliding glass doors",
+        "double glass doors",
+        "white trim",
+        "gray walls",
+        "tray ceiling detail",
+        "contemporary"
+      ]
+    },
+    "prod_in": 4259,
+    "prod_out": 140,
+    "test": {
+      "RoomType": "Living Room",
+      "Color": "gray",
+      "Features": [
+        "hardwood flooring",
+        "painted walls",
+        "recessed lighting",
+        "ceiling fan",
+        "fireplace",
+        "built-in shelving",
+        "sliding glass doors",
+        "open floor plan",
+        "modern interior",
+        "contemporary"
+      ]
+    },
+    "test_in": 4579,
+    "test_out": 75
+  },
+  {
+    "url": "https://photos.zillowstatic.com/fp/47583d6aeaae573057081b094bbe2b27-uncropped_scaled_within_1536_1152.jpg",
+    "prod": {
+      "RoomType": "Living Room",
+      "Color": "gray",
+      "Features": [
+        "entry foyer",
+        "sliding barn doors",
+        "glass barn doors",
+        "frosted glass doors",
+        "transom-style doors",
+        "wood-look flooring",
+        "vinyl flooring",
+        "large windows",
+        "picture windows",
+        "white front door",
+        "decorative glass front door",
+        "side light windows",
+        "gray walls",
+        "white trim",
+        "baseboards",
+        "ceiling light fixture",
+        "natural light emphasis",
+        "contemporary",
+        "modern"
+      ]
+    },
+    "prod_in": 4259,
+    "prod_out": 147,
+    "test": {
+      "RoomType": "Living Room",
+      "Color": "gray",
+      "Features": [
+        "sliding barn door",
+        "glass door",
+        "large windows",
+        "laminate flooring",
+        "painted walls",
+        "natural light",
+        "modern",
+        "contemporary"
+      ]
+    },
+    "test_in": 4579,
+    "test_out": 72
+  }
+]

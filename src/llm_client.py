@@ -62,3 +62,32 @@ def get_claude_client() -> AsyncAnthropic:
         api_key=settings.azure_openai_api_key_for_query,
         base_url=_claude_base_url(),
     )
+
+
+@lru_cache(maxsize=1)
+def get_embedding_client() -> AsyncAzureOpenAI:
+    """Dedicated Azure OpenAI client for the embedding deployment (own endpoint
+    + key from EMBEDDING_SMALL_*)."""
+    return AsyncAzureOpenAI(
+        api_key=settings.embedding_small_api_key,
+        azure_endpoint=_azure_resource_base(settings.embedding_small_endpoint),
+        api_version=settings.azure_openai_api_version,
+    )
+
+
+async def embed_texts(texts: list[str]) -> list[list[float]]:
+    """Embed a batch of strings with the dedicated Azure embedding deployment.
+
+    Returns one 1536-dim vector per input, in the same order. Empty input →
+    empty list.
+    """
+    if not texts:
+        return []
+    client = get_embedding_client()
+    resp = await client.embeddings.create(
+        model=settings.embedding_small_deployment,
+        input=texts,
+    )
+    # API returns results in request order; sort by index defensively.
+    ordered = sorted(resp.data, key=lambda d: d.index)
+    return [d.embedding for d in ordered]

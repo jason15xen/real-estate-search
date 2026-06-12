@@ -5,6 +5,7 @@
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS vector;   -- pgvector: feature-embedding similarity search
 
 -- ============================================================
 -- TABLES
@@ -119,6 +120,21 @@ CREATE TABLE property_schools (
     link            TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Feature embeddings — one row per distinct feature string seen in
+-- room_instances.features. Populated by the embedding-sync pipeline at app
+-- startup and on NOTIFY feature_change. Used by /search Phase 4: the user's
+-- raw feature phrase is embedded and cosine-searched here to retrieve the
+-- top-K semantically-nearest DB features as candidates (then a second LLM
+-- call filters them for precision).
+CREATE TABLE feature_embeddings (
+    feature      TEXT PRIMARY KEY,
+    embedding    vector(1536) NOT NULL,   -- text-embedding-3-small dimension
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- HNSW index for fast approximate cosine-similarity search.
+CREATE INDEX idx_feature_embeddings_hnsw
+    ON feature_embeddings USING hnsw (embedding vector_cosine_ops);
 
 -- ============================================================
 -- INDEXES

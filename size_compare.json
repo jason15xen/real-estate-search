@@ -1,0 +1,734 @@
+[
+  {
+    "url_1536": "https://photos.zillowstatic.com/fp/241fdd9ea6d44f14b4c41f3e3269d91c-uncropped_scaled_within_1536_1152.jpg",
+    "baseline_1536": {
+      "RoomType": "Bathroom",
+      "Color": "white",
+      "Features": [
+        "walk-in shower",
+        "tile shower surround",
+        "shower curtain",
+        "tile flooring",
+        "white vanity",
+        "shaker cabinets",
+        "solid surface countertop",
+        "undermount sink",
+        "single vanity",
+        "modern faucet",
+        "oval mirror",
+        "wall sconce lighting",
+        "open wall shelf",
+        "contemporary",
+        "recently renovated interior"
+      ]
+    },
+    "dims_768": [
+      768,
+      512
+    ],
+    "result_768": {
+      "RoomType": "Bathroom",
+      "Color": "white",
+      "Features": [
+        "walk-in shower",
+        "tile shower walls",
+        "tile shower floor",
+        "shower curtain",
+        "single vanity",
+        "white vanity",
+        "solid surface countertop",
+        "undermount sink",
+        "single lever faucet",
+        "framed mirror",
+        "wall sconces",
+        "tile flooring",
+        "open shelving",
+        "modern",
+        "contemporary"
+      ]
+    },
+    "tok_768_in": 3699,
+    "tok_768_out": 118,
+    "dims_384": [
+      384,
+      256
+    ],
+    "result_384": {
+      "RoomType": "Bathroom",
+      "Color": "white",
+      "Features": [
+        "walk-in shower",
+        "tile shower",
+        "shower curtain",
+        "single vanity",
+        "white countertops",
+        "gray cabinets",
+        "oval mirror",
+        "vanity lighting",
+        "tile flooring",
+        "floating shelf",
+        "contemporary",
+        "modern"
+      ]
+    },
+    "tok_384_in": 3559,
+    "tok_384_out": 96
+  },
+  {
+    "url_1536": "https://photos.zillowstatic.com/fp/b5eb7a82cafddb034800b0ee24261bf2-uncropped_scaled_within_1536_1152.jpg",
+    "baseline_1536": {
+      "RoomType": "Bathroom",
+      "Color": "white",
+      "Features": [
+        "single vanity",
+        "white vanity",
+        "white countertops",
+        "undermount sink",
+        "black faucet",
+        "black hardware",
+        "framed mirror",
+        "tile shower",
+        "walk-in shower",
+        "black shower fixtures",
+        "wall sconce lighting",
+        "towel bar",
+        "tile flooring",
+        "painted walls",
+        "contemporary",
+        "modern"
+      ]
+    },
+    "dims_768": [
+      768,
+      512
+    ],
+    "result_768": {
+      "RoomType": "Bathroom",
+      "Color": "white",
+      "Features": [
+        "white vanity",
+        "single vanity",
+        "solid surface countertop",
+        "undermount sink",
+        "black faucet",
+        "black cabinet hardware",
+        "frameless mirror",
+        "wall sconce lighting",
+        "tile shower",
+        "walk-in shower",
+        "shower niche",
+        "black shower fixtures",
+        "painted walls",
+        "contemporary",
+        "modern"
+      ]
+    },
+    "tok_768_in": 3699,
+    "tok_768_out": 119,
+    "dims_384": [
+      384,
+      256
+    ],
+    "result_384": {
+      "RoomType": "Bathroom",
+      "Color": "white",
+      "Features": [
+        "white vanity",
+        "shaker cabinets",
+        "black hardware",
+        "black faucet",
+        "solid surface countertop",
+        "large mirror",
+        "tile shower",
+        "walk-in shower",
+        "wall sconce lighting",
+        "towel bar",
+        "basket storage",
+        "modern",
+        "contemporary"
+      ]
+    },
+    "tok_384_in": 3559,
+    "tok_384_out": 104
+  },
+  {
+    "url_1536": "https://photos.zillowstatic.com/fp/b8054c72206ca630978de72585e335d5-uncropped_scaled_within_1536_1152.jpg",
+    "baseline_1536": {
+      "RoomType": "Bedroom",
+      "Color": "gray",
+      "Features": [
+        "ceiling fan",
+        "recessed ceiling light",
+        "laminate flooring",
+        "wood-look flooring",
+        "gray walls",
+        "white baseboards",
+        "two windows",
+        "blinds",
+        "wall tv mount",
+        "modern",
+        "contemporary"
+      ]
+    },
+    "dims_768": [
+      768,
+      432
+    ],
+    "result_768": {
+      "RoomType": "Bedroom",
+      "Color": "gray",
+      "Features": [
+        "hardwood flooring",
+        "gray walls",
+        "white baseboards",
+        "ceiling fan",
+        "large windows",
+        "double-hung windows",
+        "recessed lighting",
+        "painted walls",
+        "contemporary"
+      ]
+    },
+    "tok_768_in": 3699,
+    "tok_768_out": 87,
+    "dims_384": [
+      384,
+      216
+    ],
+    "result_384": {
+      "RoomType": "Bedroom",
+      "Color": "gray",
+      "Features": [
+        "gray walls",
+        "wood-look flooring",
+        "vinyl flooring",
+        "ceiling fan",
+        "baseboards",
+        "multiple windows",
+        "blinds",
+        "recessed wall niche",
+        "neutral decor",
+        "contemporary"
+      ]
+    },
+    "tok_384_in": 3559,
+    "tok_384_out": 90
+  },
+  {
+    "url_1536": "https://photos.zillowstatic.com/fp/5a36049dda96bc3cdac01bf193dd88ed-uncropped_scaled_within_1536_1152.jpg",
+    "baseline_1536": {
+      "RoomType": "Bedroom",
+      "Color": "beige",
+      "Features": [
+        "children's bedroom",
+        "playroom",
+        "vinyl flooring",
+        "wood-look flooring",
+        "white walls",
+        "ceiling fan",
+        "closet",
+        "large window",
+        "sheer curtains",
+        "white trim",
+        "recessed wall vent",
+        "toy storage cubbies",
+        "built-in shelving",
+        "contemporary"
+      ]
+    },
+    "dims_768": [
+      768,
+      512
+    ],
+    "result_768": {
+      "RoomType": "Bedroom",
+      "Color": "beige",
+      "Features": [
+        "hardwood flooring",
+        "ceiling fan",
+        "recessed lighting",
+        "white walls",
+        "large window",
+        "sheer curtains",
+        "closet",
+        "built-in shelving",
+        "playroom",
+        "children\u2019s bedroom",
+        "modern",
+        "contemporary"
+      ]
+    },
+    "tok_768_in": 3699,
+    "tok_768_out": 101,
+    "dims_384": [
+      384,
+      256
+    ],
+    "result_384": {
+      "RoomType": "Living Room",
+      "Color": "beige",
+      "Features": [
+        "playroom",
+        "laminate flooring",
+        "ceiling fan",
+        "white walls",
+        "large window",
+        "natural light emphasis",
+        "storage cubbies",
+        "built-in shelving",
+        "children's play area",
+        "modern",
+        "contemporary"
+      ]
+    },
+    "tok_384_in": 3559,
+    "tok_384_out": 97
+  },
+  {
+    "url_1536": "https://photos.zillowstatic.com/fp/fd9704e1995ad550b2afdf6603b88ba1-uncropped_scaled_within_1536_1152.jpg",
+    "baseline_1536": {
+      "RoomType": "Exterior",
+      "Color": "brown",
+      "Features": [
+        "screened porch",
+        "covered patio",
+        "patio door",
+        "metal roof",
+        "stone landscape border",
+        "concrete walkway",
+        "backyard lawn",
+        "single-story exterior",
+        "dog door",
+        "contemporary"
+      ]
+    },
+    "dims_768": [
+      768,
+      432
+    ],
+    "result_768": {
+      "RoomType": "Exterior",
+      "Color": "brown",
+      "Features": [
+        "screened porch",
+        "screened patio",
+        "covered patio",
+        "metal roof",
+        "stone walkway",
+        "gravel landscaping",
+        "backyard",
+        "fenced yard",
+        "single-story exterior",
+        "ranch-style exterior",
+        "outdoor lighting",
+        "contemporary"
+      ]
+    },
+    "tok_768_in": 3699,
+    "tok_768_out": 102,
+    "dims_384": [
+      384,
+      216
+    ],
+    "result_384": {
+      "RoomType": "Exterior",
+      "Color": "brown",
+      "Features": [
+        "screened porch",
+        "screened patio",
+        "covered patio",
+        "concrete walkway",
+        "rock landscaping",
+        "metal roof",
+        "single-story exterior",
+        "backyard",
+        "patio door",
+        "window screens",
+        "contemporary"
+      ]
+    },
+    "tok_384_in": 3559,
+    "tok_384_out": 94
+  },
+  {
+    "url_1536": "https://photos.zillowstatic.com/fp/23d3686fd6e2a359ec09e1c86b45b31f-uncropped_scaled_within_1536_1152.jpg",
+    "baseline_1536": {
+      "RoomType": "Exterior",
+      "Color": "beige",
+      "Features": [
+        "stucco exterior",
+        "beige exterior walls",
+        "slab foundation",
+        "single story",
+        "gable roof",
+        "asphalt shingle roof",
+        "covered eaves",
+        "double hung windows",
+        "screened porch",
+        "central air conditioning",
+        "outdoor HVAC unit",
+        "gas meter",
+        "exterior utility connections",
+        "rain gutters",
+        "downspouts",
+        "gravel landscaping border",
+        "utility side yard",
+        "1970s",
+        "traditional exterior"
+      ]
+    },
+    "dims_768": [
+      768,
+      432
+    ],
+    "result_768": {
+      "RoomType": "Exterior",
+      "Color": "beige",
+      "Features": [
+        "stucco exterior",
+        "single-story exterior",
+        "asphalt shingle roof",
+        "central air conditioning",
+        "outdoor HVAC unit",
+        "gutter system",
+        "downspouts",
+        "energy-efficient windows",
+        "double-hung windows",
+        "vinyl soffits",
+        "exterior utility connections",
+        "rock landscaping strip",
+        "fenced yard",
+        "contemporary"
+      ]
+    },
+    "tok_768_in": 3699,
+    "tok_768_out": 124,
+    "dims_384": [
+      384,
+      216
+    ],
+    "result_384": {
+      "RoomType": "Exterior",
+      "Color": "beige",
+      "Features": [
+        "single-story exterior",
+        "stucco exterior",
+        "beige exterior walls",
+        "asphalt shingle roof",
+        "covered eaves",
+        "exterior lighting",
+        "central air conditioning unit",
+        "hvac condenser",
+        "utility meters",
+        "exterior utility hookups",
+        "rock landscaping border",
+        "side yard",
+        "contemporary"
+      ]
+    },
+    "tok_384_in": 3559,
+    "tok_384_out": 115
+  },
+  {
+    "url_1536": "https://photos.zillowstatic.com/fp/79ed1592cba1ed162d625b6f7413d7d4-uncropped_scaled_within_1536_1152.jpg",
+    "baseline_1536": {
+      "RoomType": "Kitchen",
+      "Color": "white",
+      "Features": [
+        "white cabinets",
+        "stainless refrigerator",
+        "quartz countertops",
+        "tile backsplash",
+        "large window",
+        "vinyl plank flooring",
+        "pantry cabinets",
+        "coffee station",
+        "recessed lighting",
+        "contemporary",
+        "modern"
+      ]
+    },
+    "dims_768": [
+      768,
+      512
+    ],
+    "result_768": {
+      "RoomType": "Kitchen",
+      "Color": "white",
+      "Features": [
+        "white cabinets",
+        "stainless refrigerator",
+        "stone countertops",
+        "large window",
+        "tile backsplash",
+        "wood-look flooring",
+        "open layout",
+        "recessed lighting",
+        "contemporary"
+      ]
+    },
+    "tok_768_in": 3699,
+    "tok_768_out": 83,
+    "dims_384": [
+      384,
+      256
+    ],
+    "result_384": {
+      "RoomType": "Kitchen",
+      "Color": "white",
+      "Features": [
+        "stainless refrigerator",
+        "white cabinets",
+        "cabinet pantry wall",
+        "tile backsplash",
+        "window over sink",
+        "vinyl plank flooring",
+        "white countertops",
+        "painted walls",
+        "recessed lighting",
+        "contemporary"
+      ]
+    },
+    "tok_384_in": 3559,
+    "tok_384_out": 93
+  },
+  {
+    "url_1536": "https://photos.zillowstatic.com/fp/d3eeb258436bebecae4f8d3e2a857225-uncropped_scaled_within_1536_1152.jpg",
+    "baseline_1536": {
+      "RoomType": "Kitchen",
+      "Color": "white",
+      "Features": [
+        "open kitchen",
+        "U-shaped kitchen",
+        "white shaker cabinets",
+        "white countertops",
+        "stainless dishwasher",
+        "double sink",
+        "tile backsplash",
+        "vinyl flooring",
+        "wood-look flooring",
+        "sliding glass doors",
+        "dining area",
+        "recessed lighting",
+        "modern light fixture",
+        "natural light emphasis",
+        "contemporary"
+      ]
+    },
+    "dims_768": [
+      768,
+      512
+    ],
+    "result_768": {
+      "RoomType": "Kitchen",
+      "Color": "white",
+      "Features": [
+        "open kitchen",
+        "U-shaped kitchen",
+        "white shaker cabinets",
+        "white countertops",
+        "tile backsplash",
+        "stainless dishwasher",
+        "stainless sink",
+        "window over sink",
+        "vinyl flooring",
+        "recessed lighting",
+        "modern",
+        "contemporary",
+        "open floor plan",
+        "sliding glass doors",
+        "breakfast bar",
+        "ceiling light fixture"
+      ]
+    },
+    "tok_768_in": 3699,
+    "tok_768_out": 127,
+    "dims_384": [
+      384,
+      256
+    ],
+    "result_384": {
+      "RoomType": "Kitchen",
+      "Color": "white",
+      "Features": [
+        "open kitchen",
+        "L-shaped kitchen",
+        "white shaker cabinets",
+        "white countertops",
+        "stainless dishwasher",
+        "undermount sink",
+        "tile backsplash",
+        "breakfast bar",
+        "eat-in kitchen",
+        "hardwood flooring",
+        "recessed lighting",
+        "large window",
+        "open floor plan",
+        "modern",
+        "contemporary"
+      ]
+    },
+    "tok_384_in": 3559,
+    "tok_384_out": 119
+  },
+  {
+    "url_1536": "https://photos.zillowstatic.com/fp/a9955f9f38bc87da9f6f5b24e0f0cd86-uncropped_scaled_within_1536_1152.jpg",
+    "baseline_1536": {
+      "RoomType": "Living Room",
+      "Color": "gray",
+      "Features": [
+        "open floor plan",
+        "living room",
+        "breakfast bar",
+        "fireplace",
+        "tile fireplace surround",
+        "built-in shelving",
+        "built-in cabinetry",
+        "wood-look flooring",
+        "vinyl flooring",
+        "recessed lighting",
+        "ceiling fan",
+        "pendant lighting",
+        "sliding glass doors",
+        "double glass doors",
+        "white trim",
+        "gray walls",
+        "tray ceiling detail",
+        "contemporary"
+      ]
+    },
+    "dims_768": [
+      768,
+      432
+    ],
+    "result_768": {
+      "RoomType": "Living Room",
+      "Color": "gray",
+      "Features": [
+        "open floor plan",
+        "living room",
+        "adjacent kitchen",
+        "wood-look flooring",
+        "vinyl flooring",
+        "recessed lighting",
+        "ceiling fan",
+        "built-in shelving",
+        "built-in cabinets",
+        "fireplace",
+        "tile fireplace surround",
+        "mantel",
+        "French doors",
+        "sliding glass doors",
+        "gray walls",
+        "white trim",
+        "contemporary"
+      ]
+    },
+    "tok_768_in": 3699,
+    "tok_768_out": 132,
+    "dims_384": [
+      384,
+      216
+    ],
+    "result_384": {
+      "RoomType": "Living Room",
+      "Color": "gray",
+      "Features": [
+        "open floor plan",
+        "hardwood flooring",
+        "recessed lighting",
+        "ceiling fan",
+        "built-in shelving",
+        "built-in cabinets",
+        "fireplace",
+        "tile fireplace surround",
+        "mantel",
+        "sliding glass doors",
+        "double glass doors",
+        "tray ceiling",
+        "breakfast bar",
+        "gray walls",
+        "white trim",
+        "contemporary"
+      ]
+    },
+    "tok_384_in": 3559,
+    "tok_384_out": 127
+  },
+  {
+    "url_1536": "https://photos.zillowstatic.com/fp/47583d6aeaae573057081b094bbe2b27-uncropped_scaled_within_1536_1152.jpg",
+    "baseline_1536": {
+      "RoomType": "Living Room",
+      "Color": "gray",
+      "Features": [
+        "entry foyer",
+        "sliding barn doors",
+        "glass barn doors",
+        "frosted glass doors",
+        "transom-style doors",
+        "wood-look flooring",
+        "vinyl flooring",
+        "large windows",
+        "picture windows",
+        "white front door",
+        "decorative glass front door",
+        "side light windows",
+        "gray walls",
+        "white trim",
+        "baseboards",
+        "ceiling light fixture",
+        "natural light emphasis",
+        "contemporary",
+        "modern"
+      ]
+    },
+    "dims_768": [
+      768,
+      432
+    ],
+    "result_768": {
+      "RoomType": "Living Room",
+      "Color": "gray",
+      "Features": [
+        "entry foyer",
+        "sliding barn doors",
+        "gray barn doors",
+        "frosted glass doors",
+        "wood-look flooring",
+        "laminate flooring",
+        "large windows",
+        "picture windows",
+        "transom windows",
+        "white front door",
+        "glass front door",
+        "modern interior",
+        "contemporary"
+      ]
+    },
+    "tok_768_in": 3699,
+    "tok_768_out": 111,
+    "dims_384": [
+      384,
+      216
+    ],
+    "result_384": {
+      "RoomType": "Living Room",
+      "Color": "gray",
+      "Features": [
+        "entry foyer",
+        "sliding barn doors",
+        "frosted glass doors",
+        "large windows",
+        "picture windows",
+        "wood-look flooring",
+        "laminate flooring",
+        "white front door",
+        "transom windows",
+        "contemporary",
+        "modern"
+      ]
+    },
+    "tok_384_in": 3559,
+    "tok_384_out": 98
+  }
+]

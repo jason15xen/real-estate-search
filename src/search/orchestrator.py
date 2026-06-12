@@ -5,6 +5,7 @@ import logging
 
 import asyncpg
 
+from config.settings import settings
 from src.data.feature_registry import registry
 from src.models.search import (
     AreaCriterion,
@@ -16,6 +17,7 @@ from src.models.search import (
     ProximityCriterion,
     RoomCountCriterion,
 )
+from src.search.feature_resolver import resolve_feature_phrases
 from src.search.filter_engine import apply_hard_filters
 from src.search.geo_search import apply_proximity_filters
 from src.search.query_parser import parse_query
@@ -360,9 +362,32 @@ async def search(
     alternatives: dict[str, list[str]] = {}
     if feature_criteria and property_ids:
         logger.info("Phase 4: Feature matching (PostgreSQL)")
-        alternatives = _build_alternatives(
-            feature_criteria, parsed_query.reconstructed_queries
-        )
+        if settings.search_use_embedding_retrieval:
+            # Embedding retrieval + Claude #2 relevance filter maps each raw
+            # user phrase -> curated DB feature list (catches synonyms the
+            # word-subset matcher misses, e.g. "hearth" -> "fireplace").
+            phrases = [fc.feature for fc in feature_criteria]
+            alternatives = await resolve_feature_phrases(pool, phrases)
+            # Completeness + determinism + consistency: union each phrase's
+            # embedding list with the deterministic word-subset alternatives
+            # (every DB feature literally containing the phrase's words, minus
+            # the exclusion list). This guarantees:
+            #   * "pool" ALWAYS includes every "...pool..." feature (screened
+            #     pool, pool cage, covered pool, ...) → the same complete list
+            #     in every query, so "has pool" returns one stable number;
+            #   * "covered pool" ⊆ "pool" automatically (a covered-pool feature
+            #     contains "pool", so it's in pool's word-subset) → modifier
+            #     negation adds up: covered + uncovered = total pools.
+            for fc in feature_criteria:
+                ws = registry.get_feature_alternatives(fc.feature)
+                if ws:
+                    merged = set(alternatives.get(fc.feature, [])) | set(ws)
+                    alternatives[fc.feature] = sorted(merged)
+        else:
+            # Legacy: deterministic word-subset alternatives from the registry.
+            alternatives = _build_alternatives(
+                feature_criteria, parsed_query.reconstructed_queries
+            )
         if alternatives:
             logger.info(f"Feature alternatives: {alternatives}")
         # Sort positives-first, base-before-modifier so debug narration reads logically
