@@ -47,6 +47,10 @@ CREATE TABLE properties (
     lot_size_sqft   INTEGER DEFAULT 0,
     stories         INTEGER,
     has_pool        BOOLEAN NOT NULL DEFAULT FALSE,
+    -- TRUE = the property has a COVERED pool (water roofed/screened/caged),
+    -- derived from images by the ingest pipeline. "Uncovered pool" is not stored
+    -- — it is derived at search time as (has a pool) AND NOT has_covered_pool.
+    has_covered_pool BOOLEAN NOT NULL DEFAULT FALSE,
     has_waterfront  BOOLEAN NOT NULL DEFAULT FALSE,
     description     TEXT,                -- property description for text search fallback
     financing       TEXT[] NOT NULL DEFAULT '{}',  -- normalized from Zillow listingTerms
@@ -156,6 +160,7 @@ CREATE INDEX idx_properties_rent ON properties(rent_estimate);
 CREATE INDEX idx_properties_year_built ON properties(year_built);
 CREATE INDEX idx_properties_lot_size ON properties(lot_size_sqft);
 CREATE INDEX idx_properties_has_pool ON properties(has_pool) WHERE has_pool = TRUE;
+CREATE INDEX idx_properties_has_covered_pool ON properties(has_covered_pool) WHERE has_covered_pool;
 CREATE INDEX idx_properties_has_waterfront ON properties(has_waterfront) WHERE has_waterfront = TRUE;
 CREATE INDEX idx_properties_description ON properties USING GIN(description gin_trgm_ops);
 CREATE INDEX idx_properties_financing_gin ON properties USING GIN(financing);

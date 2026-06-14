@@ -227,6 +227,37 @@ def _extract_schools(item: dict) -> list[dict]:
     return out
 
 
+# Feature tags that mean the pool WATER itself is roofed/screened/caged. Used to
+# derive properties.has_covered_pool. The vision prompt now also emits the canonical
+# "covered pool" / "uncovered pool" tags; the rest keep older free-form data
+# classifiable without a re-analysis. A fence/railing is NOT a cover, and an
+# adjacent "covered pool deck/area/patio" is a structure, not a covered pool —
+# neither appears here.
+_COVERED_POOL_TAGS = [
+    "covered pool", "screened pool", "screened-in pool", "screen-enclosed pool",
+    "screen enclosed pool", "enclosed pool", "caged pool", "pool cage",
+    "covered pool cage", "pool cage enclosure", "pool enclosure",
+    "screened pool cage", "screened pool enclosure", "screened pool enclosures",
+]
+
+
+async def _refresh_has_covered_pool(conn, prop_id: int) -> None:
+    """Recompute properties.has_covered_pool from the property's current room
+    instances: TRUE iff any covered-pool tag is present (a screen/cage/roof over
+    the water). "Uncovered" is not stored — search derives it as (has a pool) AND
+    NOT has_covered_pool. Idempotent; safe after any room_instances (re)write."""
+    await conn.execute(
+        """
+        UPDATE properties p SET has_covered_pool = EXISTS (
+            SELECT 1 FROM room_instances ri
+            WHERE ri.property_id = p.id AND ri.features && $2::text[]
+        )
+        WHERE p.id = $1
+        """,
+        prop_id, _COVERED_POOL_TAGS,
+    )
+
+
 async def _insert_children(conn, prop_id: int, rooms_from_photos: dict, schools: list[dict]) -> None:
     """Insert rooms, room_instances, and property_schools for a property."""
     for room_type, instances in rooms_from_photos.items():
@@ -251,6 +282,8 @@ async def _insert_children(conn, prop_id: int, rooms_from_photos: dict, schools:
                 property_id, school_name, rating, grades, distance_miles, link
             ) VALUES ($1, $2, $3, $4, $5, $6)
         """, prop_id, s["name"], s["rating"], s["grades"], s["distance"], s["link"])
+    # Derive has_covered_pool from the room_instances just written.
+    await _refresh_has_covered_pool(conn, prop_id)
 
 
 async def update_property_scalars(
@@ -287,6 +320,8 @@ async def update_property_scalars(
         fields["has_pool"], fields["has_waterfront"], fields["description"],
         fields["financing"],
     )
+    # Re-derive has_covered_pool (room features may have changed).
+    await _refresh_has_covered_pool(conn, existing_id)
 
 
 async def update_property_metadata(
@@ -328,6 +363,8 @@ async def update_property_metadata(
         fields["has_pool"], fields["has_waterfront"], fields["description"],
         fields["financing"],
     )
+    # Re-derive has_covered_pool (room features may have changed).
+    await _refresh_has_covered_pool(conn, existing_id)
 
 
 async def update_property_with_children(

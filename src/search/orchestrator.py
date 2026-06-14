@@ -106,6 +106,64 @@ def _build_alternatives(
     }
 
 
+_POOL_PHRASES = ("pool", "swimming pool")
+
+
+def _extract_pool_coverage(
+    feature_criteria: list[FeatureCriterion],
+) -> tuple[bool | None, list[FeatureCriterion]]:
+    """Pull pool-COVERAGE intent out of the feature criteria so it can be served
+    by the boolean properties.has_covered_pool column (derived at ingest from the
+    images). "Uncovered" is NOT a stored value — it's (has a pool) AND NOT
+    has_covered_pool, so an "uncovered pool" query just adds has_covered_pool=False
+    on top of normal pool feature matching (pool EXISTENCE stays on feature tags).
+
+    Returns (want_covered, remaining):
+      * want_covered True  → require has_covered_pool = TRUE
+      * want_covered False → require has_covered_pool = FALSE
+      * want_covered None  → no coverage criterion present
+
+    The parser emits "uncovered pool" as a bare "pool" positive + a negated
+    "covered pool"; that bare "pool" is left in `remaining` so Phase 4 enforces
+    "has a pool". A standalone "uncovered pool" positive injects a "pool"
+    criterion so existence is still required.
+    """
+    pool_positive = any(
+        fc.feature.strip().lower() in _POOL_PHRASES and not fc.negated
+        for fc in feature_criteria
+    )
+    want_covered: bool | None = None
+    inject_pool = False
+    remaining: list[FeatureCriterion] = []
+    for fc in feature_criteria:
+        nf = fc.feature.strip().lower()
+        if nf == "covered pool":
+            want_covered = not fc.negated          # positive → True, "without" → False
+        elif nf == "uncovered pool":
+            want_covered = fc.negated              # positive → False, "without" → True
+            if not fc.negated and not pool_positive:
+                inject_pool = True                 # ensure "has a pool" is matched
+        else:
+            remaining.append(fc)
+    if inject_pool:
+        remaining.append(FeatureCriterion(feature="pool"))
+    return want_covered, remaining
+
+
+async def _filter_by_has_covered_pool(
+    pool: asyncpg.Pool, property_ids: list[int], want: bool
+) -> list[int]:
+    """Keep property_ids whose properties.has_covered_pool == want."""
+    if not property_ids:
+        return property_ids
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT id FROM properties WHERE id = ANY($1) AND has_covered_pool = $2",
+            property_ids, want,
+        )
+    return [r["id"] for r in rows]
+
+
 async def _match_color_rooms(
     pool: asyncpg.Pool,
     property_ids: list[int],
@@ -359,6 +417,23 @@ async def search(
     feature_criteria = [
         c for c in parsed_query.criteria if isinstance(c, FeatureCriterion)
     ]
+
+    # Phase 3.7: Pool coverage — answered by the boolean properties.has_covered_pool
+    # column (derived at ingest from the actual photos). "Uncovered" = (has a pool)
+    # AND NOT has_covered_pool, so it's this filter plus the bare "pool" feature
+    # match below. Pool EXISTENCE ("with pool") stays on normal feature matching.
+    want_covered, feature_criteria = _extract_pool_coverage(feature_criteria)
+    if want_covered is not None and property_ids:
+        before = len(property_ids)
+        property_ids = await _filter_by_has_covered_pool(pool, property_ids, want_covered)
+        logger.info("Phase 3.7: has_covered_pool = %s -> %d", want_covered, len(property_ids))
+        if debug:
+            filter_steps.append({
+                "step": f"has_covered_pool = {want_covered}",
+                "count": len(property_ids),
+                "dropped": before - len(property_ids),
+            })
+
     alternatives: dict[str, list[str]] = {}
     if feature_criteria and property_ids:
         logger.info("Phase 4: Feature matching (PostgreSQL)")
