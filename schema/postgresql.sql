@@ -5,6 +5,7 @@
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS vector;   -- pgvector: feature-embedding similarity search
 
 -- ============================================================
 -- TABLES
@@ -46,6 +47,10 @@ CREATE TABLE properties (
     lot_size_sqft   INTEGER DEFAULT 0,
     stories         INTEGER,
     has_pool        BOOLEAN NOT NULL DEFAULT FALSE,
+    -- TRUE = the property has a COVERED pool (water roofed/screened/caged),
+    -- derived from images by the ingest pipeline. "Uncovered pool" is not stored
+    -- — it is derived at search time as (has a pool) AND NOT has_covered_pool.
+    has_covered_pool BOOLEAN NOT NULL DEFAULT FALSE,
     has_waterfront  BOOLEAN NOT NULL DEFAULT FALSE,
     description     TEXT,                -- property description for text search fallback
     financing       TEXT[] NOT NULL DEFAULT '{}',  -- normalized from Zillow listingTerms
@@ -120,6 +125,21 @@ CREATE TABLE property_schools (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Feature embeddings — one row per distinct feature string seen in
+-- room_instances.features. Populated by the embedding-sync pipeline at app
+-- startup and on NOTIFY feature_change. Used by /search Phase 4: the user's
+-- raw feature phrase is embedded and cosine-searched here to retrieve the
+-- top-K semantically-nearest DB features as candidates (then a second LLM
+-- call filters them for precision).
+CREATE TABLE feature_embeddings (
+    feature      TEXT PRIMARY KEY,
+    embedding    vector(1536) NOT NULL,   -- text-embedding-3-small dimension
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- HNSW index for fast approximate cosine-similarity search.
+CREATE INDEX idx_feature_embeddings_hnsw
+    ON feature_embeddings USING hnsw (embedding vector_cosine_ops);
+
 -- ============================================================
 -- INDEXES
 -- ============================================================
@@ -140,6 +160,7 @@ CREATE INDEX idx_properties_rent ON properties(rent_estimate);
 CREATE INDEX idx_properties_year_built ON properties(year_built);
 CREATE INDEX idx_properties_lot_size ON properties(lot_size_sqft);
 CREATE INDEX idx_properties_has_pool ON properties(has_pool) WHERE has_pool = TRUE;
+CREATE INDEX idx_properties_has_covered_pool ON properties(has_covered_pool) WHERE has_covered_pool;
 CREATE INDEX idx_properties_has_waterfront ON properties(has_waterfront) WHERE has_waterfront = TRUE;
 CREATE INDEX idx_properties_description ON properties USING GIN(description gin_trgm_ops);
 CREATE INDEX idx_properties_financing_gin ON properties USING GIN(financing);

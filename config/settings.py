@@ -15,6 +15,21 @@ class Settings(BaseSettings):
     azure_openai_deployment_for_query: str = "claude-opus-4-7-dev"
     azure_openai_model_for_query: str = "claude-opus-4-7"
 
+    # Embedding model — dedicated Azure deployment (own endpoint + key).
+    # Used for feature-embedding retrieval in /search.
+    embedding_small_endpoint: str = ""
+    embedding_small_api_key: str = ""
+    embedding_small_deployment: str = "text-embedding-3-small"
+    embedding_small_model: str = "text-embedding-3-small"
+    azure_openai_embedding_dim: int = 1536
+
+    # /search feature-retrieval strategy:
+    #   True  → embedding retrieval (top-K candidates) + Claude relevance filter
+    #   False → legacy: dump every DB feature into the Claude #1 prompt
+    # Flag exists for instant rollback without a redeploy.
+    search_use_embedding_retrieval: bool = True
+    search_embedding_top_k: int = 200
+
     # Secondary Azure OpenAI deployment for A/B comparison (gpt-5.4-mini or
     # whatever is configured). Used only by the /test/compare-vision endpoint
     # — production vision analysis still uses the primary AZURE_OPENAI_*.

@@ -5,6 +5,7 @@ import logging
 
 import asyncpg
 
+from config.settings import settings
 from src.data.feature_registry import registry
 from src.models.search import (
     AreaCriterion,
@@ -16,6 +17,7 @@ from src.models.search import (
     ProximityCriterion,
     RoomCountCriterion,
 )
+from src.search.feature_resolver import resolve_feature_phrases
 from src.search.filter_engine import apply_hard_filters
 from src.search.geo_search import apply_proximity_filters
 from src.search.query_parser import parse_query
@@ -102,6 +104,64 @@ def _build_alternatives(
         fc.feature: registry.get_feature_alternatives(fc.feature)
         for fc in feature_criteria
     }
+
+
+_POOL_PHRASES = ("pool", "swimming pool")
+
+
+def _extract_pool_coverage(
+    feature_criteria: list[FeatureCriterion],
+) -> tuple[bool | None, list[FeatureCriterion]]:
+    """Pull pool-COVERAGE intent out of the feature criteria so it can be served
+    by the boolean properties.has_covered_pool column (derived at ingest from the
+    images). "Uncovered" is NOT a stored value — it's (has a pool) AND NOT
+    has_covered_pool, so an "uncovered pool" query just adds has_covered_pool=False
+    on top of normal pool feature matching (pool EXISTENCE stays on feature tags).
+
+    Returns (want_covered, remaining):
+      * want_covered True  → require has_covered_pool = TRUE
+      * want_covered False → require has_covered_pool = FALSE
+      * want_covered None  → no coverage criterion present
+
+    The parser emits "uncovered pool" as a bare "pool" positive + a negated
+    "covered pool"; that bare "pool" is left in `remaining` so Phase 4 enforces
+    "has a pool". A standalone "uncovered pool" positive injects a "pool"
+    criterion so existence is still required.
+    """
+    pool_positive = any(
+        fc.feature.strip().lower() in _POOL_PHRASES and not fc.negated
+        for fc in feature_criteria
+    )
+    want_covered: bool | None = None
+    inject_pool = False
+    remaining: list[FeatureCriterion] = []
+    for fc in feature_criteria:
+        nf = fc.feature.strip().lower()
+        if nf == "covered pool":
+            want_covered = not fc.negated          # positive → True, "without" → False
+        elif nf == "uncovered pool":
+            want_covered = fc.negated              # positive → False, "without" → True
+            if not fc.negated and not pool_positive:
+                inject_pool = True                 # ensure "has a pool" is matched
+        else:
+            remaining.append(fc)
+    if inject_pool:
+        remaining.append(FeatureCriterion(feature="pool"))
+    return want_covered, remaining
+
+
+async def _filter_by_has_covered_pool(
+    pool: asyncpg.Pool, property_ids: list[int], want: bool
+) -> list[int]:
+    """Keep property_ids whose properties.has_covered_pool == want."""
+    if not property_ids:
+        return property_ids
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT id FROM properties WHERE id = ANY($1) AND has_covered_pool = $2",
+            property_ids, want,
+        )
+    return [r["id"] for r in rows]
 
 
 async def _match_color_rooms(
@@ -357,12 +417,52 @@ async def search(
     feature_criteria = [
         c for c in parsed_query.criteria if isinstance(c, FeatureCriterion)
     ]
+
+    # Phase 3.7: Pool coverage — answered by the boolean properties.has_covered_pool
+    # column (derived at ingest from the actual photos). "Uncovered" = (has a pool)
+    # AND NOT has_covered_pool, so it's this filter plus the bare "pool" feature
+    # match below. Pool EXISTENCE ("with pool") stays on normal feature matching.
+    want_covered, feature_criteria = _extract_pool_coverage(feature_criteria)
+    if want_covered is not None and property_ids:
+        before = len(property_ids)
+        property_ids = await _filter_by_has_covered_pool(pool, property_ids, want_covered)
+        logger.info("Phase 3.7: has_covered_pool = %s -> %d", want_covered, len(property_ids))
+        if debug:
+            filter_steps.append({
+                "step": f"has_covered_pool = {want_covered}",
+                "count": len(property_ids),
+                "dropped": before - len(property_ids),
+            })
+
     alternatives: dict[str, list[str]] = {}
     if feature_criteria and property_ids:
         logger.info("Phase 4: Feature matching (PostgreSQL)")
-        alternatives = _build_alternatives(
-            feature_criteria, parsed_query.reconstructed_queries
-        )
+        if settings.search_use_embedding_retrieval:
+            # Embedding retrieval + Claude #2 relevance filter maps each raw
+            # user phrase -> curated DB feature list (catches synonyms the
+            # word-subset matcher misses, e.g. "hearth" -> "fireplace").
+            phrases = [fc.feature for fc in feature_criteria]
+            alternatives = await resolve_feature_phrases(pool, phrases)
+            # Completeness + determinism + consistency: union each phrase's
+            # embedding list with the deterministic word-subset alternatives
+            # (every DB feature literally containing the phrase's words, minus
+            # the exclusion list). This guarantees:
+            #   * "pool" ALWAYS includes every "...pool..." feature (screened
+            #     pool, pool cage, covered pool, ...) → the same complete list
+            #     in every query, so "has pool" returns one stable number;
+            #   * "covered pool" ⊆ "pool" automatically (a covered-pool feature
+            #     contains "pool", so it's in pool's word-subset) → modifier
+            #     negation adds up: covered + uncovered = total pools.
+            for fc in feature_criteria:
+                ws = registry.get_feature_alternatives(fc.feature)
+                if ws:
+                    merged = set(alternatives.get(fc.feature, [])) | set(ws)
+                    alternatives[fc.feature] = sorted(merged)
+        else:
+            # Legacy: deterministic word-subset alternatives from the registry.
+            alternatives = _build_alternatives(
+                feature_criteria, parsed_query.reconstructed_queries
+            )
         if alternatives:
             logger.info(f"Feature alternatives: {alternatives}")
         # Sort positives-first, base-before-modifier so debug narration reads logically

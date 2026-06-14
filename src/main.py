@@ -45,6 +45,16 @@ async def lifespan(app: FastAPI):
         f"{len(registry.room_types)} room types"
     )
 
+    # Embed any features not yet in feature_embeddings (incremental; no-op once
+    # caught up). Guarded so an embedding outage can't block app startup.
+    if settings.search_use_embedding_retrieval:
+        try:
+            from src.search.feature_index import sync_feature_embeddings
+            n = await sync_feature_embeddings(pool)
+            logger.info(f"Feature-embedding sync at startup: {n} newly embedded")
+        except Exception as e:
+            logger.error(f"Feature-embedding sync at startup failed: {e}")
+
     # Web tier LISTENs for 'feature_change' to keep the in-memory registry fresh;
     # supervisor heartbeats + reconnects so a Postgres blip can't leave us deaf to NOTIFYs.
     supervisor = _ListenerSupervisor(pool)
@@ -74,8 +84,16 @@ async def _on_feature_change(_connection, _pid, channel, _payload):
             f"Registry refreshed: {len(registry.features)} features, "
             f"{len(registry.room_types)} room types"
         )
+        # New room features may have appeared → embed them and drop the
+        # resolver cache so they can surface in retrievals immediately.
+        if settings.search_use_embedding_retrieval:
+            from src.search.feature_index import sync_feature_embeddings
+            from src.search.feature_resolver import clear_cache
+            n = await sync_feature_embeddings(pool)
+            clear_cache()
+            logger.info(f"Embeddings synced after notify: {n} newly embedded; resolver cache cleared")
     except Exception as e:
-        logger.error(f"Registry rebuild after notify failed: {e}")
+        logger.error(f"Registry/embedding refresh after notify failed: {e}")
 
 
 class _ListenerSupervisor:

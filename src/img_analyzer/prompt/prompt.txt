@@ -21,6 +21,16 @@
                    use just the functional keyword (e.g., "cabinets", "countertops").
             - Identify notable architectural styles or design elements present in the scene as additional keywords if applicable.
             - Detect and specify the design style era or timeframe reflected in the decor or construction (e.g., "mid-century modern", "Victorian", "1980s", "contemporary") and include as a searchable keyword.
+            - POOL COVERAGE — when the scene shows THIS property's swimming pool:
+                1. Always add the base keyword "pool".
+                2. Judge the POOL WATER's overhead and add EXACTLY ONE of these two keywords:
+                   - "covered pool"   — the water is under a screen enclosure, pool cage, roof, lanai roof, or solid/retractable cover.
+                   - "uncovered pool" — the water is open to the sky.
+                3. A fence, railing, or safety barrier AROUND the pool is NOT a cover → still "uncovered pool".
+                4. A covered patio / lanai / cabana / pergola NEXT TO the pool does NOT make the pool covered → judge the water surface itself, not adjacent structures.
+                5. If you cannot see enough of the pool to tell (only a corner, obscured, or the overhead is out of frame), add only "pool" and DO NOT guess "covered pool"/"uncovered pool".
+                6. Do this ONLY for a real swimming pool belonging to THIS property — never for a pond, lake, river, canal, or other water, and never for a neighbor's pool.
+              (You may still add other descriptive pool keywords too, e.g. "in-ground pool", "infinity pool", "screened pool enclosure".)
 
             Before stating the "RoomType" conclusion, reason step-by-step from the observed visual cues and design traits that support your selection.
 

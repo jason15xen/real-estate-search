@@ -26,15 +26,11 @@ SYSTEM_PROMPT_TEMPLATE = """\
 You are a real estate search query parser. Your job is to extract structured \
 search criteria from natural language queries about real estate properties.
 
-You have access to the EXACT feature names and room types that exist in our database. \
-You MUST map the user's words to these exact names.
+You have access to the room types that exist in our database.
 
 KNOWN ROOM TYPES:
 {room_types}
-
-KNOWN FEATURES (these are the ONLY valid feature names):
-{features}
-
+{known_features_block}
 Extract ALL criteria from the user's query and return them as JSON.
 
 Available criterion types:
@@ -45,19 +41,7 @@ Available criterion types:
 
 2. feature — The user wants a specific feature included or excluded.
    Fields: feature (string), room_context (string|null), negated (bool)
-   CRITICAL: Map the user's words to the closest matching known feature name. \
-But if the user's word is a GENERIC term that could match MANY features \
-(e.g., "cabinet", "tile", "wood", "pool"), keep the generic term as-is \
-so it matches broadly. Only map to a specific feature when the user is clearly specific.
-   Examples of mapping:
-     "wood flooring" → "hardwood floors" (specific → specific)
-     "hearth" → "fireplace" (specific → specific)
-     "marble counters" → "marble countertops" (specific → specific)
-     "cabinet" → "cabinet" (generic → keep generic, matches "white cabinets", "shaker cabinets", etc.)
-     "tile" → "tile" (generic → keep generic, matches "tile flooring", "tile backsplash", etc.)
-     "pool" → "pool" (generic → keep generic)
-   If the user mentions a feature that has NO close match in the known features, \
-still include it using the user's original wording. NEVER drop a feature from the query.
+{feature_naming_rule}
    room_context ties the feature to a specific room type. Set it ONLY when \
 the user EXPLICITLY names a room type as a CONTAINER for the feature \
 (pattern: "<ROOM TYPE> with <FEATURE>" or "<FEATURE> in the <ROOM TYPE>").
@@ -228,8 +212,7 @@ than `[]` is wasted output that will be discarded.
 Important rules:
 - If the user says "two bedrooms", that means exact_count=2 for Bedroom.
 - If the user says "at least 3 bathrooms", that means min_count=3 for Bathroom.
-- CRITICAL: Feature values MUST be from the KNOWN FEATURES list above. \
-Map synonyms, abbreviations, and alternate phrasings to the exact known feature name.
+{feature_value_rule}
 - Only extract criteria that are explicitly stated or clearly implied.
 - Do NOT invent criteria the user did not mention.
 - room_context rules (see FEATURE section above for the full rule):
@@ -243,12 +226,65 @@ For "pool", "garage", "kitchen", "bedroom" used as features, room_context=null.
 """
 
 
-def _build_system_prompt() -> str:
-    features = registry.get_features_list()
+# --- Mode-specific prompt fragments -----------------------------------------
+
+# LEGACY mode: Claude maps the user's words to canonical DB feature names,
+# using the full feature list embedded in the prompt.
+_LEGACY_FEATURE_NAMING_RULE = """\
+   CRITICAL: Map the user's words to the closest matching known feature name. \
+But if the user's word is a GENERIC term that could match MANY features \
+(e.g., "cabinet", "tile", "wood", "pool"), keep the generic term as-is \
+so it matches broadly. Only map to a specific feature when the user is clearly specific.
+   Examples of mapping:
+     "wood flooring" → "hardwood floors" (specific → specific)
+     "hearth" → "fireplace" (specific → specific)
+     "marble counters" → "marble countertops" (specific → specific)
+     "cabinet" → "cabinet" (generic → keep generic, matches "white cabinets", "shaker cabinets", etc.)
+     "tile" → "tile" (generic → keep generic, matches "tile flooring", "tile backsplash", etc.)
+     "pool" → "pool" (generic → keep generic)
+   If the user mentions a feature that has NO close match in the known features, \
+still include it using the user's original wording. NEVER drop a feature from the query."""
+
+_LEGACY_FEATURE_VALUE_RULE = """\
+- CRITICAL: Feature values MUST be from the KNOWN FEATURES list above. \
+Map synonyms, abbreviations, and alternate phrasings to the exact known feature name."""
+
+# EMBEDDING mode: no feature list in the prompt. Claude outputs the user's OWN
+# wording verbatim; downstream embedding retrieval + a second LLM call map it
+# to canonical DB features.
+_EMBEDDING_FEATURE_NAMING_RULE = """\
+   Use the user's OWN wording for the feature value — do NOT try to map it to a \
+canonical database name. A separate downstream step handles that mapping. \
+Keep the phrase concise and search-like (e.g. "swimming pool", "hardwood floors", \
+"granite countertops", "covered pool"). Preserve attribute words the user gave \
+(colors, materials, styles) since they carry intent. NEVER drop a feature the user mentioned."""
+
+_EMBEDDING_FEATURE_VALUE_RULE = """\
+- Feature values are the user's own concise wording (NOT mapped to any canonical \
+list). A downstream embedding step resolves them to real database features."""
+
+
+def _build_system_prompt(use_embedding_retrieval: bool) -> str:
     room_types = registry.get_room_types_list()
+    if use_embedding_retrieval:
+        return SYSTEM_PROMPT_TEMPLATE.format(
+            room_types=", ".join(room_types),
+            known_features_block="",
+            feature_naming_rule=_EMBEDDING_FEATURE_NAMING_RULE,
+            feature_value_rule=_EMBEDDING_FEATURE_VALUE_RULE,
+        )
+    # Legacy: inline the full DB feature list.
+    features = registry.get_features_list()
+    known_features_block = (
+        "\nKNOWN FEATURES (these are the ONLY valid feature names):\n"
+        + ", ".join(features)
+        + "\n"
+    )
     return SYSTEM_PROMPT_TEMPLATE.format(
         room_types=", ".join(room_types),
-        features=", ".join(features),
+        known_features_block=known_features_block,
+        feature_naming_rule=_LEGACY_FEATURE_NAMING_RULE,
+        feature_value_rule=_LEGACY_FEATURE_VALUE_RULE,
     )
 
 
@@ -272,7 +308,7 @@ async def _call_llm(client, system_prompt: str, query: str) -> str | None:
 
 async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
     client = get_claude_client()
-    system_prompt = _build_system_prompt()
+    system_prompt = _build_system_prompt(settings.search_use_embedding_retrieval)
 
     raw_text = None
     parsed = None
