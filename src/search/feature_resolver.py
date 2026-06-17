@@ -22,7 +22,7 @@ import json
 import logging
 
 from config.settings import settings
-from src.llm_client import embed_texts, get_claude_client
+from src.llm_client import embed_texts, get_query_client
 from src.search.feature_index import retrieve_candidates
 
 logger = logging.getLogger(__name__)
@@ -90,35 +90,34 @@ async def _retrieve_for_phrases(pool, phrases: list[str], top_k: int) -> dict[st
     return out
 
 
-async def _claude_filter(candidates_by_phrase: dict[str, list[str]]) -> dict[str, list[str]]:
-    """Bundled Claude #2 call: filter each phrase's candidates to the relevant
-    subset. Falls back to returning the raw candidates on any failure (recall
-    over precision when the filter is unavailable)."""
+async def _llm_filter(candidates_by_phrase: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Bundled LLM #2 call (Azure OpenAI GPT): filter each phrase's candidates to
+    the relevant subset. Falls back to returning the raw candidates on any failure
+    (recall over precision when the filter is unavailable)."""
     # Only send phrases that actually retrieved candidates.
     payload = {p: c for p, c in candidates_by_phrase.items() if c}
     if not payload:
         return {p: [] for p in candidates_by_phrase}
 
-    client = get_claude_client()
+    client = get_query_client()
     user_msg = json.dumps(payload, ensure_ascii=False)
     try:
-        resp = await client.messages.create(
-            model=settings.azure_openai_deployment_for_query,
+        resp = await client.chat.completions.create(
+            model=settings.openai_model_for_query,
             # Generous ceiling: the output echoes a filtered subset of up to
-            # (num_phrases * top_k) feature strings. Too small a cap would
-            # truncate the JSON → parse failure → fall back to UNFILTERED
-            # candidates (noise). Billing is per token actually generated, so
-            # a high ceiling costs nothing on typical small outputs.
-            max_tokens=16384,
-            system=_RESOLVER_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_msg}],
+            # (num_phrases * top_k) feature strings. Billing is per token actually
+            # generated, so a high ceiling costs nothing on typical small outputs.
+            max_completion_tokens=16384,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": _RESOLVER_SYSTEM_PROMPT},
+                {"role": "user", "content": user_msg},
+            ],
         )
-        text = "".join(b.text for b in resp.content if b.type == "text").strip()
-        if text.startswith("```"):
-            text = "\n".join(l for l in text.split("\n") if not l.strip().startswith("```")).strip()
+        text = (resp.choices[0].message.content or "").strip()
         filtered = json.loads(text)
     except Exception as e:
-        logger.warning("Claude #2 feature filter failed (%s); using raw candidates", e)
+        logger.warning("LLM #2 feature filter failed (%s); using raw candidates", e)
         return dict(candidates_by_phrase)
 
     # Sanitize: keep only strings that were genuinely in each phrase's candidate
@@ -166,7 +165,7 @@ async def resolve_feature_phrases(
 
     if to_resolve:
         retrieved = await _retrieve_for_phrases(pool, to_resolve, k)
-        filtered = await _claude_filter(retrieved)
+        filtered = await _llm_filter(retrieved)
         if len(_cache) > _CACHE_MAX:   # simple bound — drop all and refill
             _cache.clear()
         for phrase in to_resolve:

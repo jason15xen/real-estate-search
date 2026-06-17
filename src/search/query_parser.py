@@ -1,4 +1,4 @@
-"""Query parser: Claude Opus 4.7 (Azure AI Foundry) maps NL queries to structured criteria,
+"""Query parser: Azure OpenAI (GPT) maps NL queries to structured criteria,
 using the DB's known features/room types so no vector search is needed.
 """
 
@@ -7,7 +7,7 @@ import logging
 
 from config.settings import settings
 from src.data.feature_registry import registry
-from src.llm_client import get_claude_client
+from src.llm_client import get_query_client
 from src.models.search import (
     AreaCriterion,
     ColorRoomCriterion,
@@ -289,25 +289,27 @@ def _build_system_prompt(use_embedding_retrieval: bool) -> str:
 
 
 async def _call_llm(client, system_prompt: str, query: str) -> str | None:
-    """Call Claude Opus 4.7, return raw text or None.
+    """Call the query LLM (Azure OpenAI GPT), return raw JSON text or None.
 
-    Opus 4.7: no temperature/top_p/top_k or budget_tokens (would 400); system
-    prompt goes top-level, not in messages.
+    GPT-5.x: use max_completion_tokens (max_tokens would 400), no temperature;
+    the system prompt is a system message. response_format forces strict JSON,
+    so the markdown-fence stripping in parse_query is just a fallback.
     """
-    response = await client.messages.create(
-        model=settings.azure_openai_deployment_for_query,
-        max_tokens=16384,
-        system=system_prompt,
-        messages=[{"role": "user", "content": query}],
+    response = await client.chat.completions.create(
+        model=settings.openai_model_for_query,
+        max_completion_tokens=16384,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": query},
+        ],
     )
-    if not response.content:
-        return None
-    raw_text = "".join(b.text for b in response.content if b.type == "text").strip()
+    raw_text = (response.choices[0].message.content or "").strip()
     return raw_text or None
 
 
 async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
-    client = get_claude_client()
+    client = get_query_client()
     system_prompt = _build_system_prompt(settings.search_use_embedding_retrieval)
 
     raw_text = None

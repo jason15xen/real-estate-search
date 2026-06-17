@@ -66,7 +66,7 @@ async def analyze_single_image(url: str, system_prompt: str) -> PhotoResult:
     client = get_async_client()
 
     response = await client.chat.completions.create(
-        model=settings.azure_openai_deployment,
+        model=settings.openai_model,
         max_completion_tokens=1000,
         messages=[
             {"role": "system", "content": system_prompt},
@@ -82,7 +82,7 @@ async def analyze_single_image(url: str, system_prompt: str) -> PhotoResult:
         ],
     )
 
-    raw = response.choices[0].message.content.strip()
+    raw = (response.choices[0].message.content or "").strip()
 
     # Strip markdown code fences
     if raw.startswith("```"):

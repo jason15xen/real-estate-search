@@ -38,6 +38,14 @@ async def lifespan(app: FastAPI):
     pool = await get_pool()
     logger.info("Database pool initialized")
 
+    # Fail loudly+early on a missing key rather than with a cryptic 401 on the
+    # first LLM call (vision, /search parsing, embeddings all need it).
+    if not settings.openai_api_key:
+        logger.error(
+            "OPENAI_API_KEY is empty — vision, /search query parsing, and "
+            "embeddings will all fail. Set it in .env."
+        )
+
     logger.info("Building feature registry from database...")
     await registry.build_from_db(pool)
     logger.info(

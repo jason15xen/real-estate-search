@@ -46,7 +46,7 @@ async def _classify_image(client, sem, url: str) -> str:
     async with sem:
         try:
             resp = await client.chat.completions.create(
-                model=settings.azure_openai_deployment,
+                model=settings.openai_model,
                 max_completion_tokens=200,
                 messages=[
                     {"role": "system", "content": _FOCUSED_PROMPT},

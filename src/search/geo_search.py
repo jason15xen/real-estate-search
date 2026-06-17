@@ -86,8 +86,9 @@ async def geocode_landmark(landmark_name: str) -> tuple[float, float] | None:
     client = get_async_client()
     try:
         response = await client.chat.completions.create(
-            model=settings.azure_openai_deployment,
+            model=settings.openai_model,
             max_completion_tokens=200,
+            response_format={"type": "json_object"},
             messages=[
                 {
                     "role": "system",
@@ -100,7 +101,7 @@ async def geocode_landmark(landmark_name: str) -> tuple[float, float] | None:
                 {"role": "user", "content": f"Geocode: {landmark_name}"},
             ],
         )
-        raw = response.choices[0].message.content.strip()
+        raw = (response.choices[0].message.content or "").strip()
         if raw.startswith("```"):
             lines = raw.split("\n")
             lines = [l for l in lines if not l.startswith("```")]
