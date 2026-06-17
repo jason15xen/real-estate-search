@@ -109,45 +109,69 @@ def _build_alternatives(
 _POOL_PHRASES = ("pool", "swimming pool")
 
 
-def _extract_pool_coverage(
+def _extract_pool_filters(
     feature_criteria: list[FeatureCriterion],
-) -> tuple[bool | None, list[FeatureCriterion]]:
-    """Pull pool-COVERAGE intent out of the feature criteria so it can be served
-    by the boolean properties.has_covered_pool column (derived at ingest from the
-    images). "Uncovered" is NOT a stored value — it's (has a pool) AND NOT
-    has_covered_pool, so an "uncovered pool" query just adds has_covered_pool=False
-    on top of normal pool feature matching (pool EXISTENCE stays on feature tags).
+) -> tuple[bool | None, bool | None, list[FeatureCriterion]]:
+    """Pull pool intent out of the feature criteria so it's served by STRUCTURED
+    columns instead of fuzzy feature tags:
+      * EXISTENCE → has_pool OR an image-derived 'Pool' room (see
+        _filter_by_pool_evidence). Raw 'pool' tags over-match — community/
+        neighboring pools and the odd hallucinated tag — so we don't use them.
+      * COVERAGE  → the boolean has_covered_pool column. "Uncovered" is derived:
+        (has a pool) AND NOT has_covered_pool.
 
-    Returns (want_covered, remaining):
-      * want_covered True  → require has_covered_pool = TRUE
-      * want_covered False → require has_covered_pool = FALSE
-      * want_covered None  → no coverage criterion present
-
-    The parser emits "uncovered pool" as a bare "pool" positive + a negated
-    "covered pool"; that bare "pool" is left in `remaining` so Phase 4 enforces
-    "has a pool". A standalone "uncovered pool" positive injects a "pool"
-    criterion so existence is still required.
+    Returns (want_pool, want_covered, remaining):
+      * want_pool    True/False/None → require / forbid pool existence
+      * want_covered True/False/None → require has_covered_pool == that value
+    Pool/covered/uncovered criteria are removed from `remaining` (handled here);
+    everything else falls through to Phase 4 feature matching.
     """
-    pool_positive = any(
-        fc.feature.strip().lower() in _POOL_PHRASES and not fc.negated
-        for fc in feature_criteria
-    )
+    want_pool: bool | None = None
     want_covered: bool | None = None
-    inject_pool = False
     remaining: list[FeatureCriterion] = []
     for fc in feature_criteria:
         nf = fc.feature.strip().lower()
-        if nf == "covered pool":
+        if nf in _POOL_PHRASES:                    # "pool" / "swimming pool"
+            want_pool = not fc.negated
+        elif nf == "covered pool":
+            # Served by has_covered_pool alone — do NOT add an existence gate.
+            # has_covered_pool is itself pool evidence (and a real covered pool's
+            # photos are sometimes binned as 'Exterior', not a 'Pool' room).
             want_covered = not fc.negated          # positive → True, "without" → False
         elif nf == "uncovered pool":
             want_covered = fc.negated              # positive → False, "without" → True
-            if not fc.negated and not pool_positive:
-                inject_pool = True                 # ensure "has a pool" is matched
+            want_pool = True                       # uncovered pool still requires a pool
         else:
             remaining.append(fc)
-    if inject_pool:
-        remaining.append(FeatureCriterion(feature="pool"))
-    return want_covered, remaining
+    return want_pool, want_covered, remaining
+
+
+async def _filter_by_pool_evidence(
+    pool: asyncpg.Pool, property_ids: list[int], want: bool
+) -> list[int]:
+    """Keep (want=True) / drop (want=False) property_ids that have a pool, judged
+    by STRUCTURED evidence: the RESO has_pool flag, the derived has_covered_pool
+    flag, OR an image-derived 'Pool' room. This avoids the false positives of raw
+    'pool' feature tags (community/neighboring pools, stray/hallucinated tags in
+    non-Pool rooms) while still keeping real (covered) pools whose photos were
+    binned as 'Exterior'. `want` is an internal bool, so the f-string is safe."""
+    if not property_ids:
+        return property_ids
+    neg = "" if want else "NOT "
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            f"""
+            SELECT id FROM properties p
+            WHERE id = ANY($1) AND {neg}(
+                p.has_pool OR p.has_covered_pool OR EXISTS (
+                    SELECT 1 FROM room_instances ri
+                    WHERE ri.property_id = p.id AND ri.room_type = 'Pool'
+                )
+            )
+            """,
+            property_ids,
+        )
+    return [r["id"] for r in rows]
 
 
 async def _filter_by_has_covered_pool(
@@ -418,11 +442,21 @@ async def search(
         c for c in parsed_query.criteria if isinstance(c, FeatureCriterion)
     ]
 
-    # Phase 3.7: Pool coverage — answered by the boolean properties.has_covered_pool
-    # column (derived at ingest from the actual photos). "Uncovered" = (has a pool)
-    # AND NOT has_covered_pool, so it's this filter plus the bare "pool" feature
-    # match below. Pool EXISTENCE ("with pool") stays on normal feature matching.
-    want_covered, feature_criteria = _extract_pool_coverage(feature_criteria)
+    # Phase 3.7: Pool — answered by STRUCTURED columns, not fuzzy 'pool' tags:
+    #   existence → has_pool OR an image-derived 'Pool' room (avoids community/
+    #               neighboring/hallucinated 'pool' tags)
+    #   coverage  → has_covered_pool boolean; uncovered = existence AND NOT covered
+    want_pool, want_covered, feature_criteria = _extract_pool_filters(feature_criteria)
+    if want_pool is not None and property_ids:
+        before = len(property_ids)
+        property_ids = await _filter_by_pool_evidence(pool, property_ids, want_pool)
+        logger.info("Phase 3.7: pool_evidence = %s -> %d", want_pool, len(property_ids))
+        if debug:
+            filter_steps.append({
+                "step": f"has_pool(evidence) = {want_pool}",
+                "count": len(property_ids),
+                "dropped": before - len(property_ids),
+            })
     if want_covered is not None and property_ids:
         before = len(property_ids)
         property_ids = await _filter_by_has_covered_pool(pool, property_ids, want_covered)

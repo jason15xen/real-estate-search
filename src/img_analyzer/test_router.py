@@ -1,9 +1,9 @@
 """
 Vision A/B test router — POST /test/compare-vision
 
-Runs the SAME system prompt + image through both:
-  * Primary deployment   (AZURE_OPENAI_*       → typically gpt-5.1)
-  * Secondary deployment (TEST_AZURE_OPENAI_*  → typically gpt-5.4-mini)
+Runs the SAME system prompt + image through both OpenAI models (one key):
+  * Primary   (OPENAI_MODEL      → typically gpt-5.1)
+  * Secondary (OPENAI_TEST_MODEL → typically gpt-5.4-mini)
 
 Returns each model's parsed PhotoResult plus latency + token usage so you
 can A/B accuracy and cost side-by-side. NOT exposed in production usage —
@@ -51,8 +51,8 @@ class ModelOutcome(BaseModel):
 
 class CompareVisionResponse(BaseModel):
     photo_url: str
-    primary: ModelOutcome     # AZURE_OPENAI_DEPLOYMENT (gpt-5.1)
-    secondary: ModelOutcome   # TEST_AZURE_OPENAI_DEPLOYMENT (gpt-5.4-mini)
+    primary: ModelOutcome     # OPENAI_MODEL (gpt-5.1)
+    secondary: ModelOutcome   # OPENAI_TEST_MODEL (gpt-5.4-mini)
 
 
 def _build_system_prompt() -> str:
@@ -138,16 +138,10 @@ async def compare_vision(req: CompareVisionRequest):
     identical image. Results include latency and token usage so you can judge
     accuracy/quality, speed, and cost together.
     """
-    if not settings.test_azure_openai_api_key or not settings.test_azure_openai_endpoint:
+    if not settings.openai_test_model:
         raise HTTPException(
             status_code=503,
-            detail="Secondary deployment not configured. Set TEST_AZURE_OPENAI_API_KEY "
-                   "and TEST_AZURE_OPENAI_ENDPOINT in .env.",
-        )
-    if not settings.test_azure_openai_deployment:
-        raise HTTPException(
-            status_code=503,
-            detail="Set TEST_AZURE_OPENAI_DEPLOYMENT in .env.",
+            detail="Secondary model not configured. Set OPENAI_TEST_MODEL in .env.",
         )
 
     url = req.photo_url
@@ -162,15 +156,15 @@ async def compare_vision(req: CompareVisionRequest):
         primary, secondary = await asyncio.gather(
             _call_one(
                 primary_client,
-                settings.azure_openai_deployment,
-                settings.azure_openai_model,
+                settings.openai_model,
+                settings.openai_model,
                 system_prompt,
                 url,
             ),
             _call_one(
                 secondary_client,
-                settings.test_azure_openai_deployment,
-                settings.test_azure_openai_model or settings.test_azure_openai_deployment,
+                settings.openai_test_model,
+                settings.openai_test_model,
                 system_prompt,
                 url,
             ),
