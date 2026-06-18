@@ -38,7 +38,7 @@ from src.img_analyzer.raw_db import (
 
 logger = logging.getLogger(__name__)
 
-WORKER_BATCH_SIZE = 3            # rows processed in parallel per iteration
+WORKER_BATCH_SIZE = 1            # rows processed in parallel per iteration
 WORKER_IDLE_SLEEP_SECONDS = 5    # sleep when no work
 WORKER_ERROR_SLEEP_SECONDS = 10  # sleep after an errored iteration
 
