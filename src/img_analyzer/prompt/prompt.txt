@@ -4,11 +4,13 @@
             - Identify the RoomType, selecting only from: Kitchen, Bedroom, Bathroom, Living Room, Dining Room, Exterior, Pool, Garage. If the scene does not clearly fit one of these categories, return "RoomType": "Unknown".
             - Identify the SINGLE dominant Color of the room (the primary color a viewer perceives), selecting EXACTLY one from this fixed palette:
                 white, black, gray, brown, beige, blue, green, red, yellow, purple, pink, orange, gold.
+              IGNORE THE CEILING when judging color — ceilings are almost always white and bias the result toward white. Judge by the walls, cabinetry, and large furnishings instead.
+              KITCHEN RULE: for a Kitchen, the CABINETS are the defining surface — use the CABINET color as the room's "Color" (e.g. blue cabinets in a white-walled kitchen → "Color": "blue"; wood cabinets → "brown"). Only fall back to the walls or other surfaces when no cabinets are visible or the cabinets have no notable color.
               Normalize related colors: ivory/cream/eggshell → white, navy/teal/turquoise → blue, tan/khaki/taupe → beige, charcoal/silver → gray, mahogany/walnut/oak/wood-tone → brown, sage/olive/forest → green, burgundy/maroon/coral → red, mustard → yellow, lavender/violet → purple, salmon/rose → pink.
-              If no color clearly dominates, choose the single most prevalent one. If the photo is ambiguous, return "Color": "Unknown".
+              If no color clearly dominates, choose the single most prevalent one (after applying the rules above). If the photo is ambiguous, return "Color": "Unknown".
             - Examine visual details to extract key search keywords that describe the room’s features. Each feature should be a concise term that a homebuyer might use in a search (e.g., "granite countertops", "hardwood floors", "soaking tub", "vaulted ceiling"). Do not describe features in sentence form; use discrete, searchable keywords only.
               COLOR HANDLING — TWO DISTINCT THINGS:
-                1. The room's overall dominant color goes in the "Color" field (one of the 13 palette colors).
+                1. The room's overall dominant color goes in the "Color" field (one of the 13 palette colors) — ignoring the ceiling, and for a Kitchen using the cabinet color per the KITCHEN RULE above.
                 2. When a SPECIFIC OBJECT has a notable color, KEEP that color in its feature keyword,
                    but the color word MUST be one of the 13 palette colors (normalize it).
                    Examples: "blue cabinets", "white countertops", "green tile backsplash", "black appliances".
@@ -73,12 +75,12 @@
               "Features": ["white shaker cabinets", "white quartz countertops", "white subway tile backsplash", "stainless appliances", "modern", "contemporary"]
             }
 
-            Example 3 (white kitchen with BLUE cabinets — room color and object color differ):
-            Input: [Image of a white kitchen with white walls and white countertops, but navy blue cabinets]
+            Example 3 (KITCHEN RULE: color comes from the cabinets, not the white walls/ceiling):
+            Input: [Image of a kitchen with white walls, a white ceiling, and white countertops, but navy blue cabinets]
             Output:
             {
               "RoomType": "Kitchen",
-              "Color": "white",
+              "Color": "blue",
               "Features": ["blue cabinets", "white countertops", "white walls", "subway tile backsplash", "stainless appliances", "modern"]
             }
 
@@ -98,7 +100,7 @@
             - If a photo does not clearly belong to one of the accepted room types, set "RoomType": "Unknown."
             - Never include any categories outside of the specified list for RoomType.
             - "Color" MUST be exactly one of the 13 palette colors or "Unknown" — no other values.
-            - The room's overall dominant color → "Color" field. A specific object's notable color → kept inside its
+            - The room's overall dominant color → "Color" field (ignore the ceiling; for a Kitchen use the cabinet color). A specific object's notable color → also kept inside its
               feature keyword (e.g. "blue cabinets"), and that color word MUST also be one of the 13 palette colors.
             - Any color word that appears in a feature keyword MUST be normalized to the 13-color palette
               (e.g. "teal cabinets" → "blue cabinets", "cream vanity" → "white vanity"). Never use an out-of-palette color word.
