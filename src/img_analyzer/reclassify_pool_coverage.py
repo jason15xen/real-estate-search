@@ -48,6 +48,7 @@ async def _classify_image(client, sem, url: str) -> str:
             resp = await client.chat.completions.create(
                 model=settings.openai_model,
                 max_completion_tokens=200,
+                response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": _FOCUSED_PROMPT},
                     {"role": "user", "content": [

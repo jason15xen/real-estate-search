@@ -174,6 +174,37 @@ async def refresh_property_room_counts(conn, existing_id: int, item: dict) -> No
 
 # Helpers for single-property create/update (POST/PUT /properties)
 
+def _extract_neighborhood(record: dict) -> str | None:
+    """Zillow neighborhood name (e.g. "Viera East") from neighborhoodSearchUrl,
+    resolved against nearbyNeighborhoods (which carries the clean name); falls
+    back to de-slugging the URL path. None when not in a named neighborhood."""
+    u = record.get("neighborhoodSearchUrl") or {}
+    path = u.get("path") if isinstance(u, dict) else None
+    if not path:
+        return None
+    for nn in (record.get("nearbyNeighborhoods") or []):
+        if isinstance(nn, dict) and (nn.get("regionUrl") or {}).get("path") == path and nn.get("name"):
+            return nn["name"]
+    # fallback: "/viera-east-melbourne-fl/" -> "Viera East"
+    slug = path.strip("/")
+    slug = slug[:-3] if slug.endswith("-fl") else slug.split("-fl/")[0]
+    parts = slug.split("-")
+    cities = {"melbourne", "titusville", "rockledge", "mims"}
+    while parts and parts[-1].lower() in cities:
+        parts.pop()
+    return " ".join(p.capitalize() for p in parts) or None
+
+
+def _extract_locality(record: dict) -> str | None:
+    """OSM/Photon place name (e.g. "Viera") from the PhotonPropertyFullAddress
+    reverse-geocode embedded in the record. None when absent (older data)."""
+    ph = record.get("PhotonPropertyFullAddress") or {}
+    feats = ph.get("features") or []
+    if feats and isinstance(feats[0], dict):
+        return (feats[0].get("properties") or {}).get("city") or None
+    return None
+
+
 def _extract_property_fields(item: dict) -> dict:
     """Extract DB-relevant scalar fields from a Zillow item, keyed like properties columns."""
     record = item.get("ZillowPropertyRecord", {}) or {}
@@ -196,6 +227,9 @@ def _extract_property_fields(item: dict) -> dict:
         "state": address.get("state", ""),
         "postal_code": address.get("zipcode", ""),
         "country": "US",
+        "county": (record.get("county") or "").strip() or None,
+        "locality": _extract_locality(record),
+        "neighborhood": _extract_neighborhood(record),
         "latitude": float(record.get("latitude", 0) or 0),
         "longitude": float(record.get("longitude", 0) or 0),
         "area_sqft": int(record.get("livingArea", 0) or 0),
@@ -305,6 +339,7 @@ async def update_property_scalars(
             home_type=$15, rent_estimate=$16, year_built=$17,
             lot_size_sqft=$18, stories=$19,
             has_pool=$20, has_waterfront=$21, description=$22, financing=$23,
+            county=$24, locality=$25, neighborhood=$26,
             updated_at=NOW()
         WHERE id = $1
     """,
@@ -319,6 +354,7 @@ async def update_property_scalars(
         fields["lot_size_sqft"], fields["stories"],
         fields["has_pool"], fields["has_waterfront"], fields["description"],
         fields["financing"],
+        fields["county"], fields["locality"], fields["neighborhood"],
     )
     # Re-derive has_covered_pool (room features may have changed).
     await _refresh_has_covered_pool(conn, existing_id)
@@ -347,6 +383,7 @@ async def update_property_metadata(
             home_type=$19, rent_estimate=$20, year_built=$21,
             lot_size_sqft=$22, stories=$23,
             has_pool=$24, has_waterfront=$25, description=$26, financing=$27,
+            county=$28, locality=$29, neighborhood=$30,
             updated_at=NOW()
         WHERE id = $1
     """,
@@ -362,6 +399,7 @@ async def update_property_metadata(
         fields["lot_size_sqft"], fields["stories"],
         fields["has_pool"], fields["has_waterfront"], fields["description"],
         fields["financing"],
+        fields["county"], fields["locality"], fields["neighborhood"],
     )
     # Re-derive has_covered_pool (room features may have changed).
     await _refresh_has_covered_pool(conn, existing_id)

@@ -68,6 +68,7 @@ async def analyze_single_image(url: str, system_prompt: str) -> PhotoResult:
     response = await client.chat.completions.create(
         model=settings.openai_model,
         max_completion_tokens=1000,
+        response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": system_prompt},
             {

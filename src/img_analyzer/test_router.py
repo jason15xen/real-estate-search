@@ -77,6 +77,7 @@ async def _call_one(
     response = await client.chat.completions.create(
         model=deployment,
         max_completion_tokens=1000,
+        response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": system_prompt},
             {

@@ -4,7 +4,7 @@ DB feature strings that genuinely represent it.
 
 Two-stage retrieve-then-rerank:
   1. RECALL  — embed the phrase, pgvector top-K nearest features (broad net).
-  2. PRECISION — one bundled Claude call filters each phrase's candidates down
+  2. PRECISION — one bundled LLM call filters each phrase's candidates down
      to the ones that truly mean what the user said (drops topical noise like
      "pool table" for "swimming pool").
 
@@ -91,7 +91,7 @@ async def _retrieve_for_phrases(pool, phrases: list[str], top_k: int) -> dict[st
 
 
 async def _llm_filter(candidates_by_phrase: dict[str, list[str]]) -> dict[str, list[str]]:
-    """Bundled LLM #2 call (Azure OpenAI GPT): filter each phrase's candidates to
+    """Bundled LLM #2 call (OpenAI): filter each phrase's candidates to
     the relevant subset. Falls back to returning the raw candidates on any failure
     (recall over precision when the filter is unavailable)."""
     # Only send phrases that actually retrieved candidates.
@@ -131,7 +131,7 @@ async def _llm_filter(candidates_by_phrase: dict[str, list[str]]) -> dict[str, l
             # orchestrator falls back to an exact-match on the raw phrase when
             # the curated list is empty, which is the precision-preserving
             # choice (flooding all 200 candidates would reintroduce the noise
-            # Claude #2 exists to remove).
+            # the LLM #2 filter exists to remove).
             result[phrase] = [f for f in picked if f in cand_set]
         else:
             # Phrase missing from the response entirely → treat as a filter

@@ -9,6 +9,7 @@ from config.settings import settings
 from src.data.feature_registry import registry
 from src.models.search import (
     AreaCriterion,
+    AreaRelationCriterion,
     ColorRoomCriterion,
     FeatureCriterion,
     LocationCriterion,
@@ -19,7 +20,7 @@ from src.models.search import (
 )
 from src.search.feature_resolver import resolve_feature_phrases
 from src.search.filter_engine import apply_hard_filters
-from src.search.geo_search import apply_proximity_filters
+from src.search.geo_search import apply_area_relation_filters, apply_proximity_filters
 from src.search.query_parser import parse_query
 
 logger = logging.getLogger(__name__)
@@ -258,7 +259,8 @@ def _criterion_labels(criterion) -> list[str]:
         if criterion.max_sqft is not None:
             labels.append(f"area<={criterion.max_sqft}")
     elif isinstance(criterion, LocationCriterion):
-        for attr in ("city", "state", "country", "district"):
+        for attr in ("city", "state", "country", "district",
+                     "county", "neighborhood", "locality", "street"):
             val = getattr(criterion, attr)
             if val:
                 labels.append(f"{attr}={val}")
@@ -403,6 +405,24 @@ async def search(
             })
     after_proximity_count = len(property_ids)
 
+    # Phase 3.6: Area relations — "near A" / "between A and B" (PostGIS centroids)
+    area_rel_criteria = [c for c in parsed_query.criteria if isinstance(c, AreaRelationCriterion)]
+    for rc in area_rel_criteria:
+        before = len(property_ids)
+        property_ids = await apply_area_relation_filters(pool, property_ids, [rc])
+        if debug:
+            if rc.relation == "between":
+                label = f"between {rc.place_a} and {rc.place_b}"
+            elif rc.relation == "neighbors":
+                label = f"neighbors of {rc.place_a}"
+            else:
+                label = f"near {rc.place_a}"
+            filter_steps.append({
+                "step": f"area_relation: {label}",
+                "count": len(property_ids),
+                "dropped": before - len(property_ids),
+            })
+
     # Phase 3.5: Color-room matching
     color_room_criteria = [
         c for c in parsed_query.criteria if isinstance(c, ColorRoomCriterion)
@@ -472,7 +492,7 @@ async def search(
     if feature_criteria and property_ids:
         logger.info("Phase 4: Feature matching (PostgreSQL)")
         if settings.search_use_embedding_retrieval:
-            # Embedding retrieval + Claude #2 relevance filter maps each raw
+            # Embedding retrieval + LLM #2 relevance filter maps each raw
             # user phrase -> curated DB feature list (catches synonyms the
             # word-subset matcher misses, e.g. "hearth" -> "fireplace").
             phrases = [fc.feature for fc in feature_criteria]

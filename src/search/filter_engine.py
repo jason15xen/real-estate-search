@@ -16,6 +16,15 @@ from src.models.search import (
 logger = logging.getLogger(__name__)
 
 
+def _like_contains(value: str) -> str:
+    """Build a case-insensitive 'contains' pattern for ILIKE, escaping the LIKE
+    metacharacters (\\, %, _) in user input so a literal '%' or '_' in a place
+    name matches literally instead of as a wildcard. ILIKE's default escape
+    char is backslash, so no ESCAPE clause is needed."""
+    escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
 async def apply_hard_filters(
     pool: asyncpg.Pool,
     criteria: list[Criterion],
@@ -151,9 +160,37 @@ async def apply_hard_filters(
                 param_idx += 1
 
         elif isinstance(criterion, LocationCriterion):
+            # Place names use fuzzy (contains) matching. A user's "city" term is
+            # matched broadly across the place columns because Zillow's mailing
+            # city, the OSM locality, the neighborhood, and the subdivision often
+            # disagree (e.g. "Viera" is a locality/neighborhood but filed under
+            # mailing city "Rockledge"). state/country stay exact.
             if criterion.city:
-                conditions.append(f"LOWER(city) = LOWER(${param_idx})")
-                params.append(criterion.city)
+                conditions.append(
+                    f"(city ILIKE ${param_idx} OR locality ILIKE ${param_idx} "
+                    f"OR neighborhood ILIKE ${param_idx} OR district ILIKE ${param_idx})"
+                )
+                params.append(_like_contains(criterion.city))
+                param_idx += 1
+            if criterion.locality:
+                conditions.append(f"(locality ILIKE ${param_idx} OR city ILIKE ${param_idx})")
+                params.append(_like_contains(criterion.locality))
+                param_idx += 1
+            if criterion.neighborhood:
+                conditions.append(f"neighborhood ILIKE ${param_idx}")
+                params.append(_like_contains(criterion.neighborhood))
+                param_idx += 1
+            if criterion.county:
+                conditions.append(f"county ILIKE ${param_idx}")
+                params.append(_like_contains(criterion.county))
+                param_idx += 1
+            if criterion.street:
+                conditions.append(f"street ILIKE ${param_idx}")
+                params.append(_like_contains(criterion.street))
+                param_idx += 1
+            if criterion.district:
+                conditions.append(f"district ILIKE ${param_idx}")
+                params.append(_like_contains(criterion.district))
                 param_idx += 1
             if criterion.state:
                 conditions.append(f"LOWER(state) = LOWER(${param_idx})")
@@ -162,10 +199,6 @@ async def apply_hard_filters(
             if criterion.country:
                 conditions.append(f"LOWER(country) = LOWER(${param_idx})")
                 params.append(criterion.country)
-                param_idx += 1
-            if criterion.district:
-                conditions.append(f"LOWER(district) = LOWER(${param_idx})")
-                params.append(criterion.district)
                 param_idx += 1
 
         elif isinstance(criterion, PropertyCriterion):

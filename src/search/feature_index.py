@@ -21,7 +21,7 @@ from src.llm_client import embed_texts
 
 logger = logging.getLogger(__name__)
 
-EMBED_BATCH_SIZE = 256  # inputs per Azure embedding API call
+EMBED_BATCH_SIZE = 256  # inputs per embedding API call
 
 
 def vector_literal(vec: list[float]) -> str:

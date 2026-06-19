@@ -19,11 +19,14 @@ CREATE TABLE properties (
     -- Address
     name            TEXT NOT NULL,
     street          TEXT,
-    district        TEXT,
-    city            TEXT NOT NULL,
+    district        TEXT,                -- Zillow subdivision/plat name (e.g. "Viera Tract D-4 Phase 3")
+    city            TEXT NOT NULL,       -- Zillow mailing city (e.g. "Rockledge")
     state           TEXT NOT NULL,
     postal_code     TEXT,
     country         TEXT NOT NULL,
+    county          TEXT,                -- e.g. "Brevard County" (Zillow `county`)
+    locality        TEXT,                -- OSM/Photon place name (e.g. "Viera") — catches communities Zillow files under a mailing city
+    neighborhood    TEXT,                -- Zillow neighborhood (e.g. "Viera East"/"Viera West")
 
     -- Location (PostGIS geography point for spatial queries)
     geom            GEOGRAPHY(Point, 4326) NOT NULL,
@@ -163,6 +166,13 @@ CREATE INDEX idx_properties_has_pool ON properties(has_pool) WHERE has_pool = TR
 CREATE INDEX idx_properties_has_covered_pool ON properties(has_covered_pool) WHERE has_covered_pool;
 CREATE INDEX idx_properties_has_waterfront ON properties(has_waterfront) WHERE has_waterfront = TRUE;
 CREATE INDEX idx_properties_description ON properties USING GIN(description gin_trgm_ops);
+-- Trigram indexes for fuzzy (ILIKE '%x%') location search.
+CREATE INDEX idx_properties_county_trgm       ON properties USING GIN(county gin_trgm_ops);
+CREATE INDEX idx_properties_locality_trgm     ON properties USING GIN(locality gin_trgm_ops);
+CREATE INDEX idx_properties_neighborhood_trgm ON properties USING GIN(neighborhood gin_trgm_ops);
+CREATE INDEX idx_properties_street_trgm        ON properties USING GIN(street gin_trgm_ops);
+CREATE INDEX idx_properties_city_trgm          ON properties USING GIN(city gin_trgm_ops);
+CREATE INDEX idx_properties_district_trgm      ON properties USING GIN(district gin_trgm_ops);
 CREATE INDEX idx_properties_financing_gin ON properties USING GIN(financing);
 
 -- Spatial index (Phase 3: Proximity)
