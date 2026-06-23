@@ -1,10 +1,4 @@
-"""Real Estate AI Search — FastAPI app.
-
-Multi-phase pipeline returning only properties matching ALL criteria:
-1. LLM parses query → structured criteria (synonyms → known features)
-2. Hard filters (Postgres) 3. Proximity filters (PostGIS)
-4. Feature matching on room_instances.
-"""
+"""Real Estate AI Search FastAPI app — multi-phase pipeline (LLM parse → hard filters → proximity → feature matching) returning only properties matching ALL criteria."""
 
 import asyncio
 import json
@@ -38,8 +32,7 @@ async def lifespan(app: FastAPI):
     pool = await get_pool()
     logger.info("Database pool initialized")
 
-    # Fail loudly+early on a missing key rather than with a cryptic 401 on the
-    # first LLM call (vision, /search parsing, embeddings all need it).
+    # Fail loudly+early on a missing key rather than a cryptic 401 on the first LLM call.
     if not settings.openai_api_key:
         logger.error(
             "OPENAI_API_KEY is empty — vision, /search query parsing, and "
@@ -53,8 +46,7 @@ async def lifespan(app: FastAPI):
         f"{len(registry.room_types)} room types"
     )
 
-    # Embed any features not yet in feature_embeddings (incremental; no-op once
-    # caught up). Guarded so an embedding outage can't block app startup.
+    # Incrementally embed features not yet in feature_embeddings; guarded so an embedding outage can't block startup.
     if settings.search_use_embedding_retrieval:
         try:
             from src.search.feature_index import sync_feature_embeddings
@@ -63,8 +55,7 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Feature-embedding sync at startup failed: {e}")
 
-    # Web tier LISTENs for 'feature_change' to keep the in-memory registry fresh;
-    # supervisor heartbeats + reconnects so a Postgres blip can't leave us deaf to NOTIFYs.
+    # LISTEN for 'feature_change' to keep the registry fresh; supervisor heartbeats + reconnects so a Postgres blip can't drop NOTIFYs.
     supervisor = _ListenerSupervisor(pool)
     supervisor_task = asyncio.create_task(supervisor.run())
     logger.info("LISTEN feature_change supervisor started")
@@ -92,8 +83,7 @@ async def _on_feature_change(_connection, _pid, channel, _payload):
             f"Registry refreshed: {len(registry.features)} features, "
             f"{len(registry.room_types)} room types"
         )
-        # New room features may have appeared → embed them and drop the
-        # resolver cache so they can surface in retrievals immediately.
+        # New room features may have appeared → embed them and drop the resolver cache so they surface immediately.
         if settings.search_use_embedding_retrieval:
             from src.search.feature_index import sync_feature_embeddings
             from src.search.feature_resolver import clear_cache
@@ -105,11 +95,7 @@ async def _on_feature_change(_connection, _pid, channel, _payload):
 
 
 class _ListenerSupervisor:
-    """Dedicated LISTEN connection that reconnects on failure.
-
-    LISTEN state lives on the server session, so the pool can't auto-recover it.
-    Probe every HEARTBEAT_SEC with SELECT 1; on error, re-acquire and re-LISTEN.
-    """
+    """Dedicated LISTEN connection that reconnects on failure (probes every HEARTBEAT_SEC with SELECT 1, re-LISTENs on error)."""
 
     HEARTBEAT_SEC = 30
     RECONNECT_BACKOFF_SEC = 2
@@ -176,8 +162,7 @@ LOG_DIR = Path(settings.log_dir)
 try:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 except OSError as e:
-    # Don't abort startup/import if the log dir isn't writable (e.g. local dev,
-    # tests). Request logging just no-ops — see _append_log_entry's guard.
+    # Don't abort startup if the log dir isn't writable; request logging just no-ops (see _append_log_entry's guard).
     logger.warning(f"Could not create log dir {LOG_DIR}: {e}; request logging disabled")
 MAX_BODY_LOG_BYTES = 200_000
 _log_write_lock = asyncio.Lock()

@@ -150,12 +150,7 @@ async def analyze_photos(
 
 
 def inject_features(raw_data: list[dict], results_map: dict[str, list[PhotoResult]]) -> list[dict]:
-    """Inject RoomType/Color/Features into each originalPhotos entry.
-
-    Matched by photo URL (not position): analyze_photos skips photos whose best
-    JPEG URL is empty, so positional indexing would shift results onto the wrong
-    photos. A photo with no analyzed result is simply left untouched.
-    """
+    """Inject RoomType/Color/Features into each originalPhotos entry, matched by photo URL (not position)."""
     for prop in raw_data:
         prop_id = prop.get("Id", "")
         by_url = {r.photo_url: r for r in results_map.get(prop_id, [])}

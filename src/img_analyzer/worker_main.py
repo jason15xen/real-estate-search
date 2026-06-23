@@ -1,9 +1,4 @@
-"""Standalone worker process, separate from the FastAPI web tier.
-
-Both connect to the same Postgres; coordination is via the raw_properties queue
-and Postgres NOTIFY (feature_change). Started by the docker-compose `worker`
-service: `python -m src.img_analyzer.worker_main`.
-"""
+"""Standalone worker process (separate from the FastAPI web tier); coordinates via the raw_properties queue and Postgres NOTIFY (feature_change)."""
 from __future__ import annotations
 
 import asyncio

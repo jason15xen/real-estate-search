@@ -1,6 +1,4 @@
-"""Query parser: the OpenAI model maps NL queries to structured criteria,
-using the DB's known features/room types so no vector search is needed.
-"""
+"""Query parser: the OpenAI model maps NL queries to structured criteria using the DB's known features/room types."""
 
 import json
 import logging
@@ -269,8 +267,7 @@ For "pool", "garage", "kitchen", "bedroom" used as features, room_context=null.
 
 # --- Mode-specific prompt fragments -----------------------------------------
 
-# LEGACY mode: the LLM maps the user's words to canonical DB feature names,
-# using the full feature list embedded in the prompt.
+# LEGACY mode: the LLM maps user words to canonical DB feature names using the full feature list embedded in the prompt.
 _LEGACY_FEATURE_NAMING_RULE = """\
    CRITICAL: Map the user's words to the closest matching known feature name. \
 But if the user's word is a GENERIC term that could match MANY features \
@@ -290,9 +287,7 @@ _LEGACY_FEATURE_VALUE_RULE = """\
 - CRITICAL: Feature values MUST be from the KNOWN FEATURES list above. \
 Map synonyms, abbreviations, and alternate phrasings to the exact known feature name."""
 
-# EMBEDDING mode: no feature list in the prompt. The LLM outputs the user's OWN
-# wording verbatim; downstream embedding retrieval + a second LLM call map it
-# to canonical DB features.
+# EMBEDDING mode: no feature list in the prompt; the LLM outputs the user's own wording, mapped downstream by embedding retrieval + a second LLM call.
 _EMBEDDING_FEATURE_NAMING_RULE = """\
    Use the user's OWN wording for the feature value — do NOT try to map it to a \
 canonical database name. A separate downstream step handles that mapping. \
@@ -330,12 +325,7 @@ def _build_system_prompt(use_embedding_retrieval: bool) -> str:
 
 
 async def _call_llm(client, system_prompt: str, query: str) -> str | None:
-    """Call the query LLM (OpenAI), return raw JSON text or None.
-
-    GPT-5.x: use max_completion_tokens (max_tokens would 400), no temperature;
-    the system prompt is a system message. response_format forces strict JSON,
-    so the markdown-fence stripping in parse_query is just a fallback.
-    """
+    """Call the query LLM (OpenAI) and return raw JSON text or None (response_format forces strict JSON; fence-stripping is a fallback)."""
     response = await client.chat.completions.create(
         model=settings.openai_model_for_query,
         max_completion_tokens=16384,

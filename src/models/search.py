@@ -84,13 +84,7 @@ class ColorRoomCriterion(BaseModel):
 
 
 class AreaRelationCriterion(BaseModel):
-    """Spatial relation between a property and one or two named AREAS (city/
-    neighbourhood/town), resolved to centroids and matched with PostGIS.
-      * relation="near": within a radius of place_a's centroid (includes the
-        area itself plus adjacent areas).
-      * relation="between": within a corridor of the line joining the centroids
-        of place_a and place_b.
-    """
+    """Spatial relation (near/between) of a property to one or two named areas, resolved to centroids and matched with PostGIS."""
     type: CriterionType = CriterionType.AREA_RELATION
     relation: str                       # "near" | "between"
     place_a: str

@@ -1,5 +1,4 @@
-"""Feature Registry — caches unique feature names and room types from PostgreSQL,
-letting the query parser map user input to exact names without vector search."""
+"""Feature Registry — caches unique feature names and room types from PostgreSQL for mapping user input to exact names."""
 
 import logging
 
@@ -17,11 +16,7 @@ class FeatureRegistry:
         self._alternatives_cache: dict[str, list[str]] = {}
 
     async def build_from_db(self, pool: asyncpg.Pool) -> None:
-        """Load unique features and room types from PostgreSQL.
-
-        Builds new state locally, then atomic-swaps it in so a concurrent
-        reader always sees a fully-populated registry (old or new, never torn).
-        """
+        """Load unique features and room types from PostgreSQL, building locally then atomic-swapping in to avoid torn reads."""
         new_features: set[str] = set()
         new_room_types: set[str] = set()
         new_by_room: dict[str, set[str]] = {}
@@ -65,12 +60,7 @@ class FeatureRegistry:
         return sorted(self.features_by_room_type.get(room_type, set()))
 
     def get_feature_alternatives(self, base: str) -> list[str]:
-        """Return all known features meaning "property HAS `base`".
-
-        Pure and cached. Matches features containing every word of `base`,
-        excluding tangential forms (views, tables, neighborhood, placeholders).
-        Deterministic and same for positive/negated, so |with X|+|without X|=total.
-        """
+        """Return all known features meaning "property HAS `base`" — pure, cached, deterministic; matches every word of `base` while excluding tangential forms."""
         if base in self._alternatives_cache:
             return self._alternatives_cache[base]
 

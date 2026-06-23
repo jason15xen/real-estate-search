@@ -135,14 +135,7 @@ async def geocode_landmark(landmark_name: str) -> tuple[float, float] | None:
 async def _resolve_area_centroid(
     conn: asyncpg.Connection, place: str
 ) -> tuple[float, float, float] | None:
-    """Resolve a named AREA to (lat, lon, spread_meters).
-
-    Primary source is our OWN data: the centroid of every property whose
-    locality/neighborhood/city/district matches `place`, plus the area's spread
-    (max distance from that centroid to its members). Free, no external call,
-    and accurate for any area we have listings in. Falls back to the LLM
-    geocoder (spread 0) when we have no properties there; None if unresolvable.
-    """
+    """Resolve a named AREA to (lat, lon, spread_meters) from our own property centroids, falling back to the LLM geocoder (spread 0); None if unresolvable."""
     pat = _contains_pattern(place)
     row = await conn.fetchrow(
         """
@@ -174,13 +167,7 @@ async def apply_area_relation_filters(
     property_ids: list[int],
     criteria: list[Criterion],
 ) -> list[int]:
-    """Filter IDs by spatial relation to named areas:
-      * 'near A'      — within a radius of A's centroid (INCLUDES A itself).
-      * 'neighbors A' — the same radius but EXCLUDING A's own area, i.e. the
-                        properties that are A's neighbours (a different locality/
-                        neighborhood/city/district that sits next to A).
-      * 'between A B' — within a corridor of the line joining the two centroids.
-    """
+    """Filter IDs by spatial relation to named areas: 'near A' (radius around A, includes A), 'neighbors A' (same radius excluding A), 'between A B' (corridor joining centroids)."""
     rels = [c for c in criteria if isinstance(c, AreaRelationCriterion)]
     if not rels or not property_ids:
         return property_ids
@@ -217,9 +204,7 @@ async def apply_area_relation_filters(
                     result_ids, lon_a, lat_a, lon_b, lat_b, buf,
                 )
             elif rc.relation == "neighbors":
-                # A's neighbours: in the ring around A, but NOT in A itself. The
-                # `... IS NOT TRUE` form is NULL-safe (a row whose locality/etc.
-                # is NULL must still count as "not in A", not be dropped).
+                # A's neighbours: in the ring around A but NOT in A itself (`IS NOT TRUE` is NULL-safe).
                 radius = spread_a + (rc.radius_miles or NEAR_BUFFER_MILES) * MILES_TO_METERS
                 rows = await conn.fetch(
                     """

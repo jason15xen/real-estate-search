@@ -17,10 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def _like_contains(value: str) -> str:
-    """Build a case-insensitive 'contains' pattern for ILIKE, escaping the LIKE
-    metacharacters (\\, %, _) in user input so a literal '%' or '_' in a place
-    name matches literally instead of as a wildcard. ILIKE's default escape
-    char is backslash, so no ESCAPE clause is needed."""
+    """Build a case-insensitive 'contains' ILIKE pattern, escaping LIKE metacharacters (\\, %, _) in user input."""
     escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     return f"%{escaped}%"
 
@@ -31,12 +28,7 @@ async def apply_hard_filters(
     bounds: dict | None = None,
     filters: dict | None = None,
 ) -> list[int]:
-    """Return property IDs passing ALL criteria.
-
-    bounds: optional north/south/east/west bbox.
-    filters: optional per-field overrides; any key here suppresses the matching
-    LLM-extracted sub-condition (e.g. filters.price_max replaces PriceCriterion.max_price).
-    """
+    """Return property IDs passing ALL criteria; bounds is an optional bbox, filters are per-field overrides that suppress matching LLM sub-conditions."""
     hard_criteria = [
         c for c in criteria
         if isinstance(c, (RoomCountCriterion, PriceCriterion, AreaCriterion,
@@ -160,11 +152,7 @@ async def apply_hard_filters(
                 param_idx += 1
 
         elif isinstance(criterion, LocationCriterion):
-            # Place names use fuzzy (contains) matching. A user's "city" term is
-            # matched broadly across the place columns because Zillow's mailing
-            # city, the OSM locality, the neighborhood, and the subdivision often
-            # disagree (e.g. "Viera" is a locality/neighborhood but filed under
-            # mailing city "Rockledge"). state/country stay exact.
+            # Place names use fuzzy (contains) matching across place columns (which often disagree); state/country stay exact.
             if criterion.city:
                 conditions.append(
                     f"(city ILIKE ${param_idx} OR locality ILIKE ${param_idx} "
@@ -238,8 +226,7 @@ async def apply_hard_filters(
                 conditions.append(f"stories <= ${param_idx}")
                 params.append(criterion.max_stories)
                 param_idx += 1
-            # has_pool / has_waterfront deliberately skipped: handled as features so
-            # positive + negative results sum to the total set.
+            # has_pool / has_waterfront deliberately skipped: handled as features so positive + negative sum to the total.
 
     where_clause = " AND ".join(conditions) if conditions else "TRUE"
     query = f"SELECT id FROM properties WHERE {where_clause}"

@@ -1,6 +1,4 @@
-"""Centralized LLM client factory. OpenAI (api.openai.com) only — one shared
-AsyncOpenAI client (single OPENAI_API_KEY) for vision, geocoding, query parsing,
-feature filtering, and embeddings."""
+"""Centralized LLM client factory — one shared AsyncOpenAI client (single OPENAI_API_KEY) for vision, geocoding, query parsing, feature filtering, and embeddings."""
 
 from functools import lru_cache
 
@@ -31,11 +29,7 @@ def get_embedding_client() -> AsyncOpenAI:
 
 
 async def embed_texts(texts: list[str]) -> list[list[float]]:
-    """Embed a batch of strings with the OpenAI embedding model.
-
-    Returns one 1536-dim vector per input, in the same order. Empty input →
-    empty list.
-    """
+    """Embed a batch of strings; returns one 1536-dim vector per input in order, empty input → empty list."""
     if not texts:
         return []
     client = get_embedding_client()
