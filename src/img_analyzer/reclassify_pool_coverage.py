@@ -1,13 +1,4 @@
-"""Targeted re-vision backfill for properties.pool_covered.
-
-Re-analyzes ONLY the images where a pool is visible (Pool-room images + Exterior
-images that mention a pool) with a focused covered/uncovered/community prompt,
-then aggregates one verdict per property. This corrects pool_covered accurately
-without reprocessing the whole image set (~1.1k of 13.6k images).
-
-Run:  python -m src.img_analyzer.reclassify_pool_coverage
-      python -m src.img_analyzer.reclassify_pool_coverage --pool-only   # skip Exterior
-"""
+"""Targeted re-vision backfill for properties.pool_covered: re-analyzes only pool-visible images with a focused prompt and aggregates one verdict per property."""
 
 from __future__ import annotations
 
@@ -41,13 +32,13 @@ pool situation for THIS listing. Choose exactly one:
 Return STRICT JSON: {"coverage": "covered|uncovered|community|none"}. No prose."""
 
 async def _classify_image(client, sem, url: str) -> str:
-    """Focused vision verdict for one image: covered|uncovered|community|none.
-    Any failure (dead URL, parse error) → 'none' (no usable signal)."""
+    """Focused vision verdict for one image (covered|uncovered|community|none); any failure → 'none'."""
     async with sem:
         try:
             resp = await client.chat.completions.create(
                 model=settings.openai_model,
                 max_completion_tokens=200,
+                response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": _FOCUSED_PROMPT},
                     {"role": "user", "content": [
@@ -66,10 +57,7 @@ async def _classify_image(client, sem, url: str) -> str:
 
 
 def _aggregate(verdicts: list[str], tags: set[str]) -> bool:
-    """One boolean per property: TRUE iff any image shows the pool itself covered
-    (screen/cage/roof). Uncovered/community/none all map to FALSE — "uncovered" is
-    derived at search time as (has a pool) AND NOT has_covered_pool, so it isn't
-    stored here. `tags` is unused now but kept for signature stability."""
+    """One boolean per property: TRUE iff any image shows the pool itself covered; `tags` is unused but kept for signature stability."""
     return "covered" in verdicts
 
 

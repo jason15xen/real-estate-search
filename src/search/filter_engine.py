@@ -16,18 +16,19 @@ from src.models.search import (
 logger = logging.getLogger(__name__)
 
 
+def _like_contains(value: str) -> str:
+    """Build a case-insensitive 'contains' ILIKE pattern, escaping LIKE metacharacters (\\, %, _) in user input."""
+    escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
 async def apply_hard_filters(
     pool: asyncpg.Pool,
     criteria: list[Criterion],
     bounds: dict | None = None,
     filters: dict | None = None,
 ) -> list[int]:
-    """Return property IDs passing ALL criteria.
-
-    bounds: optional north/south/east/west bbox.
-    filters: optional per-field overrides; any key here suppresses the matching
-    LLM-extracted sub-condition (e.g. filters.price_max replaces PriceCriterion.max_price).
-    """
+    """Return property IDs passing ALL criteria; bounds is an optional bbox, filters are per-field overrides that suppress matching LLM sub-conditions."""
     hard_criteria = [
         c for c in criteria
         if isinstance(c, (RoomCountCriterion, PriceCriterion, AreaCriterion,
@@ -151,9 +152,33 @@ async def apply_hard_filters(
                 param_idx += 1
 
         elif isinstance(criterion, LocationCriterion):
+            # Place names use fuzzy (contains) matching across place columns (which often disagree); state/country stay exact.
             if criterion.city:
-                conditions.append(f"LOWER(city) = LOWER(${param_idx})")
-                params.append(criterion.city)
+                conditions.append(
+                    f"(city ILIKE ${param_idx} OR locality ILIKE ${param_idx} "
+                    f"OR neighborhood ILIKE ${param_idx} OR district ILIKE ${param_idx})"
+                )
+                params.append(_like_contains(criterion.city))
+                param_idx += 1
+            if criterion.locality:
+                conditions.append(f"(locality ILIKE ${param_idx} OR city ILIKE ${param_idx})")
+                params.append(_like_contains(criterion.locality))
+                param_idx += 1
+            if criterion.neighborhood:
+                conditions.append(f"neighborhood ILIKE ${param_idx}")
+                params.append(_like_contains(criterion.neighborhood))
+                param_idx += 1
+            if criterion.county:
+                conditions.append(f"county ILIKE ${param_idx}")
+                params.append(_like_contains(criterion.county))
+                param_idx += 1
+            if criterion.street:
+                conditions.append(f"street ILIKE ${param_idx}")
+                params.append(_like_contains(criterion.street))
+                param_idx += 1
+            if criterion.district:
+                conditions.append(f"district ILIKE ${param_idx}")
+                params.append(_like_contains(criterion.district))
                 param_idx += 1
             if criterion.state:
                 conditions.append(f"LOWER(state) = LOWER(${param_idx})")
@@ -162,10 +187,6 @@ async def apply_hard_filters(
             if criterion.country:
                 conditions.append(f"LOWER(country) = LOWER(${param_idx})")
                 params.append(criterion.country)
-                param_idx += 1
-            if criterion.district:
-                conditions.append(f"LOWER(district) = LOWER(${param_idx})")
-                params.append(criterion.district)
                 param_idx += 1
 
         elif isinstance(criterion, PropertyCriterion):
@@ -205,8 +226,7 @@ async def apply_hard_filters(
                 conditions.append(f"stories <= ${param_idx}")
                 params.append(criterion.max_stories)
                 param_idx += 1
-            # has_pool / has_waterfront deliberately skipped: handled as features so
-            # positive + negative results sum to the total set.
+            # has_pool / has_waterfront deliberately skipped: handled as features so positive + negative sum to the total.
 
     where_clause = " AND ".join(conditions) if conditions else "TRUE"
     query = f"SELECT id FROM properties WHERE {where_clause}"

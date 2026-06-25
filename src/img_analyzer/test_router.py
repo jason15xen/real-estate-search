@@ -1,14 +1,4 @@
-"""
-Vision A/B test router — POST /test/compare-vision
-
-Runs the SAME system prompt + image through both OpenAI models (one key):
-  * Primary   (OPENAI_MODEL      → typically gpt-5.1)
-  * Secondary (OPENAI_TEST_MODEL → typically gpt-5.4-mini)
-
-Returns each model's parsed PhotoResult plus latency + token usage so you
-can A/B accuracy and cost side-by-side. NOT exposed in production usage —
-read-only test surface.
-"""
+"""Vision A/B test router (POST /test/compare-vision): runs one prompt+image through primary and secondary OpenAI models, returning parsed results plus latency/usage."""
 from __future__ import annotations
 
 import asyncio
@@ -77,6 +67,7 @@ async def _call_one(
     response = await client.chat.completions.create(
         model=deployment,
         max_completion_tokens=1000,
+        response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": system_prompt},
             {
@@ -131,13 +122,7 @@ async def _call_one(
 
 @router.post("/test/compare-vision", response_model=CompareVisionResponse)
 async def compare_vision(req: CompareVisionRequest):
-    """A/B-test the primary (gpt-5.1) and secondary (gpt-5.4-mini) deployments
-    on the same image with the same production system prompt.
-
-    The two calls run in PARALLEL — each model sees the identical prompt and
-    identical image. Results include latency and token usage so you can judge
-    accuracy/quality, speed, and cost together.
-    """
+    """A/B-test primary and secondary deployments in parallel on the same image and prompt; returns latency and token usage."""
     if not settings.openai_test_model:
         raise HTTPException(
             status_code=503,

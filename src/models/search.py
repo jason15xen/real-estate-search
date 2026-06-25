@@ -12,6 +12,7 @@ class CriterionType(str, Enum):
     PROXIMITY = "proximity"
     PROPERTY = "property"
     COLOR_ROOM = "color_room"
+    AREA_RELATION = "area_relation"
 
 
 class RoomCountCriterion(BaseModel):
@@ -43,10 +44,14 @@ class AreaCriterion(BaseModel):
 
 class LocationCriterion(BaseModel):
     type: CriterionType = CriterionType.LOCATION
-    city: str | None = None
+    city: str | None = None          # city/town OR any place/community (Melbourne, Rockledge, Viera, Suntree)
     state: str | None = None
     country: str | None = None
-    district: str | None = None
+    district: str | None = None      # subdivision/plat
+    county: str | None = None        # e.g. "Brevard County"
+    neighborhood: str | None = None  # e.g. "Viera East"
+    locality: str | None = None      # OSM place (e.g. "Viera")
+    street: str | None = None        # street/road name (e.g. "Murrell Road")
 
 
 class ProximityCriterion(BaseModel):
@@ -78,6 +83,15 @@ class ColorRoomCriterion(BaseModel):
     negated: bool = False       # True = must NOT have such a room
 
 
+class AreaRelationCriterion(BaseModel):
+    """Spatial relation (near/between) of a property to one or two named areas, resolved to centroids and matched with PostGIS."""
+    type: CriterionType = CriterionType.AREA_RELATION
+    relation: str                       # "near" | "between"
+    place_a: str
+    place_b: str | None = None          # required for "between"
+    radius_miles: float | None = None   # optional override of the default buffer
+
+
 Criterion = (
     RoomCountCriterion
     | FeatureCriterion
@@ -87,6 +101,7 @@ Criterion = (
     | ProximityCriterion
     | PropertyCriterion
     | ColorRoomCriterion
+    | AreaRelationCriterion
 )
 
 

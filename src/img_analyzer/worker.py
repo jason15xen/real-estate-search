@@ -1,11 +1,4 @@
-"""Background worker: drains raw_properties → primary tables.
-
-Runs in its own process (`python -m src.img_analyzer.worker_main`), loops
-forever processing WORKER_BATCH_SIZE rows in parallel via asyncio.gather.
-Claims rows with status 'unprocessed', 'image_only_processed', or
-'partial_image_only_processed' and marks them 'processed'. On error a row's
-status is left untouched so the next pass retries it.
-"""
+"""Background worker: loops forever draining raw_properties → primary tables in WORKER_BATCH_SIZE-row batches, marking rows 'processed' (errors leave them for retry)."""
 
 from __future__ import annotations
 
@@ -46,11 +39,7 @@ WORKER_ERROR_SLEEP_SECONDS = 10  # sleep after an errored iteration
 async def _process_unprocessed(
     pool: asyncpg.Pool, item_id: str, data: dict, expected_updated_at,
 ) -> bool:
-    """Full sync: Vision API → primary tables (INSERT or full re-INSERT of children).
-
-    Returns False if a concurrent /process write raced us (status stays pending
-    so the next iteration re-processes with fresh data).
-    """
+    """Full sync: Vision API → primary tables (INSERT or full re-INSERT of children); returns False if a concurrent /process write raced us."""
     item = {"Id": item_id, "ZillowPropertyRecord": data}
 
     p = PropertyItem(**item)  # raises on broken structure; caller logs
@@ -61,8 +50,7 @@ async def _process_unprocessed(
         inject_features([item], {p.Id: results})
 
     async with pool.acquire() as conn:
-        # Transaction: child rebuild is DELETE-then-INSERT, so a mid-write crash
-        # must not leave children deleted-but-not-reinserted.
+        # Transaction: child rebuild is DELETE-then-INSERT, so a mid-write crash must not leave children deleted-but-not-reinserted.
         async with conn.transaction():
             existing_id = await conn.fetchval(
                 "SELECT id FROM properties WHERE guid = $1", item_id
@@ -77,13 +65,7 @@ async def _process_unprocessed(
 async def _process_image_only(
     pool: asyncpg.Pool, item_id: str, data: dict, expected_updated_at,
 ) -> bool:
-    """Metadata-only sync: scalars + Bedroom/Bathroom + schools; rooms untouched.
-
-    Uses update_property_scalars (not update_property_metadata) to avoid the
-    count-zeroing bug: most records have empty resoFacts.rooms and no Vision
-    tags this round, so update_property_metadata would zero kitchen/living/
-    dining/garage. Falls back to full unprocessed path if primary row missing.
-    """
+    """Metadata-only sync: scalars + Bedroom/Bathroom + schools, rooms untouched; uses update_property_scalars to avoid the count-zeroing bug, falling back to full path if primary row missing."""
     async with pool.acquire() as conn:
         existing_id = await conn.fetchval(
             "SELECT id FROM properties WHERE guid = $1", item_id
@@ -119,15 +101,7 @@ async def _process_partial(
     data: dict,
     expected_updated_at,
 ) -> bool:
-    """Partial image sync: recompute the photo diff against LIVE primary state,
-    re-analyze only the still-needed added photos, delete room_instances for
-    removed photos, refresh metadata + schools.
-
-    Recomputing (vs. a stored diff) makes this idempotent: if an earlier attempt
-    partially applied before losing its mark_processed race, the re-claim only
-    does what's still missing — no duplicate room_instances. Empty diff →
-    metadata-only refresh. Missing primary row → full unprocessed path.
-    """
+    """Partial image sync: recompute the photo diff against live primary state, re-analyze only added photos, drop removed ones, refresh metadata + schools; idempotent."""
     item = {"Id": item_id, "ZillowPropertyRecord": data}
 
     # Step 1: existing_id + recompute diff against live primary state.
@@ -203,10 +177,7 @@ async def _process_partial(
                     actual_removed,
                 )
 
-            # 2. Insert room_instances for added photos, grouped by room_type.
-            #    Vision-failed photos still get a stub Unknown instance so their
-            #    URL is claimed — else /process re-flags them, burning quota in
-            #    an infinite retry loop.
+            # 2. Insert room_instances for added photos, grouped by room_type (Vision-failed photos get a stub Unknown instance to claim their URL).
             new_rows: dict[str, list[dict]] = {}
             for photo, result in zip(photos_to_analyze, photo_results):
                 url = _canonical_photo_url(photo)
@@ -282,8 +253,7 @@ async def _process_partial(
                 existing_id,
             )
 
-            # 4. Refresh scalars + Bed/Bath and recompute Kitchen/Living/Dining/
-            #    Garage (path-independent, same algorithm as full-process).
+            # 4. Refresh scalars + Bed/Bath and recompute Kitchen/Living/Dining/Garage (path-independent, same algorithm as full-process).
             await update_property_scalars(conn, existing_id, item)
             await refresh_property_room_counts(conn, existing_id, item)
 
@@ -307,9 +277,7 @@ async def _process_partial(
 
 
 async def _insert_primary_full(conn, item: dict) -> None:
-    """INSERT a new property + all child rows. Used for new arrivals and the
-    rare image_only_processed case where the primary row is missing.
-    """
+    """INSERT a new property + all child rows; used for new arrivals and the rare missing-primary-row case."""
     record = item.get("ZillowPropertyRecord", {}) or {}
     fields = _extract_property_fields(item)
     rooms_from_photos = _build_rooms_from_photos(record.get("originalPhotos", []) or [])
@@ -325,12 +293,14 @@ async def _insert_primary_full(conn, item: dict) -> None:
             living_room_count, dining_room_count, garage_count,
             home_type, rent_estimate, year_built,
             lot_size_sqft, stories,
-            has_pool, has_waterfront, description, financing
+            has_pool, has_waterfront, description, financing,
+            county, locality, neighborhood
         ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8,
             ST_MakePoint($9, $10)::geography,
             $11, $12, $13, $14, $15, $16, $17, $18,
-            $19, $20, $21, $22, $23, $24, $25, $26, $27
+            $19, $20, $21, $22, $23, $24, $25, $26, $27,
+            $28, $29, $30
         ) RETURNING id
     """,
         fields["guid"], fields["name"], fields["street"], fields["district"],
@@ -344,16 +314,13 @@ async def _insert_primary_full(conn, item: dict) -> None:
         fields["lot_size_sqft"], fields["stories"],
         fields["has_pool"], fields["has_waterfront"], fields["description"],
         fields["financing"],
+        fields["county"], fields["locality"], fields["neighborhood"],
     )
     await _insert_children(conn, prop_id, rooms_from_photos, _extract_schools(item))
 
 
 async def _process_one_row(pool: asyncpg.Pool, row: asyncpg.Record) -> bool:
-    """Dispatch a single raw row to the right processor.
-
-    Returns False if raced or if processing raised; the row stays pending for
-    the next iteration either way.
-    """
+    """Dispatch a single raw row to the right processor; returns False if raced or if processing raised (row stays pending)."""
     item_id = row["id"]
     raw_data = row["data"]
     if not isinstance(raw_data, dict):
@@ -385,11 +352,7 @@ async def _process_one_row(pool: asyncpg.Pool, row: asyncpg.Record) -> bool:
 
 
 async def _worker_iteration(pool: asyncpg.Pool) -> tuple[int, int]:
-    """Process one batch; returns (claimed, succeeded). claimed=0 means no work.
-
-    Only triggers a feature-registry rebuild when an unprocessed or partial row
-    succeeded — those are the only paths that add room_instances/features.
-    """
+    """Process one batch; returns (claimed, succeeded), claimed=0 meaning no work; triggers a feature-registry rebuild only when an unprocessed/partial row succeeded."""
     async with pool.acquire() as conn:
         async with conn.transaction():
             rows = await claim_pending_batch(conn, limit=WORKER_BATCH_SIZE)
@@ -408,8 +371,7 @@ async def _worker_iteration(pool: asyncpg.Pool) -> tuple[int, int]:
         for ok, row in zip(results, rows)
     )
     if features_may_have_changed:
-        # Worker has no in-memory registry; signal the web tier to rebuild via
-        # Postgres NOTIFY on the feature_change channel.
+        # Worker has no in-memory registry; signal the web tier to rebuild via Postgres NOTIFY on the feature_change channel.
         try:
             async with pool.acquire() as conn:
                 await conn.execute("NOTIFY feature_change")
@@ -429,8 +391,7 @@ async def run_worker_forever() -> None:
             if claimed == 0:
                 await asyncio.sleep(WORKER_IDLE_SLEEP_SECONDS)
             elif succeeded == 0:
-                # Claimed rows but none made progress (all failed or raced).
-                # Back off instead of hot-looping on the same rows.
+                # Claimed rows but none made progress (all failed or raced); back off instead of hot-looping.
                 await asyncio.sleep(WORKER_ERROR_SLEEP_SECONDS)
         except asyncio.CancelledError:
             logger.info("Background worker received cancellation; exiting")

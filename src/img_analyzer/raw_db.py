@@ -1,22 +1,4 @@
-"""
-Raw Properties Staging — intake for /process. A background worker moves rows
-from raw_properties → primary tables (properties, rooms, room_instances,
-property_schools).
-
-Status lifecycle:
-  unprocessed                  → new, or all photos changed / no primary row; re-analyze all.
-  image_only_processed         → photo set identical; refresh scalars+schools only, no Vision.
-  partial_image_only_processed → photos partially changed; analyze added, drop removed.
-  processed                    → fully synced; nothing to do.
-
-No stored diff: truth is raw_properties.data (desired) vs room_instances.photo_url
-(current). Diff is set arithmetic, computed transiently in upsert and recomputed by
-the worker at processing time, keeping the worker idempotent under concurrent writes.
-
-Concurrency invariants:
-  * upsert never downgrades away from 'unprocessed' (preserves queued vision work).
-  * mark_processed no-ops if updated_at changed since claim, so concurrent writes are reprocessed.
-"""
+"""Raw_properties staging for /process; worker syncs to primary tables via diff (data vs room_instances.photo_url), idempotent under concurrent writes."""
 
 from __future__ import annotations
 
@@ -44,8 +26,7 @@ def extract_photo_urls_from_data(data: dict) -> list[str]:
 
 
 async def primary_photo_urls(conn, property_guid: str) -> set[str]:
-    """Photo URLs already in primary (room_instances.photo_url). Empty if absent or
-    legacy NULL photo_url rows (treated as unknown → full re-analyze)."""
+    """Photo URLs already in primary (room_instances.photo_url); empty if absent/legacy NULL (→ full re-analyze)."""
     rows = await conn.fetch(
         """
         SELECT DISTINCT ri.photo_url
@@ -63,15 +44,7 @@ async def upsert_raw_property(
     item_id: str,
     new_data: dict,
 ) -> tuple[str, dict | None, bool]:
-    """Insert or update a raw_properties row.
-
-    Returns (final_status, diff_info_or_None, existed_before). diff_info is for the
-    /process response only (not stored; worker recomputes against live primary state).
-
-    Status: no row → unprocessed; no primary URLs → unprocessed; photos identical →
-    image_only_processed; partial overlap → partial_image_only_processed; no overlap →
-    unprocessed. Never downgrades a prior 'unprocessed' (preserves queued vision work).
-    """
+    """Insert/update a raw_properties row; returns (final_status, diff_info_or_None, existed_before)."""
     existing = await conn.fetchrow(
         "SELECT status FROM raw_properties WHERE id = $1", item_id
     )
@@ -133,8 +106,7 @@ async def claim_pending_batch(
     conn,
     limit: int = 5,
 ) -> list[asyncpg.Record]:
-    """Claim up to `limit` pending rows via FOR UPDATE SKIP LOCKED. Returns updated_at
-    for optimistic-concurrency guarding in mark_processed."""
+    """Claim up to `limit` pending rows via FOR UPDATE SKIP LOCKED; returns updated_at for optimistic-concurrency guarding."""
     rows = await conn.fetch(
         """
         SELECT id, data, status, updated_at
@@ -154,8 +126,7 @@ async def claim_pending_batch(
 
 
 async def mark_processed(conn, item_id: str, expected_updated_at: datetime) -> bool:
-    """Set status='processed' only if updated_at is unchanged since claim. Returns False
-    if a concurrent write moved it; the row stays pending for the next (idempotent) run."""
+    """Set status='processed' only if updated_at unchanged since claim; returns False if a concurrent write moved it."""
     result = await conn.execute(
         """
         UPDATE raw_properties

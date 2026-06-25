@@ -1,19 +1,4 @@
-"""
-Feature resolver — turns a user's raw feature phrase into the set of canonical
-DB feature strings that genuinely represent it.
-
-Two-stage retrieve-then-rerank:
-  1. RECALL  — embed the phrase, pgvector top-K nearest features (broad net).
-  2. PRECISION — one bundled Claude call filters each phrase's candidates down
-     to the ones that truly mean what the user said (drops topical noise like
-     "pool table" for "swimming pool").
-
-The curated list per phrase is then used by the orchestrator's Phase 4 exactly
-like the legacy registry alternatives were — same set-intersection (positive)
-and set-subtraction (negated) logic, so the |with X| + |without X| = |total|
-symmetry is preserved (positive and negated criteria with the same phrase get
-the same curated list).
-"""
+"""Feature resolver: turn a raw user phrase into canonical DB feature strings via two-stage retrieve-then-rerank (pgvector top-K recall, then a bundled LLM precision filter)."""
 
 from __future__ import annotations
 
@@ -27,15 +12,13 @@ from src.search.feature_index import retrieve_candidates
 
 logger = logging.getLogger(__name__)
 
-# Per-process cache: phrase (lowercased) -> curated feature list.
-# Cleared whenever the feature embeddings change (see clear_cache()).
+# Per-process cache: lowercased phrase -> curated feature list (cleared on embedding change via clear_cache()).
 _cache: dict[str, list[str]] = {}
 _CACHE_MAX = 5000  # bound memory; phrases are short, this is plenty
 
 
 def clear_cache() -> None:
-    """Drop the resolver cache — call when feature_embeddings is re-synced so a
-    newly-embedded feature can start appearing in retrievals."""
+    """Drop the resolver cache; call when feature_embeddings is re-synced so new features appear in retrievals."""
     _cache.clear()
 
 
@@ -77,8 +60,7 @@ No commentary, no markdown."""
 
 
 async def _retrieve_for_phrases(pool, phrases: list[str], top_k: int) -> dict[str, list[str]]:
-    """Embed each phrase and pgvector-retrieve top_k candidates. Returns
-    {phrase: [candidate features]}. Phrases are embedded in one batched call."""
+    """Embed each phrase (one batched call) and pgvector-retrieve top_k candidates, returning {phrase: [candidate features]}."""
     vectors = await embed_texts(phrases)
     out: dict[str, list[str]] = {}
 
@@ -91,9 +73,7 @@ async def _retrieve_for_phrases(pool, phrases: list[str], top_k: int) -> dict[st
 
 
 async def _llm_filter(candidates_by_phrase: dict[str, list[str]]) -> dict[str, list[str]]:
-    """Bundled LLM #2 call (Azure OpenAI GPT): filter each phrase's candidates to
-    the relevant subset. Falls back to returning the raw candidates on any failure
-    (recall over precision when the filter is unavailable)."""
+    """Bundled LLM #2 call: filter each phrase's candidates to the relevant subset, falling back to raw candidates on any failure."""
     # Only send phrases that actually retrieved candidates.
     payload = {p: c for p, c in candidates_by_phrase.items() if c}
     if not payload:
@@ -120,22 +100,16 @@ async def _llm_filter(candidates_by_phrase: dict[str, list[str]]) -> dict[str, l
         logger.warning("LLM #2 feature filter failed (%s); using raw candidates", e)
         return dict(candidates_by_phrase)
 
-    # Sanitize: keep only strings that were genuinely in each phrase's candidate
-    # list (guards against the model inventing or altering strings).
+    # Sanitize: keep only strings genuinely in each phrase's candidate list (guards against invented/altered strings).
     result: dict[str, list[str]] = {}
     for phrase, cands in candidates_by_phrase.items():
         cand_set = set(cands)
         picked = filtered.get(phrase)
         if isinstance(picked, list):
-            # Respect the model's filtering — even an empty result. The
-            # orchestrator falls back to an exact-match on the raw phrase when
-            # the curated list is empty, which is the precision-preserving
-            # choice (flooding all 200 candidates would reintroduce the noise
-            # Claude #2 exists to remove).
+            # Respect the model's filtering, even an empty result (orchestrator falls back to exact-match on the raw phrase).
             result[phrase] = [f for f in picked if f in cand_set]
         else:
-            # Phrase missing from the response entirely → treat as a filter
-            # failure for this phrase and fall back to raw candidates (recall).
+            # Phrase missing from response → treat as filter failure and fall back to raw candidates (recall).
             result[phrase] = cands
     return result
 
@@ -145,11 +119,7 @@ async def resolve_feature_phrases(
     phrases: list[str],
     top_k: int | None = None,
 ) -> dict[str, list[str]]:
-    """Map each distinct user feature phrase to its curated DB-feature list.
-
-    Returns {phrase: [canonical feature strings]}. Cached per phrase; cache is
-    cleared when feature embeddings re-sync.
-    """
+    """Map each distinct user feature phrase to its curated DB-feature list {phrase: [canonical strings]}; cached per phrase, cleared on embedding re-sync."""
     if not phrases:
         return {}
     k = top_k or settings.search_embedding_top_k

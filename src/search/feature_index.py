@@ -1,17 +1,4 @@
-"""
-Feature embedding index — keeps `feature_embeddings` in sync with the distinct
-feature strings present in room_instances, and provides cosine-similarity
-retrieval over them.
-
-Design notes:
-  * Vectors are passed to/from Postgres as string literals with a ::vector cast
-    (e.g. '[0.1,0.2,...]'). This avoids adding the `pgvector` Python dependency
-    and an asyncpg type codec — we never need to DECODE a vector in Python,
-    only retrieve the `feature` text from a similarity search.
-  * sync_feature_embeddings is incremental and idempotent: it embeds only
-    features that aren't already in feature_embeddings. Safe to call at startup
-    and on every NOTIFY feature_change.
-"""
+"""Feature embedding index: keeps `feature_embeddings` in sync with distinct room_instances features and provides cosine-similarity retrieval (vectors passed as ::vector string literals)."""
 
 from __future__ import annotations
 
@@ -21,7 +8,7 @@ from src.llm_client import embed_texts
 
 logger = logging.getLogger(__name__)
 
-EMBED_BATCH_SIZE = 256  # inputs per Azure embedding API call
+EMBED_BATCH_SIZE = 256  # inputs per embedding API call
 
 
 def vector_literal(vec: list[float]) -> str:
@@ -30,8 +17,7 @@ def vector_literal(vec: list[float]) -> str:
 
 
 async def _distinct_db_features(conn) -> set[str]:
-    """All distinct feature strings currently in room_instances (excludes the
-    empty-feature 'Unknown' stubs naturally — they contribute no features)."""
+    """All distinct feature strings currently in room_instances."""
     rows = await conn.fetch(
         "SELECT DISTINCT unnest(features) AS feature FROM room_instances"
     )
@@ -44,10 +30,7 @@ async def _embedded_features(conn) -> set[str]:
 
 
 async def sync_feature_embeddings(pool) -> int:
-    """Embed any DB features not yet present in feature_embeddings.
-
-    Incremental + idempotent. Returns the number of newly-embedded features.
-    """
+    """Embed any DB features not yet in feature_embeddings (incremental + idempotent); returns the count newly embedded."""
     async with pool.acquire() as conn:
         db_features = await _distinct_db_features(conn)
         have = await _embedded_features(conn)
@@ -83,15 +66,7 @@ async def sync_feature_embeddings(pool) -> int:
 
 
 async def retrieve_candidates(conn, query_vec: list[float], k: int) -> list[str]:
-    """Return the top-k feature strings most cosine-similar to query_vec.
-
-    Uses pgvector's <=> cosine-distance operator. At small scale the planner
-    does an exact seq-scan sort; once the table is large enough to use the
-    HNSW index, `hnsw.ef_search` bounds how many candidates the index
-    considers — it MUST be >= k or the top-k silently degrades. We set it per
-    query inside a transaction (SET LOCAL); it's a harmless no-op while the
-    planner is still seq-scanning.
-    """
+    """Return the top-k feature strings most cosine-similar to query_vec (sets hnsw.ef_search >= k per query so the HNSW index doesn't silently degrade top-k)."""
     ef_search = int(max(k, 100))
     async with conn.transaction():
         await conn.execute(f"SET LOCAL hnsw.ef_search = {ef_search}")

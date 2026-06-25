@@ -9,6 +9,7 @@ from config.settings import settings
 from src.data.feature_registry import registry
 from src.models.search import (
     AreaCriterion,
+    AreaRelationCriterion,
     ColorRoomCriterion,
     FeatureCriterion,
     LocationCriterion,
@@ -19,7 +20,7 @@ from src.models.search import (
 )
 from src.search.feature_resolver import resolve_feature_phrases
 from src.search.filter_engine import apply_hard_filters
-from src.search.geo_search import apply_proximity_filters
+from src.search.geo_search import apply_area_relation_filters, apply_proximity_filters
 from src.search.query_parser import parse_query
 
 logger = logging.getLogger(__name__)
@@ -112,20 +113,7 @@ _POOL_PHRASES = ("pool", "swimming pool")
 def _extract_pool_filters(
     feature_criteria: list[FeatureCriterion],
 ) -> tuple[bool | None, bool | None, list[FeatureCriterion]]:
-    """Pull pool intent out of the feature criteria so it's served by STRUCTURED
-    columns instead of fuzzy feature tags:
-      * EXISTENCE → has_pool OR an image-derived 'Pool' room (see
-        _filter_by_pool_evidence). Raw 'pool' tags over-match — community/
-        neighboring pools and the odd hallucinated tag — so we don't use them.
-      * COVERAGE  → the boolean has_covered_pool column. "Uncovered" is derived:
-        (has a pool) AND NOT has_covered_pool.
-
-    Returns (want_pool, want_covered, remaining):
-      * want_pool    True/False/None → require / forbid pool existence
-      * want_covered True/False/None → require has_covered_pool == that value
-    Pool/covered/uncovered criteria are removed from `remaining` (handled here);
-    everything else falls through to Phase 4 feature matching.
-    """
+    """Extract pool intent (want_pool, want_covered) for structured-column filtering, leaving other criteria in `remaining`."""
     want_pool: bool | None = None
     want_covered: bool | None = None
     remaining: list[FeatureCriterion] = []
@@ -134,9 +122,7 @@ def _extract_pool_filters(
         if nf in _POOL_PHRASES:                    # "pool" / "swimming pool"
             want_pool = not fc.negated
         elif nf == "covered pool":
-            # Served by has_covered_pool alone — do NOT add an existence gate.
-            # has_covered_pool is itself pool evidence (and a real covered pool's
-            # photos are sometimes binned as 'Exterior', not a 'Pool' room).
+            # Served by has_covered_pool alone (itself pool evidence); no existence gate.
             want_covered = not fc.negated          # positive → True, "without" → False
         elif nf == "uncovered pool":
             want_covered = fc.negated              # positive → False, "without" → True
@@ -149,12 +135,7 @@ def _extract_pool_filters(
 async def _filter_by_pool_evidence(
     pool: asyncpg.Pool, property_ids: list[int], want: bool
 ) -> list[int]:
-    """Keep (want=True) / drop (want=False) property_ids that have a pool, judged
-    by STRUCTURED evidence: the RESO has_pool flag, the derived has_covered_pool
-    flag, OR an image-derived 'Pool' room. This avoids the false positives of raw
-    'pool' feature tags (community/neighboring pools, stray/hallucinated tags in
-    non-Pool rooms) while still keeping real (covered) pools whose photos were
-    binned as 'Exterior'. `want` is an internal bool, so the f-string is safe."""
+    """Keep (want=True) / drop (want=False) IDs with a pool by structured evidence: has_pool, has_covered_pool, or an image-derived 'Pool' room."""
     if not property_ids:
         return property_ids
     neg = "" if want else "NOT "
@@ -258,7 +239,8 @@ def _criterion_labels(criterion) -> list[str]:
         if criterion.max_sqft is not None:
             labels.append(f"area<={criterion.max_sqft}")
     elif isinstance(criterion, LocationCriterion):
-        for attr in ("city", "state", "country", "district"):
+        for attr in ("city", "state", "country", "district",
+                     "county", "neighborhood", "locality", "street"):
             val = getattr(criterion, attr)
             if val:
                 labels.append(f"{attr}={val}")
@@ -358,9 +340,7 @@ async def search(
     filters: dict | None = None,
     debug: bool = False,
 ) -> dict:
-    """Run the full search pipeline. bounds restricts to a bbox; filters override LLM
-    hard-filter sub-fields; debug adds a per-step count breakdown.
-    """
+    """Run the full search pipeline; bounds restricts to a bbox, filters override LLM hard-filter sub-fields, debug adds a per-step count breakdown."""
     # Phase 1: Parse
     logger.info(f"Phase 1: Parsing query: '{query}'")
     parsed_query = await parse_query(query)
@@ -403,6 +383,24 @@ async def search(
             })
     after_proximity_count = len(property_ids)
 
+    # Phase 3.6: Area relations — "near A" / "between A and B" (PostGIS centroids)
+    area_rel_criteria = [c for c in parsed_query.criteria if isinstance(c, AreaRelationCriterion)]
+    for rc in area_rel_criteria:
+        before = len(property_ids)
+        property_ids = await apply_area_relation_filters(pool, property_ids, [rc])
+        if debug:
+            if rc.relation == "between":
+                label = f"between {rc.place_a} and {rc.place_b}"
+            elif rc.relation == "neighbors":
+                label = f"neighbors of {rc.place_a}"
+            else:
+                label = f"near {rc.place_a}"
+            filter_steps.append({
+                "step": f"area_relation: {label}",
+                "count": len(property_ids),
+                "dropped": before - len(property_ids),
+            })
+
     # Phase 3.5: Color-room matching
     color_room_criteria = [
         c for c in parsed_query.criteria if isinstance(c, ColorRoomCriterion)
@@ -442,10 +440,7 @@ async def search(
         c for c in parsed_query.criteria if isinstance(c, FeatureCriterion)
     ]
 
-    # Phase 3.7: Pool — answered by STRUCTURED columns, not fuzzy 'pool' tags:
-    #   existence → has_pool OR an image-derived 'Pool' room (avoids community/
-    #               neighboring/hallucinated 'pool' tags)
-    #   coverage  → has_covered_pool boolean; uncovered = existence AND NOT covered
+    # Phase 3.7: Pool — answered by structured columns (has_pool / 'Pool' room, has_covered_pool), not fuzzy 'pool' tags.
     want_pool, want_covered, feature_criteria = _extract_pool_filters(feature_criteria)
     if want_pool is not None and property_ids:
         before = len(property_ids)
@@ -472,21 +467,10 @@ async def search(
     if feature_criteria and property_ids:
         logger.info("Phase 4: Feature matching (PostgreSQL)")
         if settings.search_use_embedding_retrieval:
-            # Embedding retrieval + Claude #2 relevance filter maps each raw
-            # user phrase -> curated DB feature list (catches synonyms the
-            # word-subset matcher misses, e.g. "hearth" -> "fireplace").
+            # Embedding retrieval + LLM #2 relevance filter maps each raw phrase -> curated DB feature list.
             phrases = [fc.feature for fc in feature_criteria]
             alternatives = await resolve_feature_phrases(pool, phrases)
-            # Completeness + determinism + consistency: union each phrase's
-            # embedding list with the deterministic word-subset alternatives
-            # (every DB feature literally containing the phrase's words, minus
-            # the exclusion list). This guarantees:
-            #   * "pool" ALWAYS includes every "...pool..." feature (screened
-            #     pool, pool cage, covered pool, ...) → the same complete list
-            #     in every query, so "has pool" returns one stable number;
-            #   * "covered pool" ⊆ "pool" automatically (a covered-pool feature
-            #     contains "pool", so it's in pool's word-subset) → modifier
-            #     negation adds up: covered + uncovered = total pools.
+            # Union each phrase's embedding list with deterministic word-subset alternatives for completeness/consistency.
             for fc in feature_criteria:
                 ws = registry.get_feature_alternatives(fc.feature)
                 if ws:
@@ -499,8 +483,7 @@ async def search(
             )
         if alternatives:
             logger.info(f"Feature alternatives: {alternatives}")
-        # Sort positives-first, base-before-modifier so debug narration reads logically
-        # (result is identical either way since set ops commute).
+        # Sort positives-first, base-before-modifier for logical debug narration (set ops commute, so result is identical).
         feature_criteria = sorted(
             feature_criteria,
             key=lambda fc: (fc.negated, len(fc.feature.split())),

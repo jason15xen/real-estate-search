@@ -1,13 +1,4 @@
-"""
-Database Ingestion — convert processed Zillow data into the PostgreSQL schema.
-
-Zillow → DB mapping:
-  address.* → properties street/district/city/state/postal_code; "US" → country
-  longitude,latitude → geom (PostGIS); livingArea → area_sqft; price → price_usd
-  bedrooms/bathrooms → bedroom_count/bathroom_count
-  resoFacts.rooms → kitchen/dining/etc. counts
-  originalPhotos[].RoomType/Features → room_instances.room_type / features(_text)
-"""
+"""Database ingestion: convert processed Zillow data into the PostgreSQL schema."""
 
 import logging
 from collections import defaultdict
@@ -64,11 +55,7 @@ def _canonical_photo_url(photo: dict) -> str | None:
 
 
 def _build_rooms_from_photos(photos: list[dict]) -> dict[str, list[dict]]:
-    """Group features by RoomType → {room_type: [{"features","color","photo_url"}]}.
-
-    Unusable Vision results are kept as empty "Unknown" stubs to claim their photo URL
-    so diffs don't re-flag them (infinite re-analyze loop); search ignores "Unknown".
-    """
+    """Group features by RoomType → {room_type: [{"features","color","photo_url"}]}; unusable results become empty "Unknown" stubs to claim their URL."""
     rooms: dict[str, list[dict]] = defaultdict(list)
     for photo in photos:
         room_type = photo.get("RoomType", "Unknown")
@@ -97,13 +84,7 @@ def _build_rooms_from_photos(photos: list[dict]) -> dict[str, list[dict]]:
 
 
 def _get_room_counts(record: dict, room_counts_by_type: dict[str, int]) -> dict[str, int]:
-    """Compute the 6 denormalized room-count columns.
-
-    room_counts_by_type: fallback source per room_type (photo counts on full path,
-    live room_instances counts on partial/image_only paths).
-    Priority: Bedroom/Bathroom from Zillow counts always; Kitchen/Living/Dining/Garage
-    from resoFacts.rooms > room_counts_by_type > hasGarage capacity (Garage only).
-    """
+    """Compute the 6 denormalized room-count columns; Bedroom/Bathroom from Zillow, others from resoFacts.rooms > room_counts_by_type > hasGarage capacity."""
     counts: dict[str, int] = {
         "Bedroom": int(record.get("bedrooms") or 0),
         "Bathroom": int(record.get("bathrooms") or 0),
@@ -149,8 +130,7 @@ async def query_room_instance_counts(conn, property_id: int) -> dict[str, int]:
 
 
 async def refresh_property_room_counts(conn, existing_id: int, item: dict) -> None:
-    """Recompute Kitchen/Living/Dining/Garage from current room_instances. Leaves
-    bedroom/bathroom counts alone (set by update_property_scalars); call after it."""
+    """Recompute Kitchen/Living/Dining/Garage from current room_instances; call after update_property_scalars."""
     record = item.get("ZillowPropertyRecord", {}) or {}
     current_counts = await query_room_instance_counts(conn, existing_id)
     counts = _get_room_counts(record, current_counts)
@@ -174,6 +154,34 @@ async def refresh_property_room_counts(conn, existing_id: int, item: dict) -> No
 
 # Helpers for single-property create/update (POST/PUT /properties)
 
+def _extract_neighborhood(record: dict) -> str | None:
+    """Zillow neighborhood name from neighborhoodSearchUrl, resolved against nearbyNeighborhoods or de-slugged from the URL path; None when not in a named neighborhood."""
+    u = record.get("neighborhoodSearchUrl") or {}
+    path = u.get("path") if isinstance(u, dict) else None
+    if not path:
+        return None
+    for nn in (record.get("nearbyNeighborhoods") or []):
+        if isinstance(nn, dict) and (nn.get("regionUrl") or {}).get("path") == path and nn.get("name"):
+            return nn["name"]
+    # fallback: "/viera-east-melbourne-fl/" -> "Viera East"
+    slug = path.strip("/")
+    slug = slug[:-3] if slug.endswith("-fl") else slug.split("-fl/")[0]
+    parts = slug.split("-")
+    cities = {"melbourne", "titusville", "rockledge", "mims"}
+    while parts and parts[-1].lower() in cities:
+        parts.pop()
+    return " ".join(p.capitalize() for p in parts) or None
+
+
+def _extract_locality(record: dict) -> str | None:
+    """OSM/Photon place name from the PhotonPropertyFullAddress reverse-geocode in the record; None when absent."""
+    ph = record.get("PhotonPropertyFullAddress") or {}
+    feats = ph.get("features") or []
+    if feats and isinstance(feats[0], dict):
+        return (feats[0].get("properties") or {}).get("city") or None
+    return None
+
+
 def _extract_property_fields(item: dict) -> dict:
     """Extract DB-relevant scalar fields from a Zillow item, keyed like properties columns."""
     record = item.get("ZillowPropertyRecord", {}) or {}
@@ -196,6 +204,9 @@ def _extract_property_fields(item: dict) -> dict:
         "state": address.get("state", ""),
         "postal_code": address.get("zipcode", ""),
         "country": "US",
+        "county": (record.get("county") or "").strip() or None,
+        "locality": _extract_locality(record),
+        "neighborhood": _extract_neighborhood(record),
         "latitude": float(record.get("latitude", 0) or 0),
         "longitude": float(record.get("longitude", 0) or 0),
         "area_sqft": int(record.get("livingArea", 0) or 0),
@@ -227,12 +238,7 @@ def _extract_schools(item: dict) -> list[dict]:
     return out
 
 
-# Feature tags that mean the pool WATER itself is roofed/screened/caged. Used to
-# derive properties.has_covered_pool. The vision prompt now also emits the canonical
-# "covered pool" / "uncovered pool" tags; the rest keep older free-form data
-# classifiable without a re-analysis. A fence/railing is NOT a cover, and an
-# adjacent "covered pool deck/area/patio" is a structure, not a covered pool —
-# neither appears here.
+# Feature tags meaning the pool water itself is roofed/screened/caged; used to derive properties.has_covered_pool.
 _COVERED_POOL_TAGS = [
     "covered pool", "screened pool", "screened-in pool", "screen-enclosed pool",
     "screen enclosed pool", "enclosed pool", "caged pool", "pool cage",
@@ -242,10 +248,7 @@ _COVERED_POOL_TAGS = [
 
 
 async def _refresh_has_covered_pool(conn, prop_id: int) -> None:
-    """Recompute properties.has_covered_pool from the property's current room
-    instances: TRUE iff any covered-pool tag is present (a screen/cage/roof over
-    the water). "Uncovered" is not stored — search derives it as (has a pool) AND
-    NOT has_covered_pool. Idempotent; safe after any room_instances (re)write."""
+    """Recompute properties.has_covered_pool from current room instances: TRUE iff any covered-pool tag is present; idempotent."""
     await conn.execute(
         """
         UPDATE properties p SET has_covered_pool = EXISTS (
@@ -291,8 +294,7 @@ async def update_property_scalars(
     existing_id: int,
     item: dict,
 ) -> None:
-    """Update non-photo-derived columns: scalars plus Bedroom/Bathroom counts (from
-    Zillow). Leaves kitchen/living/dining/garage counts (refreshed by room-instance paths)."""
+    """Update non-photo-derived columns: scalars plus Bedroom/Bathroom counts from Zillow."""
     record = item.get("ZillowPropertyRecord", {}) or {}
     fields = _extract_property_fields(item)
     await conn.execute("""
@@ -305,6 +307,7 @@ async def update_property_scalars(
             home_type=$15, rent_estimate=$16, year_built=$17,
             lot_size_sqft=$18, stories=$19,
             has_pool=$20, has_waterfront=$21, description=$22, financing=$23,
+            county=$24, locality=$25, neighborhood=$26,
             updated_at=NOW()
         WHERE id = $1
     """,
@@ -319,6 +322,7 @@ async def update_property_scalars(
         fields["lot_size_sqft"], fields["stories"],
         fields["has_pool"], fields["has_waterfront"], fields["description"],
         fields["financing"],
+        fields["county"], fields["locality"], fields["neighborhood"],
     )
     # Re-derive has_covered_pool (room features may have changed).
     await _refresh_has_covered_pool(conn, existing_id)
@@ -347,6 +351,7 @@ async def update_property_metadata(
             home_type=$19, rent_estimate=$20, year_built=$21,
             lot_size_sqft=$22, stories=$23,
             has_pool=$24, has_waterfront=$25, description=$26, financing=$27,
+            county=$28, locality=$29, neighborhood=$30,
             updated_at=NOW()
         WHERE id = $1
     """,
@@ -362,6 +367,7 @@ async def update_property_metadata(
         fields["lot_size_sqft"], fields["stories"],
         fields["has_pool"], fields["has_waterfront"], fields["description"],
         fields["financing"],
+        fields["county"], fields["locality"], fields["neighborhood"],
     )
     # Re-derive has_covered_pool (room features may have changed).
     await _refresh_has_covered_pool(conn, existing_id)

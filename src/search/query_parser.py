@@ -1,6 +1,4 @@
-"""Query parser: Azure OpenAI (GPT) maps NL queries to structured criteria,
-using the DB's known features/room types so no vector search is needed.
-"""
+"""Query parser: the OpenAI model maps NL queries to structured criteria using the DB's known features/room types."""
 
 import json
 import logging
@@ -10,6 +8,7 @@ from src.data.feature_registry import registry
 from src.llm_client import get_query_client
 from src.models.search import (
     AreaCriterion,
+    AreaRelationCriterion,
     ColorRoomCriterion,
     FeatureCriterion,
     LocationCriterion,
@@ -106,8 +105,27 @@ the user said.
 4. area — Square footage constraint.
    Fields: min_sqft (int|null), max_sqft (int|null)
 
-5. location — City/state/country/district constraint.
-   Fields: city (string|null), state (string|null), country (string|null), district (string|null)
+5. location — A place the property is IN (administrative or named area), matched
+   by name (fuzzy). NOT a "near <landmark>" distance (that's proximity #6).
+   Fields: city, state, country, district, county, neighborhood, locality, street.
+   - city: a city/town OR any community/area name a person searches by
+     (e.g. "Melbourne", "Rockledge", "Viera", "Suntree", "Viera East"). When in
+     doubt, put the place here — it is matched broadly across place columns.
+   - county: a county name, e.g. "Brevard County".
+   - street: a street/road name, e.g. "Murrell Road", "Ganton Court".
+   - neighborhood: set ONLY to a real named sub-area (e.g. "Viera East",
+     "Viera West", "June Park"). NEVER the generic word "neighborhood/
+     neighbourhood", and NEVER the same value as city.
+   - locality / district: leave null unless the user clearly names that exact
+     level; otherwise just use city.
+   STRIP FILLER WORDS — extract ONLY the proper place name, never descriptive
+   words like "neighbourhood", "neighborhood", "area", "community", "town",
+   "of", "the". So "neighbourhood of Viera", "the neighborhoods of Viera",
+   "Viera neighborhood", "Viera area", "town of Viera" ALL mean the place
+   "Viera" → city="Viera" (leave neighborhood/locality/district null).
+   (Note: "near Viera" / "neighborhoods NEAR Viera" is NOT this — that is the
+   spatial area_relation #9, not location.)
+   All string|null. Use "<city> in <STATE>" only when the user names a state.
 
 6. proximity — Distance to a SPECIFIC named landmark/place.
    Fields: landmark_name (string), max_distance_miles (float)
@@ -197,6 +215,27 @@ Use the `feature` criterion type for them — never emit them as property attrib
      - When the user gives BOTH a room color and a colored object (e.g. "white kitchen with blue cabinet"),
        emit a color_room for the room AND a feature for the object.
 
+9. area_relation — A SPATIAL relation to one or two AREAS (city/neighbourhood/
+   town). Use this ONLY for nearness/neighbours/between, NOT a plain "in <place>"
+   (location #5) and NOT a specific named landmark/school (proximity #6).
+   Fields: relation ("near"|"neighbors"|"between"), place_a (string),
+           place_b (string|null), radius_miles (float|null, optional).
+   - relation="near"  — "near <A>" / "close to <A>" / "around <A>" / "by <A>".
+     Means around A and INCLUDES A itself.
+   - relation="neighbors" — "neighbours of <A>" / "neighbors of <A>" /
+     "<A>'s neighbours" / "neighbouring <A>" / "adjacent to <A>" / "next to <A>" /
+     "bordering <A>" / "areas around <A>". Means the areas that NEIGHBOUR A,
+     EXCLUDING A itself.
+   - relation="between" — "between <A> and <B>" / "in between <A> and <B>".
+     Set place_b="<B>".
+   Examples:
+     "homes near Viera East"            → area_relation(relation="near", place_a="Viera East")
+     "homes in neighbours of Viera East"→ area_relation(relation="neighbors", place_a="Viera East")
+     "homes adjacent to Rockledge"      → area_relation(relation="neighbors", place_a="Rockledge")
+     "3 bed between Rockledge and Viera"→ room_count(Bedroom,3) PLUS
+                                          area_relation(relation="between", place_a="Rockledge", place_b="Viera")
+   A plain "homes in Viera" is location #5, NOT area_relation.
+
 Return JSON with this exact structure:
 {{
   "criteria": [ ... list of criterion objects, each with a "type" field ... ],
@@ -228,8 +267,7 @@ For "pool", "garage", "kitchen", "bedroom" used as features, room_context=null.
 
 # --- Mode-specific prompt fragments -----------------------------------------
 
-# LEGACY mode: Claude maps the user's words to canonical DB feature names,
-# using the full feature list embedded in the prompt.
+# LEGACY mode: the LLM maps user words to canonical DB feature names using the full feature list embedded in the prompt.
 _LEGACY_FEATURE_NAMING_RULE = """\
    CRITICAL: Map the user's words to the closest matching known feature name. \
 But if the user's word is a GENERIC term that could match MANY features \
@@ -249,9 +287,7 @@ _LEGACY_FEATURE_VALUE_RULE = """\
 - CRITICAL: Feature values MUST be from the KNOWN FEATURES list above. \
 Map synonyms, abbreviations, and alternate phrasings to the exact known feature name."""
 
-# EMBEDDING mode: no feature list in the prompt. Claude outputs the user's OWN
-# wording verbatim; downstream embedding retrieval + a second LLM call map it
-# to canonical DB features.
+# EMBEDDING mode: no feature list in the prompt; the LLM outputs the user's own wording, mapped downstream by embedding retrieval + a second LLM call.
 _EMBEDDING_FEATURE_NAMING_RULE = """\
    Use the user's OWN wording for the feature value — do NOT try to map it to a \
 canonical database name. A separate downstream step handles that mapping. \
@@ -289,12 +325,7 @@ def _build_system_prompt(use_embedding_retrieval: bool) -> str:
 
 
 async def _call_llm(client, system_prompt: str, query: str) -> str | None:
-    """Call the query LLM (Azure OpenAI GPT), return raw JSON text or None.
-
-    GPT-5.x: use max_completion_tokens (max_tokens would 400), no temperature;
-    the system prompt is a system message. response_format forces strict JSON,
-    so the markdown-fence stripping in parse_query is just a fallback.
-    """
+    """Call the query LLM (OpenAI) and return raw JSON text or None (response_format forces strict JSON; fence-stripping is a fallback)."""
     response = await client.chat.completions.create(
         model=settings.openai_model_for_query,
         max_completion_tokens=16384,
@@ -384,12 +415,25 @@ async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
                     state=c.get("state"),
                     country=c.get("country"),
                     district=c.get("district"),
+                    county=c.get("county"),
+                    neighborhood=c.get("neighborhood"),
+                    locality=c.get("locality"),
+                    street=c.get("street"),
                 ))
             elif criterion_type == "proximity":
                 criteria.append(ProximityCriterion(
                     landmark_name=c["landmark_name"],
                     max_distance_miles=c["max_distance_miles"],
                 ))
+            elif criterion_type == "area_relation":
+                place_a = c.get("place_a")
+                if place_a:
+                    criteria.append(AreaRelationCriterion(
+                        relation=str(c.get("relation") or "near").strip().lower(),
+                        place_a=place_a,
+                        place_b=c.get("place_b"),
+                        radius_miles=c.get("radius_miles"),
+                    ))
             elif criterion_type == "property":
                 criteria.append(PropertyCriterion(
                     home_type=c.get("home_type"),

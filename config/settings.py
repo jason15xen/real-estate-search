@@ -2,8 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # OpenAI (api.openai.com) — a SINGLE key for the whole app: vision analysis,
-    # geocoding, /search query parsing, feature filtering, and embeddings.
+    # OpenAI (api.openai.com) — single key for vision, geocoding, query parsing, feature filtering, and embeddings.
     openai_api_key: str = ""
     openai_model: str = "gpt-5.1"                # vision + geocoding
     openai_model_for_query: str = "gpt-5.1"      # /search query parsing + feature filter
@@ -12,10 +11,7 @@ class Settings(BaseSettings):
     # Secondary model for the /test/compare-vision A/B endpoint (same key).
     openai_test_model: str = ""
 
-    # /search feature-retrieval strategy:
-    #   True  → embedding retrieval (top-K candidates) + GPT relevance filter
-    #   False → legacy: dump every DB feature into the GPT query prompt
-    # Flag exists for instant rollback without a redeploy.
+    # /search feature retrieval: True → embedding top-K + GPT filter; False → legacy dump-all-features; flag enables instant rollback.
     search_use_embedding_retrieval: bool = True
     search_embedding_top_k: int = 200
 
