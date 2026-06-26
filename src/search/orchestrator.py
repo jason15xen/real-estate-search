@@ -169,40 +169,69 @@ async def _filter_by_has_covered_pool(
     return [r["id"] for r in rows]
 
 
+# Nearest palette colors to fall back to when a requested color is never assigned
+# to a room type (e.g. "gold" kitchens don't exist; warm ones read as yellow/beige/brown).
+_COLOR_FALLBACKS = {
+    "gold":   ["yellow", "beige"],
+    "yellow": ["gold", "beige", "orange"],
+    "orange": ["red", "brown", "yellow"],
+    "beige":  ["brown", "white", "gray"],
+    "brown":  ["beige", "gray"],
+    "white":  ["beige", "gray"],
+    "gray":   ["white", "beige", "black"],
+    "black":  ["gray"],
+    "blue":   ["gray", "green"],
+    "green":  ["gray", "blue"],
+    "red":    ["orange", "brown", "pink"],
+    "pink":   ["red", "purple", "white"],
+    "purple": ["blue", "pink"],
+}
+
+
+async def _color_room_matched(
+    conn, ids: list[int], crit: ColorRoomCriterion
+) -> tuple[set[int], list[str]]:
+    """Property ids whose DOMINANT `crit.room_type` color (most-frequent non-Unknown color across that room's photos; RANK ties keep all co-top colors) is `crit.color` — a single mislabeled photo can't qualify a property. Widens to nearest palette colors when no property is dominantly that color, for BOTH positive and negated criteria so "with X" and "without X" use the same set. Returns (matched ids, colors used)."""
+    colors = [crit.color]
+    dom_exists = await conn.fetchval("""
+        SELECT EXISTS(
+            SELECT 1 FROM (
+                SELECT color, RANK() OVER (PARTITION BY property_id ORDER BY count(*) DESC) AS rnk
+                FROM room_instances
+                WHERE room_type = $1 AND color IS NOT NULL AND color <> 'Unknown'
+                GROUP BY property_id, color
+            ) t WHERE rnk = 1 AND color = $2
+        )
+    """, crit.room_type, crit.color)
+    if not dom_exists and _COLOR_FALLBACKS.get(crit.color):
+        colors = _COLOR_FALLBACKS[crit.color]
+        logger.info(f"COLOR ROOM fallback: {crit.color} {crit.room_type} not dominant -> {colors}")
+    rows = await conn.fetch("""
+        SELECT property_id FROM (
+            SELECT property_id, color,
+                   RANK() OVER (PARTITION BY property_id ORDER BY count(*) DESC) AS rnk
+            FROM room_instances
+            WHERE property_id = ANY($1) AND room_type = $2
+              AND color IS NOT NULL AND color <> 'Unknown'
+            GROUP BY property_id, color
+        ) t WHERE rnk = 1 AND color = ANY($3)
+    """, ids, crit.room_type, colors)
+    return {row["property_id"] for row in rows}, colors
+
+
 async def _match_color_rooms(
     pool: asyncpg.Pool,
     property_ids: list[int],
     color_room_criteria: list[ColorRoomCriterion],
 ) -> list[int]:
-    """Filter IDs by room color: intersect (positive) / subtract (negated) on room_instances.color."""
+    """Filter IDs by room color: intersect (positive) / subtract (negated), with nearest-color fallback for a palette color absent from that room type."""
     if not property_ids or not color_room_criteria:
         return property_ids
-
     result_ids = set(property_ids)
-
     async with pool.acquire() as conn:
         for crit in color_room_criteria:
-            id_list = list(result_ids)
-            rows = await conn.fetch("""
-                SELECT DISTINCT property_id FROM room_instances
-                WHERE property_id = ANY($1)
-                  AND room_type = $2
-                  AND color = $3
-            """, id_list, crit.room_type, crit.color)
-            matched = {row["property_id"] for row in rows}
-            if crit.negated:
-                logger.info(
-                    f"COLOR ROOM NEGATED color={crit.color} room={crit.room_type} "
-                    f"excluded {len(matched)} properties"
-                )
-                result_ids = result_ids - matched
-            else:
-                logger.info(
-                    f"COLOR ROOM POSITIVE color={crit.color} room={crit.room_type} "
-                    f"matched {len(matched)} properties"
-                )
-                result_ids = result_ids & matched
-
+            matched, _ = await _color_room_matched(conn, list(result_ids), crit)
+            result_ids = result_ids - matched if crit.negated else result_ids & matched
     return list(result_ids)
 
 
@@ -412,21 +441,16 @@ async def search(
             async with pool.acquire() as conn:
                 for crit in color_room_criteria:
                     before = len(current)
-                    rows = await conn.fetch("""
-                        SELECT DISTINCT property_id FROM room_instances
-                        WHERE property_id = ANY($1)
-                          AND room_type = $2
-                          AND color = $3
-                    """, list(current), crit.room_type, crit.color)
-                    matched = {row["property_id"] for row in rows}
+                    matched, colors = await _color_room_matched(conn, list(current), crit)
                     if crit.negated:
                         current = current - matched
                         op = "NOT"
                     else:
                         current = current & matched
                         op = "HAS"
+                    shown = crit.color if colors == [crit.color] else f"{crit.color}->{'/'.join(colors)}"
                     filter_steps.append({
-                        "step": f"color_room: {op} color={crit.color} in {crit.room_type}",
+                        "step": f"color_room: {op} color={shown} in {crit.room_type}",
                         "count": len(current),
                         "dropped": before - len(current),
                     })

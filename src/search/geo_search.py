@@ -181,7 +181,10 @@ async def apply_area_relation_filters(
                 continue
             lat_a, lon_a, spread_a = a
 
-            if rc.relation == "between" and rc.place_b:
+            if rc.relation == "between":
+                if not rc.place_b:
+                    logger.warning("area_relation between: missing place_b for '%s'; skipping", rc.place_a)
+                    continue
                 b = await _resolve_area_centroid(conn, rc.place_b)
                 if b is None:
                     logger.warning("area_relation between: could not resolve '%s'", rc.place_b)
@@ -286,7 +289,7 @@ async def apply_proximity_filters(
                 WHERE id = ANY($1)
                 AND ST_DWithin(
                     geom,
-                    ST_MakePoint($2, $3)::geography,
+                    ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,
                     $4
                 )
             """, result_ids, pc.landmark_longitude, pc.landmark_latitude, distance_meters)
