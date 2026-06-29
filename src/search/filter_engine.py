@@ -156,7 +156,8 @@ async def apply_hard_filters(
             if criterion.city:
                 conditions.append(
                     f"(city ILIKE ${param_idx} OR locality ILIKE ${param_idx} "
-                    f"OR neighborhood ILIKE ${param_idx} OR district ILIKE ${param_idx})"
+                    f"OR neighborhood ILIKE ${param_idx} OR district ILIKE ${param_idx} "
+                    f"OR county ILIKE ${param_idx})"
                 )
                 params.append(_like_contains(criterion.city))
                 param_idx += 1
