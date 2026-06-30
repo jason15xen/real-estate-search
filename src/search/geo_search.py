@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 
 import asyncpg
 
@@ -246,12 +247,41 @@ async def apply_area_relation_filters(
     return result_ids
 
 
+# User phrasing -> POI category in the `pois` table (OpenStreetMap import). First
+# matching substring wins, so order more-specific phrases before generic ones.
+_POI_SYNONYMS = [
+    ("grocery", "grocery"), ("supermarket", "grocery"), ("publix", "grocery"),
+    ("walmart", "grocery"), ("food store", "grocery"),
+    ("convenience store", "convenience_store"), ("convenience", "convenience_store"),
+    ("place of worship", "church"), ("church", "church"), ("temple", "church"),
+    ("mosque", "church"), ("synagogue", "church"), ("worship", "church"),
+    ("gas station", "gas_station"), ("gas", "gas_station"), ("fuel", "gas_station"),
+    ("petrol", "gas_station"),
+    ("pharmacy", "pharmacy"), ("drugstore", "pharmacy"), ("cvs", "pharmacy"),
+    ("walgreens", "pharmacy"),
+    ("restaurant", "restaurant"), ("dining", "restaurant"),
+    ("hospital", "hospital"), ("medical center", "hospital"),
+    ("bank", "bank"), ("park", "park"),
+    ("gym", "gym"), ("fitness", "gym"),
+]
+
+
+def _resolve_poi_category(landmark_name: str) -> str | None:
+    """Map a proximity landmark phrase to a POI category, or None if it's not a known category.
+    Word-boundary match so 'megastore' won't hit 'gas' nor 'Churchill' hit 'church'."""
+    n = landmark_name.lower()
+    for kw, cat in _POI_SYNONYMS:
+        if re.search(rf"\b{re.escape(kw)}\b", n):
+            return cat
+    return None
+
+
 async def apply_proximity_filters(
     pool: asyncpg.Pool,
     property_ids: list[int],
     criteria: list[Criterion],
 ) -> list[int]:
-    """Filter IDs by proximity: try school distances first, else PostGIS geocoding."""
+    """Filter IDs by proximity: schools first, then POI categories (pois table), else PostGIS geocoding."""
     proximity_criteria = [c for c in criteria if isinstance(c, ProximityCriterion)]
     if not proximity_criteria:
         return property_ids
@@ -263,17 +293,59 @@ async def apply_proximity_filters(
 
     async with pool.acquire() as conn:
         for pc in proximity_criteria:
-            # Step 1: school distance data (fast)
-            school_result = await _filter_by_school(
-                conn, result_ids, pc.landmark_name, pc.max_distance_miles
+            lname = pc.landmark_name.lower()
+            # An explicit school query ("good school", "...Elementary School") is authoritative.
+            # A bare place name that merely fuzzy-matches a school name (e.g. "University Park"
+            # ~ "University Park Elementary School") must NOT be hijacked by the school path —
+            # resolve its POI category first.
+            explicit_school = bool(
+                _is_rating_query(pc.landmark_name) or re.search(r"\bschools?\b", lname)
             )
 
-            if school_result is not None:
-                result_ids = school_result
+            # Step 1: explicit school queries -> school distance data (fast).
+            if explicit_school:
+                school_result = await _filter_by_school(
+                    conn, result_ids, pc.landmark_name, pc.max_distance_miles
+                )
+                if school_result is not None:
+                    result_ids = school_result
+                    continue
+
+            # Step 2: POI category (grocery/church/gas station/park/etc.) via the pois table.
+            category = _resolve_poi_category(pc.landmark_name)
+            if category:
+                meters = pc.max_distance_miles * MILES_TO_METERS
+                rows = await conn.fetch(
+                    """
+                    SELECT p.id FROM properties p
+                    WHERE p.id = ANY($1)
+                    AND EXISTS (
+                        SELECT 1 FROM pois
+                        WHERE pois.category = $2
+                          AND ST_DWithin(p.geom, pois.geom, $3)
+                    )
+                    """,
+                    result_ids, category, meters,
+                )
+                result_ids = [r["id"] for r in rows]
+                logger.info(
+                    "POI proximity '%s' (category=%s, <=%smi): %d properties",
+                    pc.landmark_name, category, pc.max_distance_miles, len(result_ids),
+                )
                 continue
 
-            # Step 2: fall back to LLM geocoding + PostGIS (slow)
-            logger.info(f"'{pc.landmark_name}' not a school, falling back to geocoding")
+            # Step 3: a specifically-named school with no category word ("Quest Elementary")
+            # -> fuzzy-match against school names.
+            if not explicit_school:
+                school_result = await _filter_by_school(
+                    conn, result_ids, pc.landmark_name, pc.max_distance_miles
+                )
+                if school_result is not None:
+                    result_ids = school_result
+                    continue
+
+            # Step 4: fall back to LLM geocoding + PostGIS (slow)
+            logger.info(f"'{pc.landmark_name}' not a school/POI, falling back to geocoding")
             if pc.landmark_latitude is None or pc.landmark_longitude is None:
                 coords = await geocode_landmark(pc.landmark_name)
                 if coords:
