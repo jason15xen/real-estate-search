@@ -32,7 +32,11 @@ async def get_pool() -> asyncpg.Pool:
                 _pool = await asyncpg.create_pool(dsn=dsn, min_size=5, max_size=20)
                 logger.info("Database pool connected")
                 return _pool
-            except (OSError, asyncpg.exceptions.ConnectionDoesNotExistError) as e:
+            except (
+                OSError,
+                asyncpg.exceptions.ConnectionDoesNotExistError,
+                asyncpg.exceptions.CannotConnectNowError,  # "the database system is starting up"
+            ) as e:
                 logger.warning(f"DB connection attempt {attempt}/15 failed: {e}")
                 if attempt == 15:
                     raise

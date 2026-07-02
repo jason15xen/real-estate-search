@@ -112,10 +112,11 @@ _POOL_PHRASES = ("pool", "swimming pool")
 
 def _extract_pool_filters(
     feature_criteria: list[FeatureCriterion],
-) -> tuple[bool | None, bool | None, list[FeatureCriterion]]:
-    """Extract pool intent (want_pool, want_covered) for structured-column filtering, leaving other criteria in `remaining`."""
+) -> tuple[bool | None, bool | None, bool, list[FeatureCriterion]]:
+    """Extract pool intent (want_pool, want_covered, no_uncovered) for structured-column filtering, leaving other criteria in `remaining`."""
     want_pool: bool | None = None
     want_covered: bool | None = None
+    no_uncovered = False
     remaining: list[FeatureCriterion] = []
     for fc in feature_criteria:
         nf = fc.feature.strip().lower()
@@ -125,11 +126,16 @@ def _extract_pool_filters(
             # Served by has_covered_pool alone (itself pool evidence); no existence gate.
             want_covered = not fc.negated          # positive → True, "without" → False
         elif nf == "uncovered pool":
-            want_covered = fc.negated              # positive → False, "without" → True
-            want_pool = True                       # uncovered pool still requires a pool
+            if fc.negated:
+                # "no uncovered pool" = no-pool OR covered — an OR, so it can't be
+                # expressed by AND-ing the two flags (that wrongly required a pool).
+                no_uncovered = True
+            else:
+                want_covered = False
+                want_pool = True                   # uncovered pool still requires a pool
         else:
             remaining.append(fc)
-    return want_pool, want_covered, remaining
+    return want_pool, want_covered, no_uncovered, remaining
 
 
 async def _filter_by_pool_evidence(
@@ -165,6 +171,31 @@ async def _filter_by_has_covered_pool(
         rows = await conn.fetch(
             "SELECT id FROM properties WHERE id = ANY($1) AND has_covered_pool = $2",
             property_ids, want,
+        )
+    return [r["id"] for r in rows]
+
+
+async def _filter_by_no_uncovered_pool(
+    pool: asyncpg.Pool, property_ids: list[int]
+) -> list[int]:
+    """'No uncovered pool': keep properties with NO pool at all OR a covered one."""
+    if not property_ids:
+        return property_ids
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id FROM properties p
+            WHERE id = ANY($1) AND (
+                p.has_covered_pool
+                OR NOT (
+                    p.has_pool OR EXISTS (
+                        SELECT 1 FROM room_instances ri
+                        WHERE ri.property_id = p.id AND ri.room_type = 'Pool'
+                    )
+                )
+            )
+            """,
+            property_ids,
         )
     return [r["id"] for r in rows]
 
@@ -470,7 +501,17 @@ async def search(
     ]
 
     # Phase 3.7: Pool — answered by structured columns (has_pool / 'Pool' room, has_covered_pool), not fuzzy 'pool' tags.
-    want_pool, want_covered, feature_criteria = _extract_pool_filters(feature_criteria)
+    want_pool, want_covered, no_uncovered, feature_criteria = _extract_pool_filters(feature_criteria)
+    if no_uncovered and property_ids:
+        before = len(property_ids)
+        property_ids = await _filter_by_no_uncovered_pool(pool, property_ids)
+        logger.info("Phase 3.7: no_uncovered_pool -> %d", len(property_ids))
+        if debug:
+            filter_steps.append({
+                "step": "no_uncovered_pool (no pool OR covered)",
+                "count": len(property_ids),
+                "dropped": before - len(property_ids),
+            })
     if want_pool is not None and property_ids:
         before = len(property_ids)
         property_ids = await _filter_by_pool_evidence(pool, property_ids, want_pool)

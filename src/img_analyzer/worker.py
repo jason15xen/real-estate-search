@@ -383,6 +383,16 @@ async def _process_one_row(pool: asyncpg.Pool, row: asyncpg.Record) -> bool:
         return marked
     except Exception as e:
         logger.exception(f"Worker failed for {item_id} (status={status}): {e}")
+        # Push the failed row to the BACK of the queue (claim is oldest-first): one
+        # poison row must not head-of-line block ingestion and re-bill vision forever.
+        try:
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE raw_properties SET updated_at = NOW() WHERE id = $1 AND status = $2",
+                    item_id, status,
+                )
+        except Exception:  # noqa: BLE001 — best-effort deprioritization
+            pass
         return False
 
 
@@ -440,7 +450,15 @@ async def _apply_batch_results(pool: asyncpg.Pool) -> int:
 
 async def _maybe_submit_batch(pool: asyncpg.Pool) -> int:
     """Submit a vision batch when the 'unprocessed' backlog reaches the threshold;
-    returns properties handed to the Batch API (they leave the sync queue)."""
+    returns properties handed to the Batch API (they leave the sync queue).
+    Serialized: while a batch is in flight, new rows wait or drain via sync
+    (the org batch queue's token cap can't fit two batches anyway)."""
+    try:
+        if await batch_vision.has_open_batch(pool):
+            return 0
+    except Exception as e:
+        logger.warning(f"Worker: open-batch check failed: {e}")
+        return 0
     async with pool.acquire() as conn:
         # Cheap count first — don't drag full JSONB payloads over every 5s iteration.
         pending = await conn.fetchval(

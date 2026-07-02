@@ -72,12 +72,17 @@ async def _retrieve_for_phrases(pool, phrases: list[str], top_k: int) -> dict[st
     return out
 
 
-async def _llm_filter(candidates_by_phrase: dict[str, list[str]]) -> dict[str, list[str]]:
-    """Bundled LLM #2 call: filter each phrase's candidates to the relevant subset, falling back to raw candidates on any failure."""
+async def _llm_filter(
+    candidates_by_phrase: dict[str, list[str]],
+) -> tuple[dict[str, list[str]], set[str]]:
+    """Bundled LLM #2 call: filter each phrase's candidates to the relevant subset,
+    falling back to raw candidates on any failure. Returns (filtered, unreliable) —
+    `unreliable` phrases used the raw-candidate fallback and must NOT be cached, or a
+    single transient LLM hiccup would poison the cache until the next ingest NOTIFY."""
     # Only send phrases that actually retrieved candidates.
     payload = {p: c for p, c in candidates_by_phrase.items() if c}
     if not payload:
-        return {p: [] for p in candidates_by_phrase}
+        return {p: [] for p in candidates_by_phrase}, set()
 
     client = get_query_client()
     user_msg = json.dumps(payload, ensure_ascii=False)
@@ -98,10 +103,11 @@ async def _llm_filter(candidates_by_phrase: dict[str, list[str]]) -> dict[str, l
         filtered = json.loads(text)
     except Exception as e:
         logger.warning("LLM #2 feature filter failed (%s); using raw candidates", e)
-        return dict(candidates_by_phrase)
+        return dict(candidates_by_phrase), set(candidates_by_phrase)
 
     # Sanitize: keep only strings genuinely in each phrase's candidate list (guards against invented/altered strings).
     result: dict[str, list[str]] = {}
+    unreliable: set[str] = set()
     for phrase, cands in candidates_by_phrase.items():
         cand_set = set(cands)
         picked = filtered.get(phrase)
@@ -111,7 +117,8 @@ async def _llm_filter(candidates_by_phrase: dict[str, list[str]]) -> dict[str, l
         else:
             # Phrase missing from response → treat as filter failure and fall back to raw candidates (recall).
             result[phrase] = cands
-    return result
+            unreliable.add(phrase)
+    return result, unreliable
 
 
 async def resolve_feature_phrases(
@@ -133,13 +140,21 @@ async def resolve_feature_phrases(
 
     to_resolve = [orig for key, orig in distinct.items() if key not in _cache]
 
+    # Fallback results are served for THIS request but never cached (see _llm_filter).
+    local: dict[str, list[str]] = {}
     if to_resolve:
         retrieved = await _retrieve_for_phrases(pool, to_resolve, k)
-        filtered = await _llm_filter(retrieved)
+        filtered, unreliable = await _llm_filter(retrieved)
         if len(_cache) > _CACHE_MAX:   # simple bound — drop all and refill
             _cache.clear()
         for phrase in to_resolve:
-            _cache[phrase.strip().lower()] = filtered.get(phrase, [])
+            val = filtered.get(phrase, [])
+            local[phrase.strip().lower()] = val
+            if phrase not in unreliable:
+                _cache[phrase.strip().lower()] = val
 
     # Assemble result keyed by the ORIGINAL phrase strings the caller passed.
-    return {p: _cache.get(p.strip().lower(), []) for p in phrases}
+    return {
+        p: _cache.get(p.strip().lower(), local.get(p.strip().lower(), []))
+        for p in phrases
+    }

@@ -10,7 +10,7 @@ from src.data.database import close_pool, get_pool
 from src.img_analyzer.worker import run_worker_forever
 
 logging.basicConfig(
-    level=settings.log_level,
+    level=settings.log_level.upper(),  # tolerate LOG_LEVEL=info in .env
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -38,6 +38,18 @@ async def main() -> None:
         await worker_task
     except asyncio.CancelledError:
         pass
+
+    # Cancel the background POI refresh too — it can hold a pool connection through a
+    # ~200s blocking Overpass fetch, and Pool.close() waits on every holder (SIGKILL
+    # would hit before "stopped cleanly" otherwise).
+    from src.img_analyzer import worker as worker_mod
+    poi_task = worker_mod._poi_refresh_task
+    if poi_task is not None and not poi_task.done():
+        poi_task.cancel()
+        try:
+            await poi_task
+        except (asyncio.CancelledError, Exception):  # noqa: BLE001 — shutdown best-effort
+            pass
 
     await close_pool()
     logger.info("Worker process stopped cleanly")

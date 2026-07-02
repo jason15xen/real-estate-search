@@ -32,6 +32,12 @@ logger = logging.getLogger(__name__)
 # repeats on every line, so ~8k photos ≈ 150MB).
 MAX_BATCH_BYTES = 120 * 1024 * 1024
 
+# Also cap by ESTIMATED enqueued tokens: OpenAI orgs have a batch queue token limit
+# (observed live: 900k for this org — exceeding it fails the batch outright with
+# token_limit_exceeded). ~chars/4 for the prompt + image + completion ceiling per line.
+MAX_BATCH_EST_TOKENS = 800_000
+_EST_TOKENS_IMAGE_AND_COMPLETION = 2_500  # high-detail image ~1.5k + 1k completion ceiling
+
 # Batch statuses still moving at OpenAI; anything else is terminal.
 _OPEN_STATUSES = {"validating", "in_progress", "finalizing", "cancelling"}
 
@@ -121,12 +127,14 @@ async def submit(pool: asyncpg.Pool, rows: list[asyncpg.Record]) -> int:
         return 0  # cooling down after a failed batch/submit; sync path drains meanwhile
 
     system_prompt = build_vision_system_prompt()
+    est_tokens_per_line = len(system_prompt) // 4 + _EST_TOKENS_IMAGE_AND_COMPLETION
 
-    # Build lines per item up to the byte cap; photo-less rows and rows whose id would
-    # overflow the custom_id limit stay on the sync path.
+    # Build lines per item up to the byte AND estimated-token caps; photo-less rows and
+    # rows whose id would overflow the custom_id limit stay on the sync path.
     per_item_lines: dict[str, list[str]] = {}
     per_item_urls: dict[str, list[str]] = {}
     total_bytes = 0
+    total_est_tokens = 0
     for row in rows:
         data = row["data"] if isinstance(row["data"], dict) else json.loads(row["data"])
         urls = extract_photo_urls_from_data(data)
@@ -137,9 +145,12 @@ async def submit(pool: asyncpg.Pool, rows: list[asyncpg.Record]) -> int:
             continue
         lines = [_request_line(row["id"], i, u, system_prompt) for i, u in enumerate(urls)]
         size = sum(len(l) + 1 for l in lines)
-        if total_bytes + size > MAX_BATCH_BYTES and per_item_lines:
-            break  # leftover rows stay pending; the next iteration batches them
+        est = len(lines) * est_tokens_per_line
+        if per_item_lines and (total_bytes + size > MAX_BATCH_BYTES
+                               or total_est_tokens + est > MAX_BATCH_EST_TOKENS):
+            break  # leftover rows stay pending; a later iteration batches them
         total_bytes += size
+        total_est_tokens += est
         per_item_lines[row["id"]] = lines
         per_item_urls[row["id"]] = urls
 
@@ -213,6 +224,18 @@ async def submit(pool: asyncpg.Pool, rows: list[asyncpg.Record]) -> int:
     logger.info("Batch %s submitted: %d properties, %d photos (%.1f MB)",
                 batch.id, len(items), n_photos, total_bytes / 1e6)
     return len(items)
+
+
+async def has_open_batch(pool: asyncpg.Pool) -> bool:
+    """True if a batch is still in flight. Submissions are serialized on this: org
+    batch queues have an enqueued-token cap (observed 900k), so a second concurrent
+    batch would be rejected with token_limit_exceeded anyway."""
+    async with pool.acquire() as conn:
+        await _ensure_tables(conn)
+        return bool(await conn.fetchval(
+            "SELECT 1 FROM vision_batches WHERE status IN "
+            "('submitted', 'validating', 'in_progress', 'finalizing', 'cancelling') LIMIT 1"
+        ))
 
 
 async def recover_when_disabled(pool: asyncpg.Pool) -> int:
@@ -290,9 +313,9 @@ def _parse_output_jsonl(text: str, items: dict) -> dict[str, dict[str, PhotoResu
             body = resp.get("body") or {}
             choices = body.get("choices") or [{}]
             content = (choices[0].get("message") or {}).get("content") or ""
+            results[item_id][url] = parse_vision_content(content, url)
         except (json.JSONDecodeError, ValueError, IndexError, KeyError, AttributeError, TypeError):
             continue
-        results[item_id][url] = parse_vision_content(content, url)
     return results
 
 

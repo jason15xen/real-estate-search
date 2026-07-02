@@ -53,15 +53,23 @@ async def upsert_raw_property(
     new_url_set = set(new_urls)
 
     if existing is None:
-        await conn.execute(
+        # ON CONFLICT: two concurrent POSTs with the same NEW id both see "no row";
+        # the loser of the insert race must not error out (payload would be dropped).
+        result = await conn.execute(
             """
             INSERT INTO raw_properties (id, data, status)
             VALUES ($1, $2::jsonb, 'unprocessed')
+            ON CONFLICT (id) DO NOTHING
             """,
             item_id,
             new_data_json,
         )
-        return "unprocessed", None, False
+        if result.endswith(" 1"):
+            return "unprocessed", None, False
+        # Lost the race — a row now exists; fall through to the update path below.
+        existing = await conn.fetchrow(
+            "SELECT status FROM raw_properties WHERE id = $1", item_id
+        )
 
     primary_urls = await primary_photo_urls(conn, item_id)
 

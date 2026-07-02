@@ -412,8 +412,12 @@ async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
 
     # Build each criterion in its own try/except so ONE malformed entry (a non-numeric
     # distance, a bad enum, a Pydantic ValidationError) is skipped — not the whole query.
+    raw_criteria = parsed.get("criteria")
+    if not isinstance(raw_criteria, list):  # e.g. LLM returned {"criteria": 42}
+        logger.warning(f"LLM 'criteria' is {type(raw_criteria).__name__}, not a list; treating as empty")
+        raw_criteria = []
     criteria = []
-    for c in parsed.get("criteria") or []:
+    for c in raw_criteria:
         try:
             criterion_type = c["type"]
             if criterion_type == "room_count":
@@ -491,6 +495,10 @@ async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
     return ParsedQuery(
         original_query=query,
         criteria=criteria,
-        reconstructed_queries=parsed.get("reconstructed_queries", []),
-        understood_intent=parsed.get("understood_intent", ""),
+        # NULL-safe: {"understood_intent": null} would fail ParsedQuery validation
+        # OUTSIDE the retry loop → opaque 500 instead of a handled parse result.
+        reconstructed_queries=(
+            rq if isinstance(rq := parsed.get("reconstructed_queries"), list) else []
+        ),
+        understood_intent=str(parsed.get("understood_intent") or ""),
     )

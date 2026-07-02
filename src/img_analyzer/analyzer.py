@@ -77,7 +77,8 @@ def parse_vision_content(raw: str, url: str) -> PhotoResult:
             color=_normalize_color(data.get("Color")),
             features=data.get("Features") or [],
         )
-    except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError, AttributeError) as e:
+        # AttributeError: json.loads('null'/'"str"') yields a non-dict → .get() blows up.
         logger.error(f"Failed to parse vision response for {url}: {e}")
         return PhotoResult(photo_url=url, room_type="Unknown", color=None, features=[])
 

@@ -25,12 +25,15 @@ def _contains_pattern(value: str) -> str:
     return f"%{escaped}%"
 
 
+_RATING_QUERY_RE = re.compile(
+    r"\b(good|great|top|best|excellent|quality|highly[- ]rated|high[- ]rated|top[- ]rated)\b"
+    r".*\bschools?\b"
+)
+
+
 def _is_rating_query(landmark_name: str) -> bool:
-    """True if query is about school quality, not a specific school."""
-    quality_keywords = ["good school", "great school", "top school", "best school",
-                        "highly rated school", "high rated school", "quality school"]
-    name_lower = landmark_name.lower()
-    return any(kw in name_lower for kw in quality_keywords)
+    """True if query is about school quality ("top-rated schools"), not a specific school."""
+    return bool(_RATING_QUERY_RE.search(landmark_name.lower()))
 
 
 async def _filter_by_school_rating(
@@ -294,12 +297,14 @@ async def apply_proximity_filters(
     async with pool.acquire() as conn:
         for pc in proximity_criteria:
             lname = pc.landmark_name.lower()
-            # An explicit school query ("good school", "...Elementary School") is authoritative.
-            # A bare place name that merely fuzzy-matches a school name (e.g. "University Park"
-            # ~ "University Park Elementary School") must NOT be hijacked by the school path —
-            # resolve its POI category first.
+            # An explicit school query ("good school", "Oak Park Elementary") is
+            # authoritative — checked BEFORE the POI category so a school name containing
+            # a category word ("...Park...") isn't hijacked to the generic category.
+            # A bare place name ("University Park") must conversely NOT be grabbed by the
+            # school fuzzy-match, so it resolves via POI category first.
             explicit_school = bool(
-                _is_rating_query(pc.landmark_name) or re.search(r"\bschools?\b", lname)
+                _is_rating_query(pc.landmark_name)
+                or re.search(r"\b(schools?|elementary|academy)\b", lname)
             )
 
             # Step 1: explicit school queries -> school distance data (fast).

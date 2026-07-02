@@ -107,6 +107,7 @@ async def process_status():
         "unprocessed": counts.get("unprocessed", 0),
         "image_only_processed": counts.get("image_only_processed", 0),
         "partial_image_only_processed": counts.get("partial_image_only_processed", 0),
+        "batch_submitted": counts.get("batch_submitted", 0),  # waiting on an OpenAI batch
         "processed": counts.get("processed", 0),
         "total": sum(counts.values()),
     }

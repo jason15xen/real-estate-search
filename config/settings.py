@@ -33,7 +33,9 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_dir: str = "/app/log"  # request/response log location; override for local dev
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    # env_ignore_empty: a blank line in .env (e.g. `VISION_USE_BATCH=` copied from
+    # .env.example) means "use the default" instead of crashing bool/int parsing.
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "env_ignore_empty": True}
 
 
 settings = Settings()
