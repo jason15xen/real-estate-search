@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     search_use_embedding_retrieval: bool = True
     search_embedding_top_k: int = 200
 
+    # OpenAI Batch API for photo analysis (50% cost, async ≤24h turnaround). Hybrid:
+    # a backlog of ≥ threshold pending properties goes through one batch; smaller
+    # uploads stay on the instant sync path. False = current behavior everywhere.
+    vision_use_batch: bool = False
+    vision_batch_threshold: int = 10     # pending properties needed to trigger a batch
+    vision_batch_max_items: int = 150    # max properties per submitted batch
+    vision_batch_poll_seconds: int = 60  # min seconds between batch status polls
+
     # PostgreSQL
     postgres_host: str = "localhost"
     postgres_port: int = 5432

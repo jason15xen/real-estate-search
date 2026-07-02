@@ -108,12 +108,23 @@ CREATE TABLE raw_properties (
                      'unprocessed',
                      'image_only_processed',
                      'partial_image_only_processed',
-                     'processed'
+                     'processed',
+                     'batch_submitted'
                  )),
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_raw_properties_status ON raw_properties(status);
+
+-- OpenAI Batch API vision runs (bulk photo analysis): one row per submitted batch;
+-- items = {raw_property_id: {updated_at, urls: [...]}} maps custom_ids back to photos.
+CREATE TABLE vision_batches (
+    batch_id     TEXT PRIMARY KEY,
+    status       TEXT NOT NULL DEFAULT 'submitted',
+    items        JSONB NOT NULL,
+    submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
 
 
 -- Nearby schools per property (from Zillow data)

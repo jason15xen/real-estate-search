@@ -53,6 +53,35 @@ def _load_features() -> str:
     return (PROMPT_DIR / "feature.txt").read_text(encoding="utf-8")
 
 
+def build_vision_system_prompt() -> str:
+    """Full vision system prompt (base + feature list); shared by the sync and Batch API paths."""
+    return (
+        f"{_load_prompt()}\n\n"
+        f"# Known Real Estate Features (use these as reference for keyword extraction):\n"
+        f"{_load_features()}"
+    )
+
+
+def parse_vision_content(raw: str, url: str) -> PhotoResult:
+    """Parse a vision JSON reply into a PhotoResult (Unknown stub on any parse failure); shared by the sync and Batch API paths."""
+    raw = (raw or "").strip()
+    if raw.startswith("```"):
+        lines = raw.split("\n")
+        lines = [line for line in lines if not line.startswith("```")]
+        raw = "\n".join(lines)
+    try:
+        data = json.loads(raw)
+        return PhotoResult(
+            photo_url=url,
+            room_type=data.get("RoomType") or "Unknown",
+            color=_normalize_color(data.get("Color")),
+            features=data.get("Features") or [],
+        )
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
+        logger.error(f"Failed to parse vision response for {url}: {e}")
+        return PhotoResult(photo_url=url, room_type="Unknown", color=None, features=[])
+
+
 def _pick_jpeg_url(photo: Photo) -> str | None:
     """Highest-resolution JPEG URL from a photo."""
     jpegs = photo.mixedSources.jpeg
@@ -83,27 +112,8 @@ async def analyze_single_image(url: str, system_prompt: str) -> PhotoResult:
         ],
     )
 
-    raw = (response.choices[0].message.content or "").strip()
-
-    # Strip markdown code fences
-    if raw.startswith("```"):
-        lines = raw.split("\n")
-        lines = [line for line in lines if not line.startswith("```")]
-        raw = "\n".join(lines)
-
-    try:
-        data = json.loads(raw)
-        color_raw = data.get("Color")
-        color = _normalize_color(color_raw)
-        return PhotoResult(
-            photo_url=url,
-            room_type=data.get("RoomType", "Unknown"),
-            color=color,
-            features=data.get("Features", []),
-        )
-    except (json.JSONDecodeError, KeyError) as e:
-        logger.error(f"Failed to parse vision response for {url}: {e}")
-        return PhotoResult(photo_url=url, room_type="Unknown", color=None, features=[])
+    raw = response.choices[0].message.content or ""
+    return parse_vision_content(raw, url)
 
 
 async def analyze_photos(
@@ -112,13 +122,7 @@ async def analyze_photos(
     concurrency: int = 5,
 ) -> list[PhotoResult]:
     """Analyze all property photos via GPT-5.1 vision, semaphore-limited."""
-    base_prompt = _load_prompt()
-    feature_list = _load_features()
-    system_prompt = (
-        f"{base_prompt}\n\n"
-        f"# Known Real Estate Features (use these as reference for keyword extraction):\n"
-        f"{feature_list}"
-    )
+    system_prompt = build_vision_system_prompt()
 
     # (index, url) pairs to preserve originalPhotos ordering
     indexed_urls: list[tuple[int, str]] = []
