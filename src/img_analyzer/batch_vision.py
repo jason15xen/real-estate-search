@@ -32,10 +32,10 @@ logger = logging.getLogger(__name__)
 # repeats on every line, so ~8k photos ≈ 150MB).
 MAX_BATCH_BYTES = 120 * 1024 * 1024
 
-# Also cap by ESTIMATED enqueued tokens: OpenAI orgs have a batch queue token limit
-# (observed live: 900k for this org — exceeding it fails the batch outright with
-# token_limit_exceeded). ~chars/4 for the prompt + image + completion ceiling per line.
-MAX_BATCH_EST_TOKENS = 800_000
+# Batches are also capped by ESTIMATED enqueued tokens (settings.vision_batch_max_tokens):
+# OpenAI orgs have a batch queue token limit (observed live: 900k for this org — exceeding
+# it fails the batch outright with token_limit_exceeded). Estimate per line =
+# ~chars/4 for the prompt + image + completion ceiling.
 _EST_TOKENS_IMAGE_AND_COMPLETION = 2_500  # high-detail image ~1.5k + 1k completion ceiling
 
 # Batch statuses still moving at OpenAI; anything else is terminal.
@@ -147,7 +147,7 @@ async def submit(pool: asyncpg.Pool, rows: list[asyncpg.Record]) -> int:
         size = sum(len(l) + 1 for l in lines)
         est = len(lines) * est_tokens_per_line
         if per_item_lines and (total_bytes + size > MAX_BATCH_BYTES
-                               or total_est_tokens + est > MAX_BATCH_EST_TOKENS):
+                               or total_est_tokens + est > settings.vision_batch_max_tokens):
             break  # leftover rows stay pending; a later iteration batches them
         total_bytes += size
         total_est_tokens += est

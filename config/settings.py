@@ -22,6 +22,14 @@ class Settings(BaseSettings):
     vision_batch_threshold: int = 10     # pending properties needed to trigger a batch
     vision_batch_max_items: int = 150    # max properties per submitted batch
     vision_batch_poll_seconds: int = 60  # min seconds between batch status polls
+    # Per-batch cap on ESTIMATED enqueued tokens — size this to your org's Batch Queue
+    # Limit (platform.openai.com → Settings → Limits) with ~10% headroom. After a tier
+    # raise, bump this env var; no code change needed.
+    vision_batch_max_tokens: int = 800_000
+    # Patient mode: while a batch is in flight, batch-eligible rows WAIT for the next
+    # wave (everything gets the 50% discount) instead of draining via the full-price
+    # sync path. False = latency-optimized (current behavior).
+    vision_batch_patient: bool = False
 
     # PostgreSQL
     postgres_host: str = "localhost"

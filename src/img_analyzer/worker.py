@@ -481,6 +481,7 @@ async def _maybe_submit_batch(pool: asyncpg.Pool) -> int:
 async def _worker_iteration(pool: asyncpg.Pool) -> tuple[int, int]:
     """Process one batch; returns (claimed, succeeded), claimed=0 meaning no work; triggers a feature-registry rebuild only when an unprocessed/partial row succeeded."""
     applied = 0
+    hold_for_batch = False
     if settings.vision_use_batch:
         # Phase A: land any finished Batch API results, then hand a big backlog to a new batch.
         applied = await _apply_batch_results(pool)
@@ -488,10 +489,21 @@ async def _worker_iteration(pool: asyncpg.Pool) -> tuple[int, int]:
         if applied or submitted:
             # Both count as progress (a submit hands work to OpenAI) — no error backoff.
             return applied + submitted, applied + submitted
+        if settings.vision_batch_patient:
+            # Patient mode: while a wave is in flight, full-analysis rows WAIT for the
+            # next wave (50% discount) instead of draining at full price. Scoped to
+            # open-batch periods only, so below-threshold remainders, photo-less rows,
+            # and failure-backoff windows still drain via sync — nothing waits forever.
+            try:
+                hold_for_batch = await batch_vision.has_open_batch(pool)
+            except Exception as e:
+                logger.warning(f"Worker: patient-mode open-batch check failed: {e}")
 
     async with pool.acquire() as conn:
         async with conn.transaction():
-            rows = await claim_pending_batch(conn, limit=WORKER_BATCH_SIZE)
+            rows = await claim_pending_batch(
+                conn, limit=WORKER_BATCH_SIZE, exclude_unprocessed=hold_for_batch
+            )
     if not rows:
         return 0, 0
 
