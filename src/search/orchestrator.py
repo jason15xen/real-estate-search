@@ -191,21 +191,26 @@ _COLOR_FALLBACKS = {
 async def _color_room_matched(
     conn, ids: list[int], crit: ColorRoomCriterion
 ) -> tuple[set[int], list[str]]:
-    """Property ids whose DOMINANT `crit.room_type` color (most-frequent non-Unknown color across that room's photos; RANK ties keep all co-top colors) is `crit.color` — a single mislabeled photo can't qualify a property. Widens to nearest palette colors when no property is dominantly that color, for BOTH positive and negated criteria so "with X" and "without X" use the same set. Returns (matched ids, colors used)."""
+    """Property ids whose DOMINANT `crit.room_type` color (most-frequent non-Unknown color across that room's photos; RANK ties keep all co-top colors) is `crit.color` — a single mislabeled photo can't qualify a property. For a POSITIVE search, widens to nearest palette colors when no property is dominantly that color. NEGATED stays literal: "no white kitchen" must exclude white kitchens only, so if no kitchen is white it excludes nothing (widening would wrongly drop beige/gray kitchens). Returns (matched ids, colors used)."""
     colors = [crit.color]
-    dom_exists = await conn.fetchval("""
-        SELECT EXISTS(
-            SELECT 1 FROM (
-                SELECT color, RANK() OVER (PARTITION BY property_id ORDER BY count(*) DESC) AS rnk
-                FROM room_instances
-                WHERE room_type = $1 AND color IS NOT NULL AND color <> 'Unknown'
-                GROUP BY property_id, color
-            ) t WHERE rnk = 1 AND color = $2
-        )
-    """, crit.room_type, crit.color)
-    if not dom_exists and _COLOR_FALLBACKS.get(crit.color):
-        colors = _COLOR_FALLBACKS[crit.color]
-        logger.info(f"COLOR ROOM fallback: {crit.color} {crit.room_type} not dominant -> {colors}")
+    if not crit.negated:
+        # Scope the "is this color dominant anywhere?" probe to the SAME candidate set as
+        # the match below — otherwise an unrelated property elsewhere in the DB being
+        # dominantly this color would suppress the fallback for the actual candidates.
+        dom_exists = await conn.fetchval("""
+            SELECT EXISTS(
+                SELECT 1 FROM (
+                    SELECT color, RANK() OVER (PARTITION BY property_id ORDER BY count(*) DESC) AS rnk
+                    FROM room_instances
+                    WHERE property_id = ANY($1) AND room_type = $2
+                      AND color IS NOT NULL AND color <> 'Unknown'
+                    GROUP BY property_id, color
+                ) t WHERE rnk = 1 AND color = $3
+            )
+        """, ids, crit.room_type, crit.color)
+        if not dom_exists and _COLOR_FALLBACKS.get(crit.color):
+            colors = _COLOR_FALLBACKS[crit.color]
+            logger.info(f"COLOR ROOM fallback: {crit.color} {crit.room_type} not dominant -> {colors}")
     rows = await conn.fetch("""
         SELECT property_id FROM (
             SELECT property_id, color,

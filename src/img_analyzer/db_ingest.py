@@ -1,11 +1,53 @@
 """Database ingestion: convert processed Zillow data into the PostgreSQL schema."""
 
 import logging
+import math
 from collections import defaultdict
 
 import asyncpg
 
 logger = logging.getLogger(__name__)
+
+INT4_MAX = 2_147_483_647          # Postgres INTEGER ceiling (clamp to avoid overflow)
+_NULLISH = {"", "n/a", "na", "none", "null", "-"}
+
+
+def _to_int(value, default: int = 0, clamp_max: int | None = None) -> int:
+    """Tolerant int coercion: handles None / 'N/A' / comma-formatted / float-strings
+    ('2.5' bath -> 2). Bad input (incl. 'inf'/'nan'/overflow) -> default. Clamps to clamp_max."""
+    try:
+        s = str(value).strip().replace(",", "")
+        n = default if (value is None or s.lower() in _NULLISH) else int(float(s))
+    except (ValueError, TypeError, OverflowError):  # int(float('inf')) raises OverflowError
+        n = default
+    return min(n, clamp_max) if clamp_max is not None else n
+
+
+def _to_int_or_none(value, clamp_max: int | None = None):
+    """Like _to_int but returns None (not a default) for missing/invalid — for nullable columns."""
+    if value is None:
+        return None
+    try:
+        s = str(value).strip().replace(",", "")
+        if s.lower() in _NULLISH:
+            return None
+        n = int(float(s))
+    except (ValueError, TypeError, OverflowError):
+        return None
+    return min(n, clamp_max) if clamp_max is not None else n
+
+
+def _to_float(value, default: float = 0.0) -> float:
+    """Tolerant float coercion: None / 'N/A' / comma-formatted / non-finite (inf/nan) -> default."""
+    try:
+        s = str(value).strip().replace(",", "")
+        if value is None or s.lower() in _NULLISH:
+            return default
+        n = float(s)
+    except (ValueError, TypeError, OverflowError):
+        return default
+    return n if math.isfinite(n) else default  # reject inf/nan so geom/aggregates stay valid
+
 
 # resoFacts.rooms roomType → our room types
 RESO_ROOM_MAP = {
@@ -86,8 +128,8 @@ def _build_rooms_from_photos(photos: list[dict]) -> dict[str, list[dict]]:
 def _get_room_counts(record: dict, room_counts_by_type: dict[str, int]) -> dict[str, int]:
     """Compute the 6 denormalized room-count columns; Bedroom/Bathroom from Zillow, others from resoFacts.rooms > room_counts_by_type > hasGarage capacity."""
     counts: dict[str, int] = {
-        "Bedroom": int(record.get("bedrooms") or 0),
-        "Bathroom": int(record.get("bathrooms") or 0),
+        "Bedroom": _to_int(record.get("bedrooms")),
+        "Bathroom": _to_int(record.get("bathrooms")),
     }
 
     reso_facts = record.get("resoFacts", {}) or {}
@@ -110,7 +152,7 @@ def _get_room_counts(record: dict, room_counts_by_type: dict[str, int]) -> dict[
     # Garage fallback from hasGarage flag when no other count exists.
     if counts.get("Garage", 0) == 0:
         if reso_facts.get("hasGarage") or reso_facts.get("hasAttachedGarage"):
-            capacity = reso_facts.get("garageParkingCapacity", 1) or 1
+            capacity = _to_int(reso_facts.get("garageParkingCapacity"), 1) or 1
             counts["Garage"] = capacity
 
     return counts
@@ -185,15 +227,15 @@ def _extract_locality(record: dict) -> str | None:
 def _extract_property_fields(item: dict) -> dict:
     """Extract DB-relevant scalar fields from a Zillow item, keyed like properties columns."""
     record = item.get("ZillowPropertyRecord", {}) or {}
-    address = record.get("address", {}) or {}
-    reso_facts = record.get("resoFacts", {}) or {}
+    address = record.get("address") if isinstance(record.get("address"), dict) else {}
+    reso_facts = record.get("resoFacts") if isinstance(record.get("resoFacts"), dict) else {}
 
-    lot_size = record.get("lotSize", 0) or 0
     lot_units = record.get("lotAreaUnits", "")
     if lot_units == "Acres":
-        lot_size = int(float(record.get("lotAreaValue", 0) or 0) * 43560)
+        lot_size = int(_to_float(record.get("lotAreaValue")) * 43560)
     else:
-        lot_size = int(lot_size)
+        lot_size = _to_int(record.get("lotSize"))
+    lot_size = min(lot_size, INT4_MAX)   # avoid INTEGER overflow on huge acreage
 
     return {
         "guid": item.get("Id", ""),
@@ -207,15 +249,15 @@ def _extract_property_fields(item: dict) -> dict:
         "county": (record.get("county") or "").strip() or None,
         "locality": _extract_locality(record),
         "neighborhood": _extract_neighborhood(record),
-        "latitude": float(record.get("latitude", 0) or 0),
-        "longitude": float(record.get("longitude", 0) or 0),
-        "area_sqft": int(record.get("livingArea", 0) or 0),
-        "price_usd": int(record.get("price", 0) or 0),
+        "latitude": _to_float(record.get("latitude")),
+        "longitude": _to_float(record.get("longitude")),
+        "area_sqft": _to_int(record.get("livingArea"), clamp_max=INT4_MAX),
+        "price_usd": _to_int(record.get("price"), clamp_max=INT4_MAX),
         "home_type": record.get("homeType"),
-        "rent_estimate": record.get("rentZestimate"),
-        "year_built": record.get("yearBuilt"),
+        "rent_estimate": _to_int_or_none(record.get("rentZestimate"), clamp_max=INT4_MAX),
+        "year_built": _to_int_or_none(record.get("yearBuilt")),
         "lot_size_sqft": lot_size,
-        "stories": reso_facts.get("stories"),
+        "stories": _to_int_or_none(reso_facts.get("stories")),
         "has_pool": bool(reso_facts.get("hasPrivatePool")),
         "has_waterfront": bool(reso_facts.get("hasWaterfrontView")),
         "description": record.get("description"),
@@ -232,7 +274,7 @@ def _extract_schools(item: dict) -> list[dict]:
             "name": s.get("name", ""),
             "rating": s.get("rating"),
             "grades": s.get("grades", ""),
-            "distance": float(s.get("distance", 0) or 0),
+            "distance": _to_float(s.get("distance")),
             "link": s.get("link", ""),
         })
     return out
@@ -316,8 +358,8 @@ async def update_property_scalars(
         fields["state"], fields["postal_code"], fields["country"],
         fields["longitude"], fields["latitude"],
         fields["area_sqft"], fields["price_usd"],
-        int(record.get("bedrooms") or 0),
-        int(record.get("bathrooms") or 0),
+        _to_int(record.get("bedrooms")),
+        _to_int(record.get("bathrooms")),
         fields["home_type"], fields["rent_estimate"], fields["year_built"],
         fields["lot_size_sqft"], fields["stories"],
         fields["has_pool"], fields["has_waterfront"], fields["description"],

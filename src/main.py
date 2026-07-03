@@ -19,6 +19,7 @@ from src.img_analyzer.router import router as img_analyzer_router
 from src.img_analyzer.test_router import router as vision_test_router
 from src.models.search import ParsedQuery
 from src.search.orchestrator import search
+from src.search.query_parser import QueryParseError
 
 logging.basicConfig(
     level=settings.log_level,
@@ -317,6 +318,14 @@ class SearchRequest(BaseModel):
     filters: Filters | None = None
     debug: bool = False
 
+    @field_validator("query")
+    @classmethod
+    def _query_not_blank(cls, v: str) -> str:
+        # Reject empty/whitespace queries — an unfiltered search would dump the whole catalog.
+        if not v or not v.strip():
+            raise ValueError("query must not be empty")
+        return v.strip()
+
 
 class DebugInfo(BaseModel):
     parsed_query: ParsedQuery
@@ -366,6 +375,11 @@ async def search_properties(request: SearchRequest):
             zillowProperties=guids,
             debug=debug_info,
         )
+    except QueryParseError as e:
+        # Couldn't parse at all (e.g. LLM outage). Signal it instead of silently
+        # returning every property as a "match".
+        logger.warning(f"Query parse failed for '{request.query}': {e}")
+        raise HTTPException(status_code=503, detail="Could not interpret the query right now. Please try again.")
     except Exception as e:
         logger.exception(f"Search failed for query '{request.query}': {e}")
         raise HTTPException(status_code=500, detail="Search failed due to an internal error.")

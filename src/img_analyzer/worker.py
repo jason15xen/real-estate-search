@@ -9,6 +9,7 @@ import logging
 import asyncpg
 
 from src.data.database import get_pool
+from src.data.import_pois import ensure_coverage
 from src.img_analyzer.analyzer import analyze_photos, inject_features
 from src.img_analyzer.db_ingest import (
     _build_rooms_from_photos,
@@ -34,6 +35,26 @@ logger = logging.getLogger(__name__)
 WORKER_BATCH_SIZE = 1            # rows processed in parallel per iteration
 WORKER_IDLE_SLEEP_SECONDS = 5    # sleep when no work
 WORKER_ERROR_SLEEP_SECONDS = 10  # sleep after an errored iteration
+
+# Background POI auto-refresh: after new properties land, import POIs for any
+# newly-seen county (debounced — one task at a time; no-op when all covered).
+_poi_refresh_task: "asyncio.Task | None" = None
+
+
+def _trigger_poi_refresh(pool: asyncpg.Pool) -> None:
+    global _poi_refresh_task
+    if _poi_refresh_task and not _poi_refresh_task.done():
+        return
+
+    async def _run() -> None:
+        try:
+            n = await ensure_coverage(pool)
+            if n:
+                logger.info("Worker: auto-imported POIs for %d new county region(s)", n)
+        except Exception as e:  # noqa: BLE001 — never let POI refresh disrupt ingestion
+            logger.warning("Worker: POI auto-refresh failed: %s", e)
+
+    _poi_refresh_task = asyncio.create_task(_run())
 
 
 async def _process_unprocessed(
@@ -377,6 +398,8 @@ async def _worker_iteration(pool: asyncpg.Pool) -> tuple[int, int]:
                 await conn.execute("NOTIFY feature_change")
         except Exception as e:
             logger.warning(f"Worker: NOTIFY feature_change failed: {e}")
+        # New/changed properties may include a new county → import its POIs (background).
+        _trigger_poi_refresh(pool)
 
     return len(rows), succeeded
 

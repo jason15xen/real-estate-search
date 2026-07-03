@@ -191,3 +191,22 @@ CREATE INDEX idx_room_instances_room_color ON room_instances(room_type, color);
 CREATE INDEX idx_property_schools_property_id ON property_schools(property_id);
 CREATE INDEX idx_property_schools_name ON property_schools USING GIN(school_name gin_trgm_ops);
 CREATE INDEX idx_property_schools_distance ON property_schools(distance_miles);
+
+-- Points of interest (grocery, church, gas station, etc.) imported from
+-- OpenStreetMap per county; proximity uses ST_DWithin on geom (see import_pois.py).
+-- poi_coverage tracks which counties are imported so new counties auto-import once.
+CREATE TABLE IF NOT EXISTS pois (
+    id SERIAL PRIMARY KEY,
+    county TEXT,
+    category TEXT NOT NULL,
+    name TEXT,
+    geom GEOGRAPHY(Point, 4326) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pois_geom ON pois USING GIST(geom);
+CREATE INDEX IF NOT EXISTS idx_pois_category ON pois(category);
+CREATE INDEX IF NOT EXISTS idx_pois_county ON pois(county);
+
+CREATE TABLE IF NOT EXISTS poi_coverage (
+    county TEXT PRIMARY KEY,
+    imported_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

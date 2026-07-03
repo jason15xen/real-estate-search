@@ -21,6 +21,13 @@ from src.models.search import (
 
 logger = logging.getLogger(__name__)
 
+
+class QueryParseError(Exception):
+    """Raised when the query could not be parsed at all (e.g. LLM outage) — distinct
+    from a successful parse that yields zero criteria. Callers should surface an error
+    rather than running an unfiltered (whole-catalog) search."""
+
+
 SYSTEM_PROMPT_TEMPLATE = """\
 You are a real estate search query parser. Your job is to extract structured \
 search criteria from natural language queries about real estate properties.
@@ -127,13 +134,21 @@ the user said.
    spatial area_relation #9, not location.)
    All string|null. Use "<city> in <STATE>" only when the user names a state.
 
-6. proximity — Distance to a SPECIFIC named landmark/place.
-   Fields: landmark_name (string), max_distance_miles (float)
-   For "near good schools", use landmark_name="good schools" and max_distance_miles=5.
-   ONLY use proximity for specific named places (e.g. "Oak Park Elementary School", "Central Park").
-   Do NOT use proximity for generic features like "beach", "lake", "park", "downtown".
-   Instead, use "feature" type for these: "near beach" → feature="beach", \
-"near lake" → feature="lake", "near park" → feature="park".
+6. proximity — Distance to a named landmark OR a common PLACE TYPE (point of interest).
+   Fields: landmark_name (string), max_distance_miles (float; if the user gives no \
+distance, default to 3).
+   USE proximity for:
+     - a SPECIFIC named place: "Oak Park Elementary School", "Central Park".
+     - schools: "near good schools" → landmark_name="good schools", max_distance_miles=5.
+     - a POI CATEGORY: grocery store / supermarket, church (place of worship), \
+gas station, pharmacy / drugstore, restaurant, hospital, bank, park, gym.
+       Examples:
+         "within 2 miles of a grocery store" → landmark_name="grocery store", max_distance_miles=2
+         "near a church"                     → landmark_name="church", max_distance_miles=3
+         "close to a gas station"            → landmark_name="gas station", max_distance_miles=3
+         "homes by a pharmacy"               → landmark_name="pharmacy", max_distance_miles=3
+   Do NOT use proximity for vague geographic features like "beach", "lake", \
+"waterfront", "downtown" — use the "feature" type for those ("near beach" → feature="beach").
 
 7. property — Property attribute constraints.
    Fields: home_type (string|null), min_rent (int|null), max_rent (int|null), \
@@ -339,6 +354,17 @@ async def _call_llm(client, system_prompt: str, query: str) -> str | None:
     return raw_text or None
 
 
+def _safe_miles(value, default: float | None = 3.0):
+    """Coerce a distance/radius to a positive float; missing/non-numeric/zero/negative -> default."""
+    try:
+        if value is None:
+            return default
+        n = float(value)
+    except (ValueError, TypeError):
+        return default
+    return n if n > 0 else default
+
+
 async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
     client = get_query_client()
     system_prompt = _build_system_prompt(settings.search_use_embedding_retrieval)
@@ -376,15 +402,19 @@ async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
 
     if not parsed:
         logger.error(f"All {max_retries} attempts failed for query: '{query}'")
-        return ParsedQuery(
-            original_query=query,
-            criteria=[],
-            understood_intent="Failed to parse query after retries",
-        )
+        # Hard parse failure (e.g. LLM outage). Raise so /search returns an error
+        # instead of an empty-criteria query that would match the ENTIRE catalog.
+        raise QueryParseError(f"Could not parse query after {max_retries} attempts")
 
-    try:
-        criteria = []
-        for c in parsed["criteria"]:
+    if not isinstance(parsed, dict):
+        logger.error(f"LLM returned non-object JSON ({type(parsed).__name__}) for query: '{query}'")
+        raise QueryParseError("LLM returned a non-object response")
+
+    # Build each criterion in its own try/except so ONE malformed entry (a non-numeric
+    # distance, a bad enum, a Pydantic ValidationError) is skipped — not the whole query.
+    criteria = []
+    for c in parsed.get("criteria") or []:
+        try:
             criterion_type = c["type"]
             if criterion_type == "room_count":
                 criteria.append(RoomCountCriterion(
@@ -423,7 +453,7 @@ async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
             elif criterion_type == "proximity":
                 criteria.append(ProximityCriterion(
                     landmark_name=c["landmark_name"],
-                    max_distance_miles=c["max_distance_miles"],
+                    max_distance_miles=_safe_miles(c.get("max_distance_miles")),
                 ))
             elif criterion_type == "area_relation":
                 place_a = c.get("place_a")
@@ -432,7 +462,7 @@ async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
                         relation=str(c.get("relation") or "near").strip().lower(),
                         place_a=place_a,
                         place_b=c.get("place_b"),
-                        radius_miles=c.get("radius_miles"),
+                        radius_miles=_safe_miles(c.get("radius_miles"), default=None),
                     ))
             elif criterion_type == "property":
                 criteria.append(PropertyCriterion(
@@ -454,13 +484,9 @@ async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
                 ))
             else:
                 logger.warning(f"Unknown criterion type: {criterion_type}")
-    except (KeyError, TypeError) as e:
-        logger.error(f"Failed to extract criteria: {e}")
-        return ParsedQuery(
-            original_query=query,
-            criteria=[],
-            understood_intent="Failed to parse query criteria",
-        )
+        except (KeyError, TypeError, ValueError) as e:
+            logger.warning(f"Skipping malformed criterion {c!r}: {e}")
+            continue
 
     return ParsedQuery(
         original_query=query,
