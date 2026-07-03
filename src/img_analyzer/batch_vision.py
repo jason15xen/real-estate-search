@@ -32,11 +32,23 @@ logger = logging.getLogger(__name__)
 # repeats on every line, so ~8k photos ≈ 150MB).
 MAX_BATCH_BYTES = 120 * 1024 * 1024
 
-# Batches are also capped by ESTIMATED enqueued tokens (settings.vision_batch_max_tokens):
-# OpenAI orgs have a batch queue token limit (observed live: 900k for this org — exceeding
-# it fails the batch outright with token_limit_exceeded). Estimate per line =
-# ~chars/4 for the prompt + image + completion ceiling.
+# Batches are also budgeted by ESTIMATED enqueued tokens: OpenAI orgs cap the TOTAL
+# tokens queued across all open batches (observed live: 900k for this org — exceeding it
+# fails a batch outright with token_limit_exceeded). settings.vision_batch_queue_tokens
+# is that total budget; settings.vision_batch_max_tokens sizes one batch. Estimate per
+# line = ~chars/4 for the prompt + image + completion ceiling.
 _EST_TOKENS_IMAGE_AND_COMPLETION = 2_500  # high-detail image ~1.5k + 1k completion ceiling
+_cached_est_tokens_per_line: int | None = None
+
+
+def est_tokens_per_line() -> int:
+    """Estimated enqueued tokens for one photo request (prompt reloaded once per process)."""
+    global _cached_est_tokens_per_line
+    if _cached_est_tokens_per_line is None:
+        _cached_est_tokens_per_line = (
+            len(build_vision_system_prompt()) // 4 + _EST_TOKENS_IMAGE_AND_COMPLETION
+        )
+    return _cached_est_tokens_per_line
 
 # Batch statuses still moving at OpenAI; anything else is terminal.
 _OPEN_STATUSES = {"validating", "in_progress", "finalizing", "cancelling"}
@@ -68,10 +80,15 @@ async def _ensure_tables(conn: asyncpg.Connection) -> None:
             batch_id     TEXT PRIMARY KEY,
             status       TEXT NOT NULL DEFAULT 'submitted',
             items        JSONB NOT NULL,
+            est_tokens   BIGINT NOT NULL DEFAULT 0,
             submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             completed_at TIMESTAMPTZ
         );
     """)
+    # Migrate pre-budget installs (queue accounting needs each batch's token estimate).
+    await conn.execute(
+        "ALTER TABLE vision_batches ADD COLUMN IF NOT EXISTS est_tokens BIGINT NOT NULL DEFAULT 0;"
+    )
     await conn.execute("""
         DO $$
         BEGIN
@@ -118,19 +135,21 @@ def _request_line(item_id: str, idx: int, url: str, system_prompt: str) -> str:
     })
 
 
-async def submit(pool: asyncpg.Pool, rows: list[asyncpg.Record]) -> int:
-    """Pack 'unprocessed' rows into one batch and submit it; marks each included row
-    'batch_submitted' (guarded by updated_at so a concurrent /process write wins).
-    Returns the number of properties actually batched; 0 = nothing submitted."""
+async def submit(pool: asyncpg.Pool, rows: list[asyncpg.Record], token_cap: int) -> int:
+    """Pack 'unprocessed' rows into one batch of at most `token_cap` estimated tokens
+    (the caller sizes this to min(per-batch cap, remaining queue headroom)); marks each
+    included row 'batch_submitted' (guarded by updated_at so a concurrent /process
+    write wins). Returns the number of properties actually batched; 0 = none fit."""
     global _backoff_until_monotonic
     if time.monotonic() < _backoff_until_monotonic:
         return 0  # cooling down after a failed batch/submit; sync path drains meanwhile
 
     system_prompt = build_vision_system_prompt()
-    est_tokens_per_line = len(system_prompt) // 4 + _EST_TOKENS_IMAGE_AND_COMPLETION
+    est_line = est_tokens_per_line()
 
-    # Build lines per item up to the byte AND estimated-token caps; photo-less rows and
-    # rows whose id would overflow the custom_id limit stay on the sync path.
+    # Pack oldest-first up to the byte and token caps. Photo-less rows, over-long ids,
+    # and properties too big for ANY batch stay on the sync path; the first property
+    # that fits a batch but not THIS one ends the wave (preserves oldest-first order).
     per_item_lines: dict[str, list[str]] = {}
     per_item_urls: dict[str, list[str]] = {}
     total_bytes = 0
@@ -143,12 +162,17 @@ async def submit(pool: asyncpg.Pool, rows: list[asyncpg.Record]) -> int:
         if len(f"{row['id']}|{len(urls) - 1}") > _CUSTOM_ID_MAX:
             logger.warning("Batch: id %r too long for a custom_id — leaving to the sync path", row["id"])
             continue
+        est = len(urls) * est_line
+        if est > settings.vision_batch_max_tokens:
+            logger.warning(
+                "Batch: %s (%d photos ≈ %dk tokens) exceeds the per-batch cap — leaving to the sync path",
+                row["id"], len(urls), est // 1000,
+            )
+            continue
         lines = [_request_line(row["id"], i, u, system_prompt) for i, u in enumerate(urls)]
         size = sum(len(l) + 1 for l in lines)
-        est = len(lines) * est_tokens_per_line
-        if per_item_lines and (total_bytes + size > MAX_BATCH_BYTES
-                               or total_est_tokens + est > settings.vision_batch_max_tokens):
-            break  # leftover rows stay pending; a later iteration batches them
+        if total_bytes + size > MAX_BATCH_BYTES or total_est_tokens + est > token_cap:
+            break  # leftover rows stay pending; a later wave takes them
         total_bytes += size
         total_est_tokens += est
         per_item_lines[row["id"]] = lines
@@ -215,27 +239,38 @@ async def submit(pool: asyncpg.Pool, rows: list[asyncpg.Record]) -> int:
             )
         return 0
 
+    n_photos = sum(len(v["urls"]) for v in items.values())
+    stored_est = n_photos * est_line  # recompute from surviving items (race-dropped rows excluded)
     async with pool.acquire() as conn:
         await conn.execute(
-            "INSERT INTO vision_batches (batch_id, status, items) VALUES ($1, $2, $3::jsonb)",
-            batch.id, batch.status, json.dumps(items),
+            "INSERT INTO vision_batches (batch_id, status, items, est_tokens) "
+            "VALUES ($1, $2, $3::jsonb, $4)",
+            batch.id, batch.status, json.dumps(items), stored_est,
         )
-    n_photos = sum(len(v["urls"]) for v in items.values())
-    logger.info("Batch %s submitted: %d properties, %d photos (%.1f MB)",
-                batch.id, len(items), n_photos, total_bytes / 1e6)
+    logger.info("Batch %s submitted: %d properties, %d photos (%.1f MB, ~%dk est tokens)",
+                batch.id, len(items), n_photos, total_bytes / 1e6, stored_est // 1000)
     return len(items)
 
 
 async def has_open_batch(pool: asyncpg.Pool) -> bool:
-    """True if a batch is still in flight. Submissions are serialized on this: org
-    batch queues have an enqueued-token cap (observed 900k), so a second concurrent
-    batch would be rejected with token_limit_exceeded anyway."""
+    """True if any batch is still in flight (used by patient mode to hold rows)."""
     async with pool.acquire() as conn:
         await _ensure_tables(conn)
         return bool(await conn.fetchval(
             "SELECT 1 FROM vision_batches WHERE status IN "
             "('submitted', 'validating', 'in_progress', 'finalizing', 'cancelling') LIMIT 1"
         ))
+
+
+async def open_batch_tokens(pool: asyncpg.Pool) -> int:
+    """Estimated tokens currently occupying the org batch queue (sum over open batches).
+    The submit budget is settings.vision_batch_queue_tokens minus this."""
+    async with pool.acquire() as conn:
+        await _ensure_tables(conn)
+        return await conn.fetchval(
+            "SELECT COALESCE(SUM(est_tokens), 0) FROM vision_batches WHERE status IN "
+            "('submitted', 'validating', 'in_progress', 'finalizing', 'cancelling')"
+        ) or 0
 
 
 async def recover_when_disabled(pool: asyncpg.Pool) -> int:

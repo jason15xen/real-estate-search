@@ -122,6 +122,7 @@ CREATE TABLE vision_batches (
     batch_id     TEXT PRIMARY KEY,
     status       TEXT NOT NULL DEFAULT 'submitted',
     items        JSONB NOT NULL,
+    est_tokens   BIGINT NOT NULL DEFAULT 0,  -- queue-budget accounting across open batches
     submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     completed_at TIMESTAMPTZ
 );

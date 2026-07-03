@@ -449,16 +449,20 @@ async def _apply_batch_results(pool: asyncpg.Pool) -> int:
 
 
 async def _maybe_submit_batch(pool: asyncpg.Pool) -> int:
-    """Submit a vision batch when the 'unprocessed' backlog reaches the threshold;
-    returns properties handed to the Batch API (they leave the sync queue).
-    Serialized: while a batch is in flight, new rows wait or drain via sync
-    (the org batch queue's token cap can't fit two batches anyway)."""
+    """Submit a vision batch when the 'unprocessed' backlog reaches the threshold and
+    the org batch queue has token headroom; returns properties handed to the Batch API.
+    Budgeted concurrency: batches of vision_batch_max_tokens are submitted (one per
+    iteration) while their combined estimate stays within vision_batch_queue_tokens —
+    equal settings = single-batch waves; smaller batch size = concurrent refilling."""
     try:
-        if await batch_vision.has_open_batch(pool):
-            return 0
+        in_flight = await batch_vision.open_batch_tokens(pool)
     except Exception as e:
-        logger.warning(f"Worker: open-batch check failed: {e}")
+        logger.warning(f"Worker: batch queue budget check failed: {e}")
         return 0
+    headroom = settings.vision_batch_queue_tokens - in_flight
+    token_cap = min(settings.vision_batch_max_tokens, headroom)
+    if token_cap < batch_vision.est_tokens_per_line() * 10:
+        return 0  # not enough room for even a small property — wait for a batch to finish
     async with pool.acquire() as conn:
         # Cheap count first — don't drag full JSONB payloads over every 5s iteration.
         pending = await conn.fetchval(
@@ -472,7 +476,7 @@ async def _maybe_submit_batch(pool: asyncpg.Pool) -> int:
             settings.vision_batch_max_items,
         )
     try:
-        return await batch_vision.submit(pool, rows)
+        return await batch_vision.submit(pool, rows, token_cap)
     except Exception as e:
         logger.warning(f"Worker: batch submit failed: {e}")
         return 0
