@@ -62,6 +62,65 @@ def build_vision_system_prompt() -> str:
     )
 
 
+_GROUP_OUTPUT_INSTRUCTIONS = """
+
+# GROUPED IMAGE MODE (batch analysis)
+You will be shown {n} images of ONE property, each preceded by a text label "IMAGE k"
+(k = 1..{n}). Analyze EVERY image independently, exactly as specified above.
+
+Return STRICT JSON of this exact shape — an object with a single "results" array
+containing EXACTLY {n} entries, one per image, in ascending image order:
+
+{{"results": [
+  {{"image": 1, "RoomType": "...", "Color": "...", "Features": ["...", "..."]}},
+  {{"image": 2, "RoomType": "...", "Color": "...", "Features": ["..."]}}
+]}}
+
+Rules (CRITICAL for correct matching):
+- Every entry MUST carry the "image" number copied from that image's label.
+- EXACTLY one entry per image: no image skipped, none duplicated, no extras.
+- Never merge observations across images; each entry describes only its own image.
+No commentary, no markdown fences."""
+
+
+def build_grouped_system_prompt(n_images: int) -> str:
+    """Vision prompt for grouped (multi-image) batch requests: base prompt + feature
+    list ONCE, plus strict per-image output-matching rules."""
+    return build_vision_system_prompt() + _GROUP_OUTPUT_INSTRUCTIONS.format(n=n_images)
+
+
+def parse_group_output(raw: str, n_images: int) -> list[dict] | None:
+    """Parse+validate a grouped reply. Returns a list of n result dicts ORDERED BY IMAGE
+    INDEX ({room_type, color, features}), or None if alignment cannot be PROVEN:
+    non-JSON, wrong entry count, or any missing/duplicated image index. Per-entry field
+    sloppiness is tolerated (coerced like the single-image parser); index structure is
+    not — a group that fails here must be retried, never guessed."""
+    raw = (raw or "").strip()
+    if raw.startswith("```"):
+        raw = "\n".join(l for l in raw.split("\n") if not l.startswith("```"))
+    try:
+        data = json.loads(raw)
+        entries = data.get("results")
+        if not isinstance(entries, list) or len(entries) != n_images:
+            return None
+        by_index: dict[int, dict] = {}
+        for e in entries:
+            idx = int(e.get("image"))
+            if idx in by_index or not (1 <= idx <= n_images):
+                return None  # duplicate or out-of-range index
+            features = e.get("Features")
+            by_index[idx] = {
+                "room_type": str(e.get("RoomType") or "Unknown"),
+                "color": _normalize_color(e.get("Color") if isinstance(e.get("Color"), str) else None),
+                "features": [str(f) for f in features] if isinstance(features, list) else [],
+            }
+        if len(by_index) != n_images:
+            return None
+        return [by_index[i] for i in range(1, n_images + 1)]
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError, AttributeError):
+        return None
+
+
 def parse_vision_content(raw: str, url: str) -> PhotoResult:
     """Parse a vision JSON reply into a PhotoResult (Unknown stub on any parse failure); shared by the sync and Batch API paths."""
     raw = (raw or "").strip()

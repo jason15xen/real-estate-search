@@ -135,8 +135,12 @@ async def _process_partial(
     item_id: str,
     data: dict,
     expected_updated_at,
+    precomputed: dict[str, PhotoResult] | None = None,
 ) -> bool:
-    """Partial image sync: recompute the photo diff against live primary state, re-analyze only added photos, drop removed ones, refresh metadata + schools; idempotent."""
+    """Partial image sync: recompute the photo diff against live primary state, re-analyze only added photos, drop removed ones, refresh metadata + schools; idempotent.
+    precomputed = {photo_url: PhotoResult} from the Batch API pipeline; added photos it
+    doesn't cover are analyzed synchronously here (shouldn't happen in batch mode —
+    the worker only calls this once every added photo has a result)."""
     item = {"Id": item_id, "ZillowPropertyRecord": data}
 
     # Step 1: existing_id + recompute diff against live primary state.
@@ -151,7 +155,8 @@ async def _process_partial(
 
     if existing_id is None:
         # Defensive: partial implies primary exists; if not, full-process.
-        return await _process_unprocessed(pool, item_id, data, expected_updated_at)
+        return await _process_unprocessed(pool, item_id, data, expected_updated_at,
+                                          precomputed=precomputed)
 
     desired_urls: set[str] = set(extract_photo_urls_from_data(data))
     actual_added = desired_urls - primary_urls
@@ -166,13 +171,22 @@ async def _process_partial(
             seen_urls.add(url)
             photos_to_analyze.append(photo_dict)
 
-    # Step 3: Vision API on just the freshly-needed photos.
+    # Step 3: vision results for the freshly-needed photos (batch-accumulated first).
     photo_results = []
     if photos_to_analyze:
-        photo_models = [Photo(**ph) for ph in photos_to_analyze]
-        photo_results = await analyze_photos(
-            property_id=item_id, photos=photo_models, concurrency=5
-        )
+        to_analyze = photos_to_analyze
+        if precomputed:
+            covered = [ph for ph in photos_to_analyze
+                       if (_canonical_photo_url(ph) or "") in precomputed]
+            photo_results = [precomputed[_canonical_photo_url(ph)] for ph in covered]
+            to_analyze = [ph for ph in photos_to_analyze
+                          if (_canonical_photo_url(ph) or "") not in precomputed]
+            photos_to_analyze = covered + to_analyze  # keep zip alignment below
+        if to_analyze:
+            photo_models = [Photo(**ph) for ph in to_analyze]
+            photo_results = photo_results + await analyze_photos(
+                property_id=item_id, photos=photo_models, concurrency=5
+            )
 
     if not photos_to_analyze and not actual_removed:
         # Empty diff (earlier attempt already applied it): metadata-only refresh.
@@ -406,110 +420,83 @@ async def _signal_features_changed(pool: asyncpg.Pool) -> None:
     _trigger_poi_refresh(pool)
 
 
-async def _apply_batch_results(pool: asyncpg.Pool) -> int:
-    """Collect completed vision batches and run the normal full-process path with the
-    precomputed results; returns properties finished. A row whose apply fails is
-    requeued to 'unprocessed' so it can never be stranded."""
+async def _batch_step(pool: asyncpg.Pool) -> int:
+    """One cycle of the batch-exclusive vision pipeline:
+    1) collect finished batches (validate matching, store per-photo results),
+    2) ingest every property whose needed photos are all resulted,
+    3) submit new grouped batches while the queue budget has headroom.
+    Returns an activity count (terminal batches + ingested properties + submissions)."""
+    activity = 0
     try:
-        ready = await batch_vision.collect_ready(pool)
+        if await batch_vision.collect_completed(pool):
+            activity += 1
     except Exception as e:
         logger.warning(f"Worker: batch collect failed: {e}")
-        return 0
 
-    done = 0
+    try:
+        ready = await batch_vision.ready_properties(pool)
+    except Exception as e:
+        logger.warning(f"Worker: batch readiness check failed: {e}")
+        ready = []
+
+    ingested = 0
     for entry in ready:
         item_id = entry["item_id"]
-        expected = entry["expected_updated_at"]
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT data FROM raw_properties "
-                "WHERE id = $1 AND status = 'batch_submitted' AND updated_at = $2",
-                item_id, expected,
-            )
-        if row is None:
-            logger.info(f"Worker: batch results for {item_id} superseded by a newer /process write; skipping")
-            continue
-        data = row["data"] if isinstance(row["data"], dict) else json.loads(row["data"])
         try:
-            if await _process_unprocessed(pool, item_id, data, expected, precomputed=entry["results"]):
-                done += 1
-                logger.info(f"Worker processed {item_id} (batch vision)")
+            if entry["status"] == "partial_image_only_processed":
+                ok = await _process_partial(pool, item_id, entry["data"],
+                                            entry["updated_at"], precomputed=entry["results"])
+            else:  # unprocessed (+ legacy batch_submitted)
+                ok = await _process_unprocessed(pool, item_id, entry["data"],
+                                                entry["updated_at"], precomputed=entry["results"])
+            if ok:
+                ingested += 1
+                logger.info(f"Worker processed {item_id} (batch vision v2)")
+                await batch_vision.clear_property(pool, item_id)
+            # ok=False → a /process write raced us; row re-evaluated next cycle with
+            # fresh data (URL-keyed results stay valid for unchanged photos).
         except Exception as e:
-            logger.exception(f"Worker: applying batch results for {item_id} failed: {e}")
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    "UPDATE raw_properties SET status = 'unprocessed', updated_at = NOW() "
-                    "WHERE id = $1 AND status = 'batch_submitted'",
-                    item_id,
-                )
-
-    if done:
+            logger.exception(f"Worker: ingesting {item_id} from batch results failed: {e}")
+            # Deprioritize so a poison row can't head-of-line block the pending scan.
+            try:
+                async with pool.acquire() as conn:
+                    await conn.execute(
+                        "UPDATE raw_properties SET updated_at = NOW() WHERE id = $1 AND status = $2",
+                        item_id, entry["status"],
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+    if ingested:
         await _signal_features_changed(pool)
-    return done
+        try:
+            await batch_vision.gc(pool)
+        except Exception as e:
+            logger.warning(f"Worker: batch GC failed: {e}")
+    activity += ingested
 
-
-async def _maybe_submit_batch(pool: asyncpg.Pool) -> int:
-    """Submit a vision batch when the 'unprocessed' backlog reaches the threshold and
-    the org batch queue has token headroom; returns properties handed to the Batch API.
-    Budgeted concurrency: batches of vision_batch_max_tokens are submitted (one per
-    iteration) while their combined estimate stays within vision_batch_queue_tokens —
-    equal settings = single-batch waves; smaller batch size = concurrent refilling."""
     try:
-        in_flight = await batch_vision.open_batch_tokens(pool)
-    except Exception as e:
-        logger.warning(f"Worker: batch queue budget check failed: {e}")
-        return 0
-    headroom = settings.vision_batch_queue_tokens - in_flight
-    token_cap = min(settings.vision_batch_max_tokens, headroom)
-    if token_cap < batch_vision.est_tokens_per_line() * 10:
-        return 0  # not enough room for even a small property — wait for a batch to finish
-    async with pool.acquire() as conn:
-        # Cheap count first — don't drag full JSONB payloads over every 5s iteration.
-        pending = await conn.fetchval(
-            "SELECT count(*) FROM raw_properties WHERE status = 'unprocessed'"
-        )
-        if (pending or 0) < settings.vision_batch_threshold:
-            return 0
-        rows = await conn.fetch(
-            "SELECT id, data, status, updated_at FROM raw_properties "
-            "WHERE status = 'unprocessed' ORDER BY updated_at ASC LIMIT $1",
-            settings.vision_batch_max_items,
-        )
-    try:
-        return await batch_vision.submit(pool, rows, token_cap)
+        activity += await batch_vision.submit_waves(pool)
     except Exception as e:
         logger.warning(f"Worker: batch submit failed: {e}")
-        return 0
+    return activity
 
 
 async def _worker_iteration(pool: asyncpg.Pool) -> tuple[int, int]:
-    """Process one batch; returns (claimed, succeeded), claimed=0 meaning no work; triggers a feature-registry rebuild only when an unprocessed/partial row succeeded."""
-    applied = 0
-    hold_for_batch = False
+    """Process one iteration; returns (claimed, succeeded), claimed=0 meaning no work.
+    Batch mode is BATCH-EXCLUSIVE: all photo analysis flows through _batch_step, and the
+    sync claim below only handles metadata-only rows (image_only_processed)."""
+    batch_activity = 0
     if settings.vision_use_batch:
-        # Phase A: land any finished Batch API results, then hand a big backlog to a new batch.
-        applied = await _apply_batch_results(pool)
-        submitted = await _maybe_submit_batch(pool)
-        if applied or submitted:
-            # Both count as progress (a submit hands work to OpenAI) — no error backoff.
-            return applied + submitted, applied + submitted
-        if settings.vision_batch_patient:
-            # Patient mode: while a wave is in flight, full-analysis rows WAIT for the
-            # next wave (50% discount) instead of draining at full price. Scoped to
-            # open-batch periods only, so below-threshold remainders, photo-less rows,
-            # and failure-backoff windows still drain via sync — nothing waits forever.
-            try:
-                hold_for_batch = await batch_vision.has_open_batch(pool)
-            except Exception as e:
-                logger.warning(f"Worker: patient-mode open-batch check failed: {e}")
+        batch_activity = await _batch_step(pool)
 
     async with pool.acquire() as conn:
         async with conn.transaction():
             rows = await claim_pending_batch(
-                conn, limit=WORKER_BATCH_SIZE, exclude_unprocessed=hold_for_batch
+                conn, limit=WORKER_BATCH_SIZE,
+                metadata_only=settings.vision_use_batch,
             )
     if not rows:
-        return 0, 0
+        return (batch_activity, batch_activity) if batch_activity else (0, 0)
 
     results = await asyncio.gather(
         *[_process_one_row(pool, row) for row in rows],

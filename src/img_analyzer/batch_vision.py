@@ -1,14 +1,21 @@
-"""OpenAI Batch API vision path: bulk photo analysis at 50% cost for large backlogs.
+"""OpenAI Batch API vision pipeline v2 — batch-exclusive, photo-level, prompt-once.
 
-Flow: when many 'unprocessed' rows are pending, the worker packs their photos into one
-JSONL (one chat.completions request per photo, custom_id "{item_id}|{photo_idx}"),
-uploads it, creates a batch, marks the rows 'batch_submitted', and records the batch in
-vision_batches. Each poll cycle it checks open batches; a completed (or expired-with-
-partial-output) batch is parsed back into {photo_url: PhotoResult} per property and the
-worker runs the normal full-process path with those results injected — photos missing
-from the output (error-file lines) are re-analyzed synchronously inside that path.
-Failed/cancelled batches, submit errors, and orphaned rows all reset to 'unprocessed'
-so the sync path picks them up; nothing can get stuck in 'batch_submitted'.
+Design (see also worker.py orchestration):
+- ALL photo analysis flows through the Batch API; the sync path never analyzes photos.
+- Work is packed at the PHOTO level: a property's photos may span several batches.
+  Validated per-photo results accumulate in `vision_results`, and the worker ingests a
+  property only when EVERY photo it currently needs has exactly one result.
+- Token saving: each request carries the shared system prompt ONCE plus a group of up
+  to vision_group_max_images images labeled "IMAGE 1..N"; the model must echo each
+  image's index in its JSON reply.
+- Exact matching (the critical invariant): request-level identity via custom_id plus an
+  ordered URL manifest persisted per batch; within a request, the index-echo reply is
+  validated by parse_group_output — exactly one entry per index or the WHOLE group is
+  rejected and retried at a smaller size (group → 5 → single → Unknown stub after
+  _MAX_GROUP_ATTEMPTS), never guessed.
+- Queue budget: batches of ≤ vision_batch_max_tokens ESTIMATED INPUT tokens (the org
+  queue counts input only) are submitted while the total in-flight estimate fits
+  vision_batch_queue_tokens; completions free budget and the next wave refills it.
 """
 
 from __future__ import annotations
@@ -16,62 +23,54 @@ from __future__ import annotations
 import json
 import logging
 import time
-from datetime import datetime
+from typing import Any
 
 import asyncpg
 
 from config.settings import settings
-from src.img_analyzer.analyzer import build_vision_system_prompt, parse_vision_content
+from src.img_analyzer.analyzer import build_grouped_system_prompt, parse_group_output
 from src.img_analyzer.models import PhotoResult
-from src.img_analyzer.raw_db import extract_photo_urls_from_data
+from src.img_analyzer.raw_db import extract_photo_urls_from_data, primary_photo_urls
 from src.llm_client import get_async_client
 
 logger = logging.getLogger(__name__)
 
-# Stay well under the Batch API's 200MB-per-input-file limit (the ~17KB system prompt
-# repeats on every line, so ~8k photos ≈ 150MB).
+# Batch API hard limit is 200MB/file; grouped requests are tiny (~20KB) so this never
+# binds in practice, kept as a guard.
 MAX_BATCH_BYTES = 120 * 1024 * 1024
 
-# Batches are also budgeted by ESTIMATED enqueued tokens: OpenAI orgs cap the TOTAL
-# tokens queued across all open batches (observed live: 900k for this org — exceeding it
-# fails a batch outright with token_limit_exceeded). settings.vision_batch_queue_tokens
-# is that total budget; settings.vision_batch_max_tokens sizes one batch. Estimate per
-# line = ~chars/4 for the prompt + image + completion ceiling.
-_EST_TOKENS_IMAGE_AND_COMPLETION = 2_500  # high-detail image ~1.5k + 1k completion ceiling
-_cached_est_tokens_per_line: int | None = None
+# Estimated INPUT tokens per high-detail image (observed ~1.5k; padded). The org batch
+# queue counts input tokens only (verified live via probes on 2026-07-03).
+IMAGE_TOKENS_EST = 1_600
 
+# Escalation ladder for groups that fail matching validation: attempts→group size.
+# After _MAX_GROUP_ATTEMPTS failures a photo gets an Unknown stub result so its
+# property can complete (mirrors the old sync path's behavior on a dead photo).
+_TIER_GROUP_SIZE = {0: None, 1: 5, 2: 1}  # None → settings.vision_group_max_images
+_MAX_GROUP_ATTEMPTS = 3
 
-def est_tokens_per_line() -> int:
-    """Estimated enqueued tokens for one photo request (prompt reloaded once per process)."""
-    global _cached_est_tokens_per_line
-    if _cached_est_tokens_per_line is None:
-        _cached_est_tokens_per_line = (
-            len(build_vision_system_prompt()) // 4 + _EST_TOKENS_IMAGE_AND_COMPLETION
-        )
-    return _cached_est_tokens_per_line
+# Per-request output ceiling: ~500 tokens per image + headroom (billed only if used;
+# does NOT count toward the queue).
+_COMPLETION_PER_IMAGE = 500
+_COMPLETION_HEADROOM = 300
 
-# Batch statuses still moving at OpenAI; anything else is terminal.
-_OPEN_STATUSES = {"validating", "in_progress", "finalizing", "cancelling"}
+_OPEN_STATUSES = ("submitted", "validating", "in_progress", "finalizing", "cancelling")
 
-# The Batch API rejects custom_ids longer than 64 chars — and one bad line fails the
-# WHOLE batch, so over-long item ids are routed to the sync path instead.
 _CUSTOM_ID_MAX = 64
 
-# After a submit error or a 'failed' batch, hold off new submissions so a deterministic
-# failure (quota, invalid model, poison row) can't loop submit→fail→requeue→resubmit;
-# the sync path keeps draining rows during the cooldown. Per-process, in-memory.
+# After a submit error or a 'failed' batch, pause submissions so a deterministic
+# failure can't loop; pending photos simply wait (batch-exclusive: no sync drain).
 FAILURE_COOLDOWN_SECONDS = 600.0
 _backoff_until_monotonic = 0.0
 
-# Poll throttle (per process) so the 5s worker loop doesn't hammer the batches endpoint.
+# Poll throttle for batch status checks (the worker loops every ~5s).
 _last_poll_monotonic = 0.0
 
-# One-time DDL guard per process (worker loops every ~5s).
 _tables_ready = False
 
 
 async def _ensure_tables(conn: asyncpg.Connection) -> None:
-    """Create/migrate the vision_batches tracker and widen the raw_properties status CHECK."""
+    """Create/migrate the batch tracker, per-photo result store, and attempts ledger."""
     global _tables_ready
     if _tables_ready:
         return
@@ -85,198 +84,523 @@ async def _ensure_tables(conn: asyncpg.Connection) -> None:
             completed_at TIMESTAMPTZ
         );
     """)
-    # Migrate pre-budget installs (queue accounting needs each batch's token estimate).
     await conn.execute(
         "ALTER TABLE vision_batches ADD COLUMN IF NOT EXISTS est_tokens BIGINT NOT NULL DEFAULT 0;"
     )
     await conn.execute("""
-        DO $$
-        BEGIN
-            IF EXISTS (
-                SELECT 1 FROM pg_constraint
-                WHERE conname = 'raw_properties_status_check'
-                  AND pg_get_constraintdef(oid) NOT ILIKE '%batch_submitted%'
-            ) THEN
-                ALTER TABLE raw_properties DROP CONSTRAINT raw_properties_status_check;
-                ALTER TABLE raw_properties ADD CONSTRAINT raw_properties_status_check
-                    CHECK (status IN (
-                        'unprocessed',
-                        'image_only_processed',
-                        'partial_image_only_processed',
-                        'processed',
-                        'batch_submitted'
-                    ));
-            END IF;
-        END $$;
+        CREATE TABLE IF NOT EXISTS vision_results (
+            property_id TEXT NOT NULL,
+            photo_url   TEXT NOT NULL,
+            result      JSONB NOT NULL,
+            created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (property_id, photo_url)
+        );
+    """)
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS vision_attempts (
+            property_id TEXT NOT NULL,
+            photo_url   TEXT NOT NULL,
+            attempts    INT NOT NULL DEFAULT 0,
+            PRIMARY KEY (property_id, photo_url)
+        );
     """)
     _tables_ready = True
 
 
-def _request_line(item_id: str, idx: int, url: str, system_prompt: str) -> str:
-    """One JSONL line: the exact same request body the sync path sends for this photo."""
+# ---------------------------------------------------------------------------
+# Token estimation
+# ---------------------------------------------------------------------------
+
+_cached_prompt_tokens: int | None = None
+
+
+def _prompt_tokens_est() -> int:
+    global _cached_prompt_tokens
+    if _cached_prompt_tokens is None:
+        _cached_prompt_tokens = len(build_grouped_system_prompt(20)) // 4 + 100
+    return _cached_prompt_tokens
+
+
+def _request_tokens_est(n_images: int) -> int:
+    """Estimated ENQUEUED (input) tokens for one grouped request."""
+    return _prompt_tokens_est() + n_images * IMAGE_TOKENS_EST
+
+
+# ---------------------------------------------------------------------------
+# Request construction
+# ---------------------------------------------------------------------------
+
+def _grouped_request_line(custom_id: str, urls: list[str]) -> str:
+    """One JSONL line: shared prompt ONCE + labeled images IMAGE 1..N of one property."""
+    content: list[dict] = []
+    for i, u in enumerate(urls, 1):
+        content.append({"type": "text", "text": f"IMAGE {i}"})
+        content.append({"type": "image_url", "image_url": {"url": u, "detail": "high"}})
     return json.dumps({
-        "custom_id": f"{item_id}|{idx}",
+        "custom_id": custom_id,
         "method": "POST",
         "url": "/v1/chat/completions",
         "body": {
             "model": settings.openai_model,
-            "max_completion_tokens": 1000,
+            "max_completion_tokens": _COMPLETION_HEADROOM + _COMPLETION_PER_IMAGE * len(urls),
             "response_format": {"type": "json_object"},
             "messages": [
-                {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image_url", "image_url": {"url": url, "detail": "high"}},
-                    ],
-                },
+                {"role": "system", "content": build_grouped_system_prompt(len(urls))},
+                {"role": "user", "content": content},
             ],
         },
     })
 
 
-async def submit(pool: asyncpg.Pool, rows: list[asyncpg.Record], token_cap: int) -> int:
-    """Pack 'unprocessed' rows into one batch of at most `token_cap` estimated tokens
-    (the caller sizes this to min(per-batch cap, remaining queue headroom)); marks each
-    included row 'batch_submitted' (guarded by updated_at so a concurrent /process
-    write wins). Returns the number of properties actually batched; 0 = none fit."""
-    global _backoff_until_monotonic
-    if time.monotonic() < _backoff_until_monotonic:
-        return 0  # cooling down after a failed batch/submit; sync path drains meanwhile
+# ---------------------------------------------------------------------------
+# Pending work discovery
+# ---------------------------------------------------------------------------
 
-    system_prompt = build_vision_system_prompt()
-    est_line = est_tokens_per_line()
+async def _pending_rows(conn: asyncpg.Connection) -> list[asyncpg.Record]:
+    """Rows whose vision work the batch pipeline owns ('batch_submitted' = legacy rows
+    from the previous design, treated like unprocessed)."""
+    return await conn.fetch(
+        """
+        SELECT id, data, status, updated_at FROM raw_properties
+        WHERE status IN ('unprocessed', 'partial_image_only_processed', 'batch_submitted')
+        ORDER BY updated_at ASC
+        LIMIT $1
+        """,
+        settings.vision_batch_max_items,
+    )
 
-    # Pack oldest-first up to the byte and token caps. Photo-less rows, over-long ids,
-    # and properties too big for ANY batch stay on the sync path; the first property
-    # that fits a batch but not THIS one ends the wave (preserves oldest-first order).
-    per_item_lines: dict[str, list[str]] = {}
-    per_item_urls: dict[str, list[str]] = {}
-    total_bytes = 0
-    total_est_tokens = 0
-    for row in rows:
-        data = row["data"] if isinstance(row["data"], dict) else json.loads(row["data"])
-        urls = extract_photo_urls_from_data(data)
-        if not urls:
-            continue
-        if len(f"{row['id']}|{len(urls) - 1}") > _CUSTOM_ID_MAX:
-            logger.warning("Batch: id %r too long for a custom_id — leaving to the sync path", row["id"])
-            continue
-        est = len(urls) * est_line
-        if est > settings.vision_batch_max_tokens:
-            logger.warning(
-                "Batch: %s (%d photos ≈ %dk tokens) exceeds the per-batch cap — leaving to the sync path",
-                row["id"], len(urls), est // 1000,
-            )
-            continue
-        lines = [_request_line(row["id"], i, u, system_prompt) for i, u in enumerate(urls)]
-        size = sum(len(l) + 1 for l in lines)
-        if total_bytes + size > MAX_BATCH_BYTES or total_est_tokens + est > token_cap:
-            break  # leftover rows stay pending; a later wave takes them
-        total_bytes += size
-        total_est_tokens += est
-        per_item_lines[row["id"]] = lines
-        per_item_urls[row["id"]] = urls
 
-    if not per_item_lines:
-        return 0
+async def _needed_urls(conn: asyncpg.Connection, row: asyncpg.Record) -> list[str]:
+    """Photo URLs this row still requires vision for, in original photo order.
+    Full path: all photos. Partial path: only photos not yet in the primary tables."""
+    data = row["data"] if isinstance(row["data"], dict) else json.loads(row["data"])
+    urls = extract_photo_urls_from_data(data)
+    if row["status"] == "partial_image_only_processed":
+        have = await primary_photo_urls(conn, row["id"])
+        urls = [u for u in urls if u not in have]
+    # dedupe, order-preserving
+    seen: set[str] = set()
+    return [u for u in urls if not (u in seen or seen.add(u))]
 
-    # Mark rows first (updated_at-guarded) so a row a concurrent write just changed is
-    # dropped from this batch instead of having stale results applied later.
-    items: dict[str, dict] = {}
+
+async def _resulted_urls(conn: asyncpg.Connection, property_id: str) -> set[str]:
+    rows = await conn.fetch(
+        "SELECT photo_url FROM vision_results WHERE property_id = $1", property_id
+    )
+    return {r["photo_url"] for r in rows}
+
+
+async def _inflight_urls(conn: asyncpg.Connection) -> set[tuple[str, str]]:
+    """(property_id, url) pairs currently inside open batches."""
+    rows = await conn.fetch(
+        "SELECT items FROM vision_batches WHERE status = ANY($1)", list(_OPEN_STATUSES)
+    )
+    out: set[tuple[str, str]] = set()
+    for r in rows:
+        items = r["items"] if isinstance(r["items"], dict) else json.loads(r["items"])
+        for req in (items.get("requests") or {}).values():
+            for u in req.get("urls", []):
+                out.add((req["p"], u))
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Submission (photo-level packing, queue-budget refill)
+# ---------------------------------------------------------------------------
+
+async def open_batch_tokens(pool: asyncpg.Pool) -> int:
     async with pool.acquire() as conn:
         await _ensure_tables(conn)
-        for row in rows:
-            if row["id"] not in per_item_lines:
-                continue
-            new_updated = await conn.fetchval(
-                """
-                UPDATE raw_properties SET status = 'batch_submitted', updated_at = NOW()
-                WHERE id = $1 AND status = 'unprocessed' AND updated_at = $2
-                RETURNING updated_at
-                """,
-                row["id"], row["updated_at"],
-            )
-            if new_updated is None:
-                per_item_lines.pop(row["id"])
-                continue
-            items[row["id"]] = {
-                "updated_at": new_updated.isoformat(),
-                "urls": per_item_urls[row["id"]],
-            }
+        return await conn.fetchval(
+            "SELECT COALESCE(SUM(est_tokens), 0) FROM vision_batches WHERE status = ANY($1)",
+            list(_OPEN_STATUSES),
+        ) or 0
 
-    if not items:
+
+async def has_open_batch(pool: asyncpg.Pool) -> bool:
+    async with pool.acquire() as conn:
+        await _ensure_tables(conn)
+        return bool(await conn.fetchval(
+            "SELECT 1 FROM vision_batches WHERE status = ANY($1) LIMIT 1",
+            list(_OPEN_STATUSES),
+        ))
+
+
+def _chunk_by_attempts(
+    urls: list[str], attempts: dict[str, int]
+) -> tuple[list[list[str]], list[str]]:
+    """Split needed urls into request groups sized by their retry tier.
+    Returns (groups, exhausted_urls) — exhausted urls get Unknown stubs."""
+    tiers: dict[int, list[str]] = {}
+    exhausted: list[str] = []
+    for u in urls:
+        a = attempts.get(u, 0)
+        if a >= _MAX_GROUP_ATTEMPTS:
+            exhausted.append(u)
+        else:
+            tiers.setdefault(a, []).append(u)
+    groups: list[list[str]] = []
+    for a, tier_urls in sorted(tiers.items()):
+        size = _TIER_GROUP_SIZE.get(a) or settings.vision_group_max_images
+        size = max(1, size)
+        for i in range(0, len(tier_urls), size):
+            groups.append(tier_urls[i:i + size])
+    return groups, exhausted
+
+
+async def submit_waves(pool: asyncpg.Pool) -> int:
+    """Pack pending photos into grouped requests and submit as many batches as fit the
+    queue budget (fill-until-full; refills as prior batches complete). Returns the
+    number of batches submitted."""
+    global _backoff_until_monotonic
+    if time.monotonic() < _backoff_until_monotonic:
         return 0
 
-    jsonl = "\n".join(l for lines in per_item_lines.values() for l in lines)
+    async with pool.acquire() as conn:
+        await _ensure_tables(conn)
+        in_flight_tokens = await conn.fetchval(
+            "SELECT COALESCE(SUM(est_tokens), 0) FROM vision_batches WHERE status = ANY($1)",
+            list(_OPEN_STATUSES),
+        ) or 0
+        headroom = settings.vision_batch_queue_tokens - in_flight_tokens
+        if headroom < _request_tokens_est(1):
+            return 0  # queue full — wait for a batch to finish
+
+        rows = await _pending_rows(conn)
+        if not rows:
+            return 0
+        inflight = await _inflight_urls(conn)
+
+        # Build the global chunk list (photo-level; properties may span batches).
+        chunks: list[tuple[str, list[str]]] = []  # (property_id, urls)
+        for row in rows:
+            pid = row["id"]
+            needed = await _needed_urls(conn, row)
+            if not needed:
+                continue  # complete or photo-less → worker applies it
+            done = await _resulted_urls(conn, pid)
+            todo = [u for u in needed if u not in done and (pid, u) not in inflight]
+            if not todo:
+                continue
+            arows = await conn.fetch(
+                "SELECT photo_url, attempts FROM vision_attempts WHERE property_id = $1", pid
+            )
+            attempts = {r["photo_url"]: r["attempts"] for r in arows}
+            groups, exhausted = _chunk_by_attempts(todo, attempts)
+            for u in exhausted:
+                # Photo failed matching _MAX_GROUP_ATTEMPTS times even solo → stub it
+                # so the property can complete (never blocks forever).
+                logger.warning("Batch v2: stubbing Unknown for %s photo %s (retries exhausted)", pid, u[:90])
+                await conn.execute(
+                    """
+                    INSERT INTO vision_results (property_id, photo_url, result)
+                    VALUES ($1, $2, $3::jsonb) ON CONFLICT (property_id, photo_url) DO NOTHING
+                    """,
+                    pid, u, json.dumps({"room_type": "Unknown", "color": None, "features": []}),
+                )
+            chunks.extend((pid, g) for g in groups)
+
+    if not chunks:
+        return 0
+
+    # Pack chunks into batches of ≤ vision_batch_max_tokens, submit while headroom lasts.
+    submitted = 0
+    batch_lines: list[str] = []
+    batch_manifest: dict[str, dict] = {}
+    batch_props: set[str] = set()
+    batch_tokens = 0
+    batch_bytes = 0
+    seq = 0  # global across this call — custom_ids stay unique through flushes
+
+    async def _flush() -> bool:
+        nonlocal batch_lines, batch_manifest, batch_props, batch_tokens, batch_bytes, headroom, submitted
+        if not batch_lines:
+            return True
+        ok = await _create_batch(pool, batch_lines, batch_manifest, batch_props, batch_tokens)
+        if ok:
+            submitted += 1
+            headroom -= batch_tokens
+        batch_lines, batch_manifest, batch_props = [], {}, set()
+        batch_tokens = batch_bytes = 0
+        return ok
+
+    for pid, group in chunks:
+        est = _request_tokens_est(len(group))
+        cid = f"{pid}#{seq}"
+        if len(cid) > _CUSTOM_ID_MAX:
+            logger.warning("Batch v2: id %r too long for a custom_id — left to retries/stub", pid)
+            continue
+        line = _grouped_request_line(cid, group)
+        # Flush the current batch first if this chunk would overflow it (batch cap,
+        # queue budget, or the byte guard) — then pack the chunk into the fresh batch.
+        if batch_lines and (
+            batch_tokens + est > settings.vision_batch_max_tokens
+            or batch_tokens + est > headroom
+            or batch_bytes + len(line) + 1 > MAX_BATCH_BYTES
+        ):
+            if not await _flush():
+                return submitted  # submit error → backoff set; stop this cycle
+        if est > headroom:
+            break  # queue budget exhausted — later waves take the rest
+        batch_lines.append(line)
+        batch_manifest[cid] = {"p": pid, "urls": list(group)}
+        batch_props.add(pid)
+        batch_tokens += est
+        batch_bytes += len(line) + 1
+        seq += 1
+
+    await _flush()
+    return submitted
+
+
+async def _create_batch(
+    pool: asyncpg.Pool, lines: list[str], manifest: dict, props: set[str], est_tokens: int
+) -> bool:
+    """Upload one JSONL + create the OpenAI batch + persist the manifest."""
+    global _backoff_until_monotonic
     client = get_async_client()
     f = None
     try:
         f = await client.files.create(
-            file=("vision_batch.jsonl", jsonl.encode("utf-8")), purpose="batch"
+            file=("vision_batch.jsonl", "\n".join(lines).encode("utf-8")), purpose="batch"
         )
         batch = await client.batches.create(
-            input_file_id=f.id,
-            endpoint="/v1/chat/completions",
-            completion_window="24h",
+            input_file_id=f.id, endpoint="/v1/chat/completions", completion_window="24h"
         )
-    except Exception as e:  # noqa: BLE001 — reset rows so the sync path takes over
+    except Exception as e:  # noqa: BLE001
         _backoff_until_monotonic = time.monotonic() + FAILURE_COOLDOWN_SECONDS
-        logger.error("Batch submit failed (%s); returning %d rows to sync path and backing off %.0fs",
-                     e, len(items), FAILURE_COOLDOWN_SECONDS)
+        logger.error("Batch v2 submit failed (%s); backing off %.0fs", e, FAILURE_COOLDOWN_SECONDS)
         if f is not None:
             try:
-                await client.files.delete(f.id)  # don't strand the uploaded JSONL
-            except Exception:  # noqa: BLE001 — best-effort cleanup
+                await client.files.delete(f.id)
+            except Exception:  # noqa: BLE001
                 pass
-        async with pool.acquire() as conn:
-            await conn.execute(
-                """
-                UPDATE raw_properties SET status = 'unprocessed', updated_at = NOW()
-                WHERE id = ANY($1) AND status = 'batch_submitted'
-                """,
-                list(items),
-            )
-        return 0
+        return False
 
-    n_photos = sum(len(v["urls"]) for v in items.values())
-    stored_est = n_photos * est_line  # recompute from surviving items (race-dropped rows excluded)
+    items = {"requests": manifest, "properties": sorted(props)}
     async with pool.acquire() as conn:
         await conn.execute(
             "INSERT INTO vision_batches (batch_id, status, items, est_tokens) "
             "VALUES ($1, $2, $3::jsonb, $4)",
-            batch.id, batch.status, json.dumps(items), stored_est,
+            batch.id, batch.status, json.dumps(items), est_tokens,
         )
-    logger.info("Batch %s submitted: %d properties, %d photos (%.1f MB, ~%dk est tokens)",
-                batch.id, len(items), n_photos, total_bytes / 1e6, stored_est // 1000)
-    return len(items)
+    n_photos = sum(len(r["urls"]) for r in manifest.values())
+    logger.info("Batch v2 %s submitted: %d requests / %d photos / %d properties (~%dk est tokens)",
+                batch.id, len(manifest), n_photos, len(props), est_tokens // 1000)
+    return True
 
 
-async def has_open_batch(pool: asyncpg.Pool) -> bool:
-    """True if any batch is still in flight (used by patient mode to hold rows)."""
+# ---------------------------------------------------------------------------
+# Collection: poll → download → validate matching → store per-photo results
+# ---------------------------------------------------------------------------
+
+async def collect_completed(pool: asyncpg.Pool) -> bool:
+    """Poll open batches (throttled). For each terminal batch, validate every grouped
+    reply and store per-photo results; failed groups get attempts++ (smaller groups next
+    wave). Returns True if any batch reached a terminal state."""
+    global _last_poll_monotonic, _backoff_until_monotonic
+
     async with pool.acquire() as conn:
         await _ensure_tables(conn)
-        return bool(await conn.fetchval(
-            "SELECT 1 FROM vision_batches WHERE status IN "
-            "('submitted', 'validating', 'in_progress', 'finalizing', 'cancelling') LIMIT 1"
-        ))
+        open_rows = await conn.fetch(
+            "SELECT batch_id, items FROM vision_batches WHERE status = ANY($1)",
+            list(_OPEN_STATUSES),
+        )
+    if not open_rows:
+        return False
+    if time.monotonic() - _last_poll_monotonic < settings.vision_batch_poll_seconds:
+        return False
+    _last_poll_monotonic = time.monotonic()
+
+    client = get_async_client()
+    any_terminal = False
+    for brow in open_rows:
+        batch_id = brow["batch_id"]
+        items = brow["items"] if isinstance(brow["items"], dict) else json.loads(brow["items"])
+        manifest: dict[str, dict] = items.get("requests") or {}
+        try:
+            batch = await client.batches.retrieve(batch_id)
+        except Exception as e:  # noqa: BLE001
+            if getattr(e, "status_code", None) == 404:
+                logger.warning("Batch v2 %s: gone at OpenAI — photos will repack", batch_id)
+                await _mark_terminal(pool, batch_id, "failed")
+                any_terminal = True
+            else:
+                logger.warning("Batch v2 %s: status check failed: %s", batch_id, e)
+            continue
+
+        if batch.status in ("validating", "in_progress", "finalizing", "cancelling"):
+            counts = getattr(batch, "request_counts", None)
+            logger.info("Batch v2 %s: %s (%s/%s requests done)", batch_id, batch.status,
+                        getattr(counts, "completed", "?"), getattr(counts, "total", "?"))
+            continue
+
+        if batch.status in ("failed", "cancelled"):
+            if batch.status == "failed":
+                _backoff_until_monotonic = time.monotonic() + FAILURE_COOLDOWN_SECONDS
+            logger.warning("Batch v2 %s: %s — %d requests will repack next wave",
+                           batch_id, batch.status, len(manifest))
+            await _mark_terminal(pool, batch_id, batch.status)
+            any_terminal = True
+            continue
+
+        # completed (or expired with partial output)
+        output_lines: dict[str, dict] = {}
+        output_file_id = getattr(batch, "output_file_id", None)
+        if output_file_id:
+            try:
+                content = await client.files.content(output_file_id)
+                for line in content.text.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                        output_lines[rec.get("custom_id") or ""] = rec
+                    except (json.JSONDecodeError, AttributeError, TypeError):
+                        continue
+            except Exception as e:  # noqa: BLE001
+                if getattr(e, "status_code", None) == 404:
+                    logger.warning("Batch v2 %s: output file gone — photos will repack", batch_id)
+                    await _mark_terminal(pool, batch_id, "failed")
+                    any_terminal = True
+                else:
+                    logger.warning("Batch v2 %s: output download failed: %s (will retry)", batch_id, e)
+                continue
+
+        # Atomic claim so two replicas can't both store this batch's results.
+        async with pool.acquire() as conn:
+            claimed = await conn.fetchval(
+                "UPDATE vision_batches SET status = $2, completed_at = NOW() "
+                "WHERE batch_id = $1 AND status = ANY($3) RETURNING batch_id",
+                batch_id, batch.status, list(_OPEN_STATUSES),
+            )
+        if claimed is None:
+            continue
+        any_terminal = True
+
+        stored = failed_groups = missing = 0
+        async with pool.acquire() as conn:
+            for cid, req in manifest.items():
+                pid, urls = req["p"], req["urls"]
+                rec = output_lines.get(cid)
+                if rec is None:
+                    missing += 1  # infra gap (e.g. expiry) — repack at the SAME tier
+                    continue
+                resp = rec.get("response") or {}
+                content_text = ""
+                if isinstance(resp, dict) and resp.get("status_code") == 200:
+                    body = resp.get("body") or {}
+                    choices = body.get("choices") or [{}]
+                    try:
+                        content_text = (choices[0].get("message") or {}).get("content") or ""
+                    except (AttributeError, IndexError, TypeError):
+                        content_text = ""
+                parsed = parse_group_output(content_text, len(urls)) if content_text else None
+                if parsed is None:
+                    # Matching NOT proven → reject the whole group, retry smaller.
+                    failed_groups += 1
+                    for u in urls:
+                        await conn.execute(
+                            """
+                            INSERT INTO vision_attempts (property_id, photo_url, attempts)
+                            VALUES ($1, $2, 1)
+                            ON CONFLICT (property_id, photo_url)
+                            DO UPDATE SET attempts = vision_attempts.attempts + 1
+                            """,
+                            pid, u,
+                        )
+                    continue
+                for u, res in zip(urls, parsed):
+                    await conn.execute(
+                        """
+                        INSERT INTO vision_results (property_id, photo_url, result)
+                        VALUES ($1, $2, $3::jsonb)
+                        ON CONFLICT (property_id, photo_url) DO UPDATE SET result = EXCLUDED.result
+                        """,
+                        pid, u, json.dumps(res),
+                    )
+                    stored += 1
+        logger.info("Batch v2 %s: %s — %d photo results stored, %d groups failed matching, %d missing",
+                    batch_id, batch.status, stored, failed_groups, missing)
+    return any_terminal
 
 
-async def open_batch_tokens(pool: asyncpg.Pool) -> int:
-    """Estimated tokens currently occupying the org batch queue (sum over open batches).
-    The submit budget is settings.vision_batch_queue_tokens minus this."""
+async def _mark_terminal(pool: asyncpg.Pool, batch_id: str, status: str) -> None:
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE vision_batches SET status = $2, completed_at = NOW() WHERE batch_id = $1",
+            batch_id, status,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Property completion for the worker
+# ---------------------------------------------------------------------------
+
+async def ready_properties(pool: asyncpg.Pool) -> list[dict[str, Any]]:
+    """Pending rows whose EVERY needed photo has a validated result (incl. photo-less
+    rows). Returns [{item_id, status, data, updated_at, results{url: PhotoResult}}]."""
+    out: list[dict[str, Any]] = []
     async with pool.acquire() as conn:
         await _ensure_tables(conn)
-        return await conn.fetchval(
-            "SELECT COALESCE(SUM(est_tokens), 0) FROM vision_batches WHERE status IN "
-            "('submitted', 'validating', 'in_progress', 'finalizing', 'cancelling')"
-        ) or 0
+        rows = await _pending_rows(conn)
+        for row in rows:
+            needed = await _needed_urls(conn, row)
+            results: dict[str, PhotoResult] = {}
+            if needed:
+                rrows = await conn.fetch(
+                    "SELECT photo_url, result FROM vision_results "
+                    "WHERE property_id = $1 AND photo_url = ANY($2)",
+                    row["id"], needed,
+                )
+                found = {}
+                for r in rrows:
+                    res = r["result"] if isinstance(r["result"], dict) else json.loads(r["result"])
+                    found[r["photo_url"]] = PhotoResult(
+                        photo_url=r["photo_url"],
+                        room_type=res.get("room_type") or "Unknown",
+                        color=res.get("color"),
+                        features=res.get("features") or [],
+                    )
+                if len(found) < len(needed):
+                    continue  # still accumulating
+                results = found
+            data = row["data"] if isinstance(row["data"], dict) else json.loads(row["data"])
+            out.append({
+                "item_id": row["id"],
+                "status": row["status"],
+                "data": data,
+                "updated_at": row["updated_at"],
+                "results": results,
+            })
+    return out
+
+
+async def clear_property(pool: asyncpg.Pool, property_id: str) -> None:
+    """Drop accumulated results/attempts after a property is successfully ingested."""
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM vision_results WHERE property_id = $1", property_id)
+        await conn.execute("DELETE FROM vision_attempts WHERE property_id = $1", property_id)
+
+
+async def gc(pool: asyncpg.Pool) -> None:
+    """Remove accumulated results for properties no longer pending (deleted/processed)."""
+    async with pool.acquire() as conn:
+        await _ensure_tables(conn)
+        for table in ("vision_results", "vision_attempts"):
+            await conn.execute(f"""
+                DELETE FROM {table} t
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM raw_properties rp
+                    WHERE rp.id = t.property_id
+                      AND rp.status IN ('unprocessed', 'partial_image_only_processed', 'batch_submitted')
+                )
+            """)
 
 
 async def recover_when_disabled(pool: asyncpg.Pool) -> int:
-    """Requeue rows stranded in 'batch_submitted' by a previous run that had the batch
-    flag on; call at worker startup when the flag is off (nothing else would ever
-    claim them). Returns the number of rows requeued."""
+    """Requeue legacy 'batch_submitted' rows when the batch flag is off at startup."""
     async with pool.acquire() as conn:
         result = await conn.execute(
             "UPDATE raw_properties SET status = 'unprocessed', updated_at = NOW() "
@@ -289,193 +613,3 @@ async def recover_when_disabled(pool: asyncpg.Pool) -> int:
     if n:
         logger.warning("Batch vision disabled: requeued %d stranded row(s) to the sync path", n)
     return n
-
-
-async def _requeue_items(conn: asyncpg.Connection, item_ids: list[str]) -> None:
-    """Return rows to the sync path (only ones still waiting on a batch)."""
-    if item_ids:
-        await conn.execute(
-            """
-            UPDATE raw_properties SET status = 'unprocessed', updated_at = NOW()
-            WHERE id = ANY($1) AND status = 'batch_submitted'
-            """,
-            item_ids,
-        )
-
-
-async def _sweep_orphans(conn: asyncpg.Connection) -> None:
-    """Requeue any 'batch_submitted' row no open batch is tracking (crash between a
-    batch finishing and its results being applied). Runs before this cycle's batches
-    are marked terminal, so rows about to be applied are never swept."""
-    result = await conn.execute(
-        """
-        UPDATE raw_properties SET status = 'unprocessed', updated_at = NOW()
-        WHERE status = 'batch_submitted'
-          AND NOT EXISTS (
-              SELECT 1 FROM vision_batches vb
-              WHERE vb.status IN ('submitted', 'validating', 'in_progress', 'finalizing', 'cancelling')
-                AND vb.items ? raw_properties.id
-          )
-        """
-    )
-    try:
-        n = int(result.rsplit(" ", 1)[-1])
-    except ValueError:
-        n = 0
-    if n:
-        logger.warning("Batch sweep: requeued %d orphaned row(s) to the sync path", n)
-
-
-def _parse_output_jsonl(text: str, items: dict) -> dict[str, dict[str, PhotoResult]]:
-    """Map output lines back to {item_id: {photo_url: PhotoResult}} via custom_id."""
-    results: dict[str, dict[str, PhotoResult]] = {item_id: {} for item_id in items}
-    for line in text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        # Per-line isolation: one malformed line (unexpected shape anywhere) must skip,
-        # not raise — a raise here reads as a download failure and retries forever.
-        try:
-            rec = json.loads(line)
-            item_id, _, idx_s = (rec.get("custom_id") or "").rpartition("|")
-            info = items.get(item_id)
-            if info is None:
-                continue
-            url = info["urls"][int(idx_s)]
-            resp = rec.get("response") or {}
-            if resp.get("status_code") != 200:
-                continue  # left missing → sync re-analysis in the apply step
-            body = resp.get("body") or {}
-            choices = body.get("choices") or [{}]
-            content = (choices[0].get("message") or {}).get("content") or ""
-            results[item_id][url] = parse_vision_content(content, url)
-        except (json.JSONDecodeError, ValueError, IndexError, KeyError, AttributeError, TypeError):
-            continue
-    return results
-
-
-async def collect_ready(pool: asyncpg.Pool) -> list[dict]:
-    """Poll open batches (throttled to vision_batch_poll_seconds); returns ready items as
-    [{item_id, expected_updated_at, results}] for the worker to apply. Handles terminal
-    states: completed/expired → parse whatever output exists; failed/cancelled → requeue."""
-    global _last_poll_monotonic, _backoff_until_monotonic
-
-    async with pool.acquire() as conn:
-        await _ensure_tables(conn)
-        open_rows = await conn.fetch(
-            "SELECT batch_id, items FROM vision_batches "
-            "WHERE status IN ('submitted', 'validating', 'in_progress', 'finalizing', 'cancelling')"
-        )
-        if not open_rows:
-            await _sweep_orphans(conn)
-            return []
-        if time.monotonic() - _last_poll_monotonic < settings.vision_batch_poll_seconds:
-            return []
-        _last_poll_monotonic = time.monotonic()
-        await _sweep_orphans(conn)
-
-    client = get_async_client()
-    ready: list[dict] = []
-    for brow in open_rows:
-        batch_id = brow["batch_id"]
-        items = brow["items"] if isinstance(brow["items"], dict) else json.loads(brow["items"])
-        try:
-            batch = await client.batches.retrieve(batch_id)
-        except Exception as e:  # noqa: BLE001 — transient unless the batch is gone
-            if getattr(e, "status_code", None) == 404:
-                # Batch no longer exists at OpenAI — it will never complete; requeue.
-                logger.warning("Batch %s: not found at OpenAI — returning %d properties to the sync path",
-                               batch_id, len(items))
-                async with pool.acquire() as conn:
-                    async with conn.transaction():
-                        await _requeue_items(conn, list(items))
-                        await conn.execute(
-                            "UPDATE vision_batches SET status = 'failed', completed_at = NOW() WHERE batch_id = $1",
-                            batch_id,
-                        )
-            else:
-                logger.warning("Batch %s: status check failed: %s", batch_id, e)
-            continue
-
-        if batch.status in _OPEN_STATUSES:
-            counts = getattr(batch, "request_counts", None)
-            logger.info("Batch %s: %s (%s/%s requests done)", batch_id, batch.status,
-                        getattr(counts, "completed", "?"), getattr(counts, "total", "?"))
-            continue
-
-        if batch.status in ("failed", "cancelled"):
-            if batch.status == "failed":
-                # Likely deterministic (validation, quota, model) — pause new submissions
-                # so requeued rows drain via sync instead of loop-resubmitting.
-                _backoff_until_monotonic = time.monotonic() + FAILURE_COOLDOWN_SECONDS
-            logger.warning("Batch %s: %s — returning %d properties to the sync path",
-                           batch_id, batch.status, len(items))
-            async with pool.acquire() as conn:
-                async with conn.transaction():
-                    await _requeue_items(conn, list(items))
-                    await conn.execute(
-                        "UPDATE vision_batches SET status = $2, completed_at = NOW() WHERE batch_id = $1",
-                        batch_id, batch.status,
-                    )
-            continue
-
-        # completed (or expired with partial output): use every result we got; the apply
-        # step re-analyzes missing photos synchronously.
-        results_by_item: dict[str, dict[str, PhotoResult]] = {i: {} for i in items}
-        output_file_id = getattr(batch, "output_file_id", None)
-        if output_file_id:
-            try:
-                content = await client.files.content(output_file_id)
-                results_by_item = _parse_output_jsonl(content.text, items)
-            except Exception as e:  # noqa: BLE001 — transient unless the file is gone
-                if getattr(e, "status_code", None) == 404:
-                    # Output file deleted at OpenAI (retention/cleanup) — it will never
-                    # download; requeue instead of retrying forever.
-                    logger.warning("Batch %s: output file gone — returning %d properties to the sync path",
-                                   batch_id, len(items))
-                    async with pool.acquire() as conn:
-                        async with conn.transaction():
-                            await _requeue_items(conn, list(items))
-                            await conn.execute(
-                                "UPDATE vision_batches SET status = 'failed', completed_at = NOW() WHERE batch_id = $1",
-                                batch_id,
-                            )
-                else:
-                    logger.warning("Batch %s: output download failed: %s (will retry)", batch_id, e)
-                continue
-        elif batch.status == "expired":
-            logger.warning("Batch %s: expired with no output — returning %d properties to sync",
-                           batch_id, len(items))
-            async with pool.acquire() as conn:
-                async with conn.transaction():
-                    await _requeue_items(conn, list(items))
-                    await conn.execute(
-                        "UPDATE vision_batches SET status = 'expired', completed_at = NOW() WHERE batch_id = $1",
-                        batch_id,
-                    )
-            continue
-
-        # Atomic claim: only the process that flips the row open→terminal applies the
-        # results, so two worker replicas can't double-apply the same batch.
-        async with pool.acquire() as conn:
-            claimed = await conn.fetchval(
-                """
-                UPDATE vision_batches SET status = $2, completed_at = NOW()
-                WHERE batch_id = $1 AND status IN ('submitted', 'validating', 'in_progress', 'finalizing', 'cancelling')
-                RETURNING batch_id
-                """,
-                batch_id, batch.status,
-            )
-        if claimed is None:
-            continue  # another worker replica claimed this batch
-        n_results = sum(len(v) for v in results_by_item.values())
-        n_photos = sum(len(v["urls"]) for v in items.values())
-        logger.info("Batch %s: %s — %d/%d photo results", batch_id, batch.status, n_results, n_photos)
-
-        for item_id, info in items.items():
-            ready.append({
-                "item_id": item_id,
-                "expected_updated_at": datetime.fromisoformat(info["updated_at"]),
-                "results": results_by_item.get(item_id, {}),
-            })
-    return ready

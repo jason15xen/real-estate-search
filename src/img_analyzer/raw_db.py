@@ -113,15 +113,15 @@ async def upsert_raw_property(
 async def claim_pending_batch(
     conn,
     limit: int = 5,
-    exclude_unprocessed: bool = False,
+    metadata_only: bool = False,
 ) -> list[asyncpg.Record]:
     """Claim up to `limit` pending rows via FOR UPDATE SKIP LOCKED; returns updated_at
-    for optimistic-concurrency guarding. exclude_unprocessed=True (batch patient mode)
-    skips full-analysis rows so they wait for the next Batch API wave instead of being
-    processed at full price — metadata-only and partial rows are still claimed."""
-    statuses = ["image_only_processed", "partial_image_only_processed"]
-    if not exclude_unprocessed:
-        statuses.append("unprocessed")
+    for optimistic-concurrency guarding. metadata_only=True (batch-exclusive mode):
+    claim ONLY rows needing no vision (image_only_processed) — everything with photo
+    work belongs to the Batch API pipeline and must never drain at full price."""
+    statuses = ["image_only_processed"]
+    if not metadata_only:
+        statuses += ["unprocessed", "partial_image_only_processed"]
     rows = await conn.fetch(
         """
         SELECT id, data, status, updated_at

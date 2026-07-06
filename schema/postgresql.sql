@@ -127,6 +127,25 @@ CREATE TABLE vision_batches (
     completed_at TIMESTAMPTZ
 );
 
+-- Per-photo vision results accumulated across batches (a property may span several
+-- batches); the worker ingests a property once every needed photo has a result.
+CREATE TABLE vision_results (
+    property_id TEXT NOT NULL,
+    photo_url   TEXT NOT NULL,
+    result      JSONB NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (property_id, photo_url)
+);
+
+-- Matching-validation retry ledger: groups that fail index-echo validation retry at
+-- smaller sizes (20 -> 5 -> 1); after 3 failures a photo gets an Unknown stub.
+CREATE TABLE vision_attempts (
+    property_id TEXT NOT NULL,
+    photo_url   TEXT NOT NULL,
+    attempts    INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (property_id, photo_url)
+);
+
 
 -- Nearby schools per property (from Zillow data)
 CREATE TABLE property_schools (
