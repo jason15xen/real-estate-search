@@ -75,7 +75,10 @@ async def _process_unprocessed(
         results = list(precomputed.values()) if precomputed else []
         to_analyze = photos
         if precomputed:
-            to_analyze = [ph for ph in photos if (_pick_jpeg_url(ph) or "") not in precomputed]
+            # Residue can only be jpeg-less photos (analyze_photos drops them without
+            # API calls) — filter here so the log doesn't cry wolf about sync analysis.
+            to_analyze = [ph for ph in photos
+                          if _pick_jpeg_url(ph) and _pick_jpeg_url(ph) not in precomputed]
             if to_analyze:
                 logger.info(
                     f"Worker {item_id}: {len(to_analyze)} photo(s) missing from batch output; analyzing synchronously"
@@ -106,6 +109,16 @@ async def _process_image_only(
             "SELECT id FROM properties WHERE guid = $1", item_id
         )
     if existing_id is None:
+        if settings.vision_use_batch:
+            # Batch-exclusive: a missing primary row means full vision is needed —
+            # hand the row to the batch pipeline instead of full-price sync analysis.
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE raw_properties SET status = 'unprocessed', updated_at = NOW() "
+                    "WHERE id = $1 AND status = 'image_only_processed'",
+                    item_id,
+                )
+            return False
         return await _process_unprocessed(pool, item_id, data, expected_updated_at)
 
     item = {"Id": item_id, "ZillowPropertyRecord": data}

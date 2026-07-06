@@ -20,6 +20,7 @@ Design (see also worker.py orchestration):
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import time
@@ -208,29 +209,21 @@ async def _inflight_urls(conn: asyncpg.Connection) -> set[tuple[str, str]]:
 # Submission (photo-level packing, queue-budget refill)
 # ---------------------------------------------------------------------------
 
-async def open_batch_tokens(pool: asyncpg.Pool) -> int:
-    async with pool.acquire() as conn:
-        await _ensure_tables(conn)
-        return await conn.fetchval(
-            "SELECT COALESCE(SUM(est_tokens), 0) FROM vision_batches WHERE status = ANY($1)",
-            list(_OPEN_STATUSES),
-        ) or 0
-
-
-async def has_open_batch(pool: asyncpg.Pool) -> bool:
-    async with pool.acquire() as conn:
-        await _ensure_tables(conn)
-        return bool(await conn.fetchval(
-            "SELECT 1 FROM vision_batches WHERE status = ANY($1) LIMIT 1",
-            list(_OPEN_STATUSES),
-        ))
+def _max_images_per_request() -> int:
+    """Largest group the caps can carry: a request must fit within BOTH the per-batch
+    cap and the whole queue budget (prevents unsubmittable groups that would stall)."""
+    cap = min(settings.vision_batch_max_tokens, settings.vision_batch_queue_tokens)
+    fit = (cap - _prompt_tokens_est()) // IMAGE_TOKENS_EST
+    return max(1, min(settings.vision_group_max_images, fit))
 
 
 def _chunk_by_attempts(
-    urls: list[str], attempts: dict[str, int]
+    urls: list[str], attempts: dict[str, int], max_group: int | None = None
 ) -> tuple[list[list[str]], list[str]]:
-    """Split needed urls into request groups sized by their retry tier.
-    Returns (groups, exhausted_urls) — exhausted urls get Unknown stubs."""
+    """Split needed urls into request groups sized by their retry tier (clamped so any
+    group fits the caps). Returns (groups, exhausted_urls) — exhausted urls get stubs."""
+    if max_group is None:
+        max_group = _max_images_per_request()
     tiers: dict[int, list[str]] = {}
     exhausted: list[str] = []
     for u in urls:
@@ -242,7 +235,7 @@ def _chunk_by_attempts(
     groups: list[list[str]] = []
     for a, tier_urls in sorted(tiers.items()):
         size = _TIER_GROUP_SIZE.get(a) or settings.vision_group_max_images
-        size = max(1, size)
+        size = max(1, min(size, max_group))
         for i in range(0, len(tier_urls), size):
             groups.append(tier_urls[i:i + size])
     return groups, exhausted
@@ -270,6 +263,7 @@ async def submit_waves(pool: asyncpg.Pool) -> int:
         if not rows:
             return 0
         inflight = await _inflight_urls(conn)
+        max_group = _max_images_per_request()
 
         # Build the global chunk list (photo-level; properties may span batches).
         chunks: list[tuple[str, list[str]]] = []  # (property_id, urls)
@@ -286,7 +280,7 @@ async def submit_waves(pool: asyncpg.Pool) -> int:
                 "SELECT photo_url, attempts FROM vision_attempts WHERE property_id = $1", pid
             )
             attempts = {r["photo_url"]: r["attempts"] for r in arows}
-            groups, exhausted = _chunk_by_attempts(todo, attempts)
+            groups, exhausted = _chunk_by_attempts(todo, attempts, max_group)
             for u in exhausted:
                 # Photo failed matching _MAX_GROUP_ATTEMPTS times even solo → stub it
                 # so the property can complete (never blocks forever).
@@ -326,10 +320,9 @@ async def submit_waves(pool: asyncpg.Pool) -> int:
 
     for pid, group in chunks:
         est = _request_tokens_est(len(group))
-        cid = f"{pid}#{seq}"
-        if len(cid) > _CUSTOM_ID_MAX:
-            logger.warning("Batch v2: id %r too long for a custom_id — left to retries/stub", pid)
-            continue
+        # Hash-based custom_id: the manifest maps cid -> (property, urls), so the id
+        # needn't embed the (arbitrary-length) property id — 64-char limit safe always.
+        cid = f"{hashlib.sha1(pid.encode()).hexdigest()[:16]}#{seq}"
         line = _grouped_request_line(cid, group)
         # Flush the current batch first if this chunk would overflow it (batch cap,
         # queue budget, or the byte guard) — then pack the chunk into the fresh batch.
@@ -341,7 +334,9 @@ async def submit_waves(pool: asyncpg.Pool) -> int:
             if not await _flush():
                 return submitted  # submit error → backoff set; stop this cycle
         if est > headroom:
-            break  # queue budget exhausted — later waves take the rest
+            logger.info("Batch v2: queue budget exhausted (%dk headroom < %dk chunk) — %s",
+                        headroom // 1000, est // 1000, "later waves take the rest")
+            break
         batch_lines.append(line)
         batch_manifest[cid] = {"p": pid, "urls": list(group)}
         batch_props.add(pid)
@@ -378,12 +373,20 @@ async def _create_batch(
         return False
 
     items = {"requests": manifest, "properties": sorted(props)}
-    async with pool.acquire() as conn:
-        await conn.execute(
-            "INSERT INTO vision_batches (batch_id, status, items, est_tokens) "
-            "VALUES ($1, $2, $3::jsonb, $4)",
-            batch.id, batch.status, json.dumps(items), est_tokens,
-        )
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO vision_batches (batch_id, status, items, est_tokens) "
+                "VALUES ($1, $2, $3::jsonb, $4)",
+                batch.id, batch.status, json.dumps(items), est_tokens,
+            )
+    except Exception as e:  # noqa: BLE001 — untracked batch would silently eat the queue
+        logger.error("Batch v2 %s: manifest INSERT failed (%s); cancelling batch", batch.id, e)
+        try:
+            await client.batches.cancel(batch.id)
+        except Exception:  # noqa: BLE001 — best effort
+            pass
+        return False
     n_photos = sum(len(r["urls"]) for r in manifest.values())
     logger.info("Batch v2 %s submitted: %d requests / %d photos / %d properties (~%dk est tokens)",
                 batch.id, len(manifest), n_photos, len(props), est_tokens // 1000)
@@ -446,6 +449,7 @@ async def collect_completed(pool: asyncpg.Pool) -> bool:
 
         # completed (or expired with partial output)
         output_lines: dict[str, dict] = {}
+        error_cids: set[str] = set()
         output_file_id = getattr(batch, "output_file_id", None)
         if output_file_id:
             try:
@@ -467,6 +471,24 @@ async def collect_completed(pool: asyncpg.Pool) -> bool:
                 else:
                     logger.warning("Batch v2 %s: output download failed: %s (will retry)", batch_id, e)
                 continue
+        # Failed requests (dead image URL, per-request API error) land in the ERROR
+        # file, not the output file — those groups must climb the retry ladder, or a
+        # single dead photo URL would repack at the same size forever.
+        error_file_id = getattr(batch, "error_file_id", None)
+        if error_file_id:
+            try:
+                err_content = await client.files.content(error_file_id)
+                for line in err_content.text.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        error_cids.add(json.loads(line).get("custom_id") or "")
+                    except (json.JSONDecodeError, AttributeError, TypeError):
+                        continue
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Batch v2 %s: error-file download failed: %s (will retry)", batch_id, e)
+                continue
 
         # Atomic claim so two replicas can't both store this batch's results.
         async with pool.acquire() as conn:
@@ -485,7 +507,22 @@ async def collect_completed(pool: asyncpg.Pool) -> bool:
                 pid, urls = req["p"], req["urls"]
                 rec = output_lines.get(cid)
                 if rec is None:
-                    missing += 1  # infra gap (e.g. expiry) — repack at the SAME tier
+                    if cid in error_cids or batch.status == "completed":
+                        # Request-level failure (dead image URL, API error): the group
+                        # must climb the ladder (smaller size → stub), not loop as-is.
+                        failed_groups += 1
+                        for u in urls:
+                            await conn.execute(
+                                """
+                                INSERT INTO vision_attempts (property_id, photo_url, attempts)
+                                VALUES ($1, $2, 1)
+                                ON CONFLICT (property_id, photo_url)
+                                DO UPDATE SET attempts = vision_attempts.attempts + 1
+                                """,
+                                pid, u,
+                            )
+                    else:
+                        missing += 1  # infra gap (expired mid-run) — repack at the SAME tier
                     continue
                 resp = rec.get("response") or {}
                 content_text = ""
