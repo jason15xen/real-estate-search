@@ -67,6 +67,9 @@ _backoff_until_monotonic = 0.0
 # Poll throttle for batch status checks (the worker loops every ~5s).
 _last_poll_monotonic = 0.0
 
+# Throttle for the queue-exhausted log (fires every worker cycle while full otherwise).
+_last_exhausted_log_monotonic = 0.0
+
 _tables_ready = False
 
 
@@ -334,8 +337,11 @@ async def submit_waves(pool: asyncpg.Pool) -> int:
             if not await _flush():
                 return submitted  # submit error → backoff set; stop this cycle
         if est > headroom:
-            logger.info("Batch v2: queue budget exhausted (%dk headroom < %dk chunk) — %s",
-                        headroom // 1000, est // 1000, "later waves take the rest")
+            global _last_exhausted_log_monotonic
+            if time.monotonic() - _last_exhausted_log_monotonic > 300:
+                _last_exhausted_log_monotonic = time.monotonic()
+                logger.info("Batch v2: queue budget exhausted (%dk headroom < %dk chunk) — "
+                            "later waves take the rest", headroom // 1000, est // 1000)
             break
         batch_lines.append(line)
         batch_manifest[cid] = {"p": pid, "urls": list(group)}
