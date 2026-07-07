@@ -108,12 +108,43 @@ CREATE TABLE raw_properties (
                      'unprocessed',
                      'image_only_processed',
                      'partial_image_only_processed',
-                     'processed'
+                     'processed',
+                     'batch_submitted'
                  )),
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_raw_properties_status ON raw_properties(status);
+
+-- OpenAI Batch API vision runs (bulk photo analysis): one row per submitted batch;
+-- items = {raw_property_id: {updated_at, urls: [...]}} maps custom_ids back to photos.
+CREATE TABLE vision_batches (
+    batch_id     TEXT PRIMARY KEY,
+    status       TEXT NOT NULL DEFAULT 'submitted',
+    items        JSONB NOT NULL,
+    est_tokens   BIGINT NOT NULL DEFAULT 0,  -- queue-budget accounting across open batches
+    submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+
+-- Per-photo vision results accumulated across batches (a property may span several
+-- batches); the worker ingests a property once every needed photo has a result.
+CREATE TABLE vision_results (
+    property_id TEXT NOT NULL,
+    photo_url   TEXT NOT NULL,
+    result      JSONB NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (property_id, photo_url)
+);
+
+-- Matching-validation retry ledger: groups that fail index-echo validation retry at
+-- smaller sizes (20 -> 5 -> 1); after 3 failures a photo gets an Unknown stub.
+CREATE TABLE vision_attempts (
+    property_id TEXT NOT NULL,
+    photo_url   TEXT NOT NULL,
+    attempts    INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (property_id, photo_url)
+);
 
 
 -- Nearby schools per property (from Zillow data)

@@ -234,8 +234,10 @@ async def ensure_coverage(pool) -> int:
 
 
 async def main() -> None:
-    """Full re-import: refetch every county present in the data from scratch.
-    Holds the advisory lock so it can't race the worker's auto-refresh."""
+    """Full re-import: refetch every county present in the data. NO upfront TRUNCATE —
+    each county is swapped transactionally inside _import_county, so live searches keep
+    the previous POIs until the replacement lands, and a mirror outage mid-run can't
+    leave the table empty. Holds the advisory lock so it can't race the worker."""
     pool = await get_pool()
     async with pool.acquire() as lock_conn:
         await lock_conn.fetchval("SELECT pg_advisory_lock($1)", _ADVISORY_LOCK_KEY)  # wait for any in-flight import
@@ -245,17 +247,21 @@ async def main() -> None:
             if not regions:
                 logger.error("No properties with coordinates — load data first.")
                 return
-            await lock_conn.execute("TRUNCATE pois;")
-            await lock_conn.execute("TRUNCATE poi_coverage;")
+            ok = 0
             for county, bbox, n in regions:
                 logger.info("Importing %s (%d properties) bbox=%s", county, n,
                             tuple(round(x, 3) for x in bbox))
-                await _import_county(pool, county, bbox)
+                try:
+                    if await _import_county(pool, county, bbox) > 0:
+                        ok += 1
+                except Exception as e:  # noqa: BLE001 — one county must not abort the rest
+                    logger.error("Import failed for %s: %s (previous POIs kept)", county, e)
             dist = await lock_conn.fetch(
                 "SELECT category, count(*) c FROM pois GROUP BY category ORDER BY c DESC")
         finally:
             await lock_conn.execute("SELECT pg_advisory_unlock($1)", _ADVISORY_LOCK_KEY)
-    logger.info("Imported %d POIs across %d county region(s):", sum(r["c"] for r in dist), len(regions))
+    logger.info("Reimported %d/%d county region(s); %d POIs total:",
+                ok, len(regions), sum(r["c"] for r in dist))
     for r in dist:
         logger.info("  %-18s %d", r["category"], r["c"])
 

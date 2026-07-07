@@ -15,6 +15,25 @@ class Settings(BaseSettings):
     search_use_embedding_retrieval: bool = True
     search_embedding_top_k: int = 200
 
+    # OpenAI Batch API for photo analysis (50% cost, async ≤24h turnaround).
+    # True = BATCH-EXCLUSIVE: every photo is analyzed via batches; the sync path only
+    # handles metadata-only updates. False = classic sync vision everywhere.
+    vision_use_batch: bool = False
+    vision_batch_max_items: int = 150    # max pending properties scanned per cycle
+    vision_batch_poll_seconds: int = 60  # min seconds between batch status polls
+    # TOTAL estimated INPUT-token budget across ALL in-flight batches — size this to
+    # your org's Batch Queue Limit (platform.openai.com → Settings → Limits) with
+    # ~10% headroom. Plan minimum: 90k. When the plan grows, bump the env var — the
+    # uploader automatically keeps the queue full with as many batches as fit.
+    vision_batch_queue_tokens: int = 90_000
+    # Size of ONE batch (estimated input tokens). At the plan minimum this fills
+    # ~the whole queue (serial waves); with a bigger queue, several run concurrently
+    # and a new one uploads whenever one completes.
+    vision_batch_max_tokens: int = 80_000
+    # Max images grouped into ONE request — the shared prompt is sent once per group
+    # (the token saving). Groups failing match-validation retry at 5 images, then 1.
+    vision_group_max_images: int = 20
+
     # PostgreSQL
     postgres_host: str = "localhost"
     postgres_port: int = 5432
@@ -25,7 +44,9 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_dir: str = "/app/log"  # request/response log location; override for local dev
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    # env_ignore_empty: a blank line in .env (e.g. `VISION_USE_BATCH=` copied from
+    # .env.example) means "use the default" instead of crashing bool/int parsing.
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "env_ignore_empty": True}
 
 
 settings = Settings()

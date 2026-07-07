@@ -53,15 +53,23 @@ async def upsert_raw_property(
     new_url_set = set(new_urls)
 
     if existing is None:
-        await conn.execute(
+        # ON CONFLICT: two concurrent POSTs with the same NEW id both see "no row";
+        # the loser of the insert race must not error out (payload would be dropped).
+        result = await conn.execute(
             """
             INSERT INTO raw_properties (id, data, status)
             VALUES ($1, $2::jsonb, 'unprocessed')
+            ON CONFLICT (id) DO NOTHING
             """,
             item_id,
             new_data_json,
         )
-        return "unprocessed", None, False
+        if result.endswith(" 1"):
+            return "unprocessed", None, False
+        # Lost the race — a row now exists; fall through to the update path below.
+        existing = await conn.fetchrow(
+            "SELECT status FROM raw_properties WHERE id = $1", item_id
+        )
 
     primary_urls = await primary_photo_urls(conn, item_id)
 
@@ -105,22 +113,26 @@ async def upsert_raw_property(
 async def claim_pending_batch(
     conn,
     limit: int = 5,
+    metadata_only: bool = False,
 ) -> list[asyncpg.Record]:
-    """Claim up to `limit` pending rows via FOR UPDATE SKIP LOCKED; returns updated_at for optimistic-concurrency guarding."""
+    """Claim up to `limit` pending rows via FOR UPDATE SKIP LOCKED; returns updated_at
+    for optimistic-concurrency guarding. metadata_only=True (batch-exclusive mode):
+    claim ONLY rows needing no vision (image_only_processed) — everything with photo
+    work belongs to the Batch API pipeline and must never drain at full price."""
+    statuses = ["image_only_processed"]
+    if not metadata_only:
+        statuses += ["unprocessed", "partial_image_only_processed"]
     rows = await conn.fetch(
         """
         SELECT id, data, status, updated_at
         FROM raw_properties
-        WHERE status IN (
-            'unprocessed',
-            'image_only_processed',
-            'partial_image_only_processed'
-        )
+        WHERE status = ANY($2)
         ORDER BY updated_at ASC
         LIMIT $1
         FOR UPDATE SKIP LOCKED
         """,
         limit,
+        statuses,
     )
     return rows
 

@@ -8,19 +8,23 @@ import asyncpg
 
 logger = logging.getLogger(__name__)
 
-INT4_MAX = 2_147_483_647          # Postgres INTEGER ceiling (clamp to avoid overflow)
+INT4_MAX = 2_147_483_647          # Postgres INTEGER range (clamp to avoid overflow either way)
+INT4_MIN = -2_147_483_648
 _NULLISH = {"", "n/a", "na", "none", "null", "-"}
 
 
 def _to_int(value, default: int = 0, clamp_max: int | None = None) -> int:
     """Tolerant int coercion: handles None / 'N/A' / comma-formatted / float-strings
-    ('2.5' bath -> 2). Bad input (incl. 'inf'/'nan'/overflow) -> default. Clamps to clamp_max."""
+    ('2.5' bath -> 2). Bad input (incl. 'inf'/'nan'/overflow) -> default. Always clamped
+    into INT4 range so asyncpg can never overflow an INTEGER column."""
     try:
         s = str(value).strip().replace(",", "")
         n = default if (value is None or s.lower() in _NULLISH) else int(float(s))
     except (ValueError, TypeError, OverflowError):  # int(float('inf')) raises OverflowError
         n = default
-    return min(n, clamp_max) if clamp_max is not None else n
+    if clamp_max is not None:
+        n = min(n, clamp_max)
+    return max(INT4_MIN, min(n, INT4_MAX))
 
 
 def _to_int_or_none(value, clamp_max: int | None = None):
@@ -34,7 +38,9 @@ def _to_int_or_none(value, clamp_max: int | None = None):
         n = int(float(s))
     except (ValueError, TypeError, OverflowError):
         return None
-    return min(n, clamp_max) if clamp_max is not None else n
+    if clamp_max is not None:
+        n = min(n, clamp_max)
+    return max(INT4_MIN, min(n, INT4_MAX))
 
 
 def _to_float(value, default: float = 0.0) -> float:
@@ -246,7 +252,7 @@ def _extract_property_fields(item: dict) -> dict:
         "state": address.get("state", ""),
         "postal_code": address.get("zipcode", ""),
         "country": "US",
-        "county": (record.get("county") or "").strip() or None,
+        "county": str(record.get("county") or "").strip() or None,
         "locality": _extract_locality(record),
         "neighborhood": _extract_neighborhood(record),
         "latitude": _to_float(record.get("latitude")),
@@ -272,7 +278,7 @@ def _extract_schools(item: dict) -> list[dict]:
     for s in record.get("schools", []) or []:
         out.append({
             "name": s.get("name", ""),
-            "rating": s.get("rating"),
+            "rating": _to_int_or_none(s.get("rating")),  # "8"/8.5 → 8; junk → NULL
             "grades": s.get("grades", ""),
             "distance": _to_float(s.get("distance")),
             "link": s.get("link", ""),

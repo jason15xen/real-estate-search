@@ -113,6 +113,25 @@ async def apply_hard_filters(
     for criterion in hard_criteria:
         if isinstance(criterion, RoomCountCriterion):
             col = _room_type_to_column(criterion.room_type)
+            bounds = ((criterion.exact_count, "="),
+                      (criterion.min_count, ">="),
+                      (criterion.max_count, "<="))
+            if col is None and any(b is not None for b, _ in bounds):
+                # Room type without a denormalized column (Pool, Exterior, Office…):
+                # count via the rooms table instead of silently dropping the criterion
+                # (which made "2 pools" match the whole catalog).
+                count_sub = (
+                    f"COALESCE((SELECT r.count FROM rooms r "
+                    f"WHERE r.property_id = properties.id "
+                    f"AND lower(r.room_type) = lower(${param_idx})), 0)"
+                )
+                params.append(criterion.room_type)
+                param_idx += 1
+                for bound, op in bounds:
+                    if bound is not None:
+                        conditions.append(f"{count_sub} {op} ${param_idx}")
+                        params.append(bound)
+                        param_idx += 1
             if col:
                 room_min_field = {
                     "bedroom": "beds_min",

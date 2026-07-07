@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from config.settings import settings
-from src.img_analyzer.analyzer import _load_features, _load_prompt, _normalize_color
+from src.img_analyzer.analyzer import _load_features, _load_prompt, parse_vision_content
 from src.img_analyzer.models import PhotoResult
 from src.llm_client import get_async_client, get_test_async_client
 
@@ -92,23 +92,14 @@ async def _call_one(
     )
 
     raw = (response.choices[0].message.content or "").strip()
-    if raw.startswith("```"):
-        lines = [l for l in raw.split("\n") if not l.startswith("```")]
-        raw = "\n".join(lines).strip()
 
-    parse_ok = True
-    try:
-        data = json.loads(raw)
-        result = PhotoResult(
-            photo_url=url,
-            room_type=data.get("RoomType", "Unknown"),
-            color=_normalize_color(data.get("Color")),
-            features=data.get("Features", []),
-        )
-    except (json.JSONDecodeError, KeyError, TypeError) as e:
-        parse_ok = False
-        logger.warning(f"{deployment}: failed to parse response for {url[:80]}: {e}")
-        result = PhotoResult(photo_url=url, room_type="Unknown", color=None, features=[])
+    # Canonical shared parser (fences, color synonyms, null-safe) — the previous inline
+    # copy let a {"RoomType": null} reply raise ValidationError past its except and 502
+    # the whole A/B request instead of reporting parse_ok=false.
+    result = parse_vision_content(raw, url)
+    parse_ok = not (result.room_type == "Unknown" and not result.features and raw)
+    if not parse_ok:
+        logger.warning(f"{deployment}: failed to parse response for {url[:80]}")
 
     return ModelOutcome(
         deployment=deployment,

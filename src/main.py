@@ -22,7 +22,7 @@ from src.search.orchestrator import search
 from src.search.query_parser import QueryParseError
 
 logging.basicConfig(
-    level=settings.log_level,
+    level=settings.log_level.upper(),  # tolerate LOG_LEVEL=info in .env
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -75,22 +75,27 @@ async def lifespan(app: FastAPI):
     logger.info("Database pool closed")
 
 
+async def _refresh_registry_and_embeddings() -> None:
+    """Rebuild the registry and incrementally embed new features; shared by NOTIFY handling and listener reconnects."""
+    pool = await get_pool()
+    await registry.build_from_db(pool)
+    logger.info(
+        f"Registry refreshed: {len(registry.features)} features, "
+        f"{len(registry.room_types)} room types"
+    )
+    # New room features may have appeared → embed them and drop the resolver cache so they surface immediately.
+    if settings.search_use_embedding_retrieval:
+        from src.search.feature_index import sync_feature_embeddings
+        from src.search.feature_resolver import clear_cache
+        n = await sync_feature_embeddings(pool)
+        clear_cache()
+        logger.info(f"Embeddings synced: {n} newly embedded; resolver cache cleared")
+
+
 async def _on_feature_change(_connection, _pid, channel, _payload):
     logger.info(f"Received NOTIFY {channel} → rebuilding feature registry")
     try:
-        pool = await get_pool()
-        await registry.build_from_db(pool)
-        logger.info(
-            f"Registry refreshed: {len(registry.features)} features, "
-            f"{len(registry.room_types)} room types"
-        )
-        # New room features may have appeared → embed them and drop the resolver cache so they surface immediately.
-        if settings.search_use_embedding_retrieval:
-            from src.search.feature_index import sync_feature_embeddings
-            from src.search.feature_resolver import clear_cache
-            n = await sync_feature_embeddings(pool)
-            clear_cache()
-            logger.info(f"Embeddings synced after notify: {n} newly embedded; resolver cache cleared")
+        await _refresh_registry_and_embeddings()
     except Exception as e:
         logger.error(f"Registry/embedding refresh after notify failed: {e}")
 
@@ -104,6 +109,7 @@ class _ListenerSupervisor:
     def __init__(self, pool):
         self._pool = pool
         self._stopping = False
+        self._connected_before = False
 
     async def stop(self) -> None:
         self._stopping = True
@@ -115,6 +121,15 @@ class _ListenerSupervisor:
                 conn = await self._pool.acquire()
                 await conn.add_listener("feature_change", _on_feature_change)
                 logger.info("LISTENing for feature_change notifications")
+                if self._connected_before:
+                    # NOTIFYs fired while we were disconnected are gone — compensate
+                    # with one refresh so the registry can't stay stale until the
+                    # next ingest happens to fire again.
+                    try:
+                        await _refresh_registry_and_embeddings()
+                    except Exception as e:
+                        logger.error(f"Post-reconnect refresh failed: {e}")
+                self._connected_before = True
                 while not self._stopping:
                     await asyncio.sleep(self.HEARTBEAT_SEC)
                     await conn.fetchval("SELECT 1")  # raises if session is gone
@@ -132,7 +147,9 @@ class _ListenerSupervisor:
                     except Exception:
                         pass
                     try:
-                        await self._pool.release(conn, discard=True)
+                        # No `discard=` kwarg exists on asyncpg Pool.release — passing it
+                        # raised TypeError and LEAKED the connection (shutdown hang).
+                        await self._pool.release(conn)
                     except Exception:
                         pass
             if not self._stopping:
@@ -359,6 +376,15 @@ async def search_properties(request: SearchRequest):
             debug=request.debug,
         )
 
+        # A query that parses to ZERO criteria (gibberish) with no bounds/filters would
+        # otherwise "match" the entire catalog — reject it instead of dumping the DB.
+        if (not result["parsed_query"].criteria
+                and bounds_dict is None and filters_dict is None):
+            raise HTTPException(
+                status_code=422,
+                detail="Could not extract any search criteria from the query; please rephrase.",
+            )
+
         guids = result["guids"]
 
         debug_info = None
@@ -375,6 +401,8 @@ async def search_properties(request: SearchRequest):
             zillowProperties=guids,
             debug=debug_info,
         )
+    except HTTPException:
+        raise  # deliberate 4xx (e.g. zero-criteria 422) — don't convert to 500
     except QueryParseError as e:
         # Couldn't parse at all (e.g. LLM outage). Signal it instead of silently
         # returning every property as a "match".
