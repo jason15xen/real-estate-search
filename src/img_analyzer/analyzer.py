@@ -19,6 +19,23 @@ ALLOWED_COLORS = {
     "red", "yellow", "purple", "pink", "orange", "gold",
 }
 
+# The prompt's fixed room taxonomy. The model occasionally drifts off-list at scale
+# ("Laundry Room", "Hallway", "FloorPlan"…) — normalize anything else to Unknown so
+# the taxonomy (and the registry/parser built from it) stays closed.
+ALLOWED_ROOM_TYPES = {
+    "Kitchen", "Bedroom", "Bathroom", "Living Room",
+    "Dining Room", "Exterior", "Pool", "Garage",
+}
+
+
+def _normalize_room_type(raw) -> str:
+    if isinstance(raw, str):
+        cleaned = raw.strip()
+        for rt in ALLOWED_ROOM_TYPES:
+            if cleaned.lower() == rt.lower():
+                return rt
+    return "Unknown"
+
 
 def _normalize_color(raw: str | None) -> str | None:
     """Coerce LLM color output to the 13-color palette, else None."""
@@ -110,7 +127,7 @@ def parse_group_output(raw: str, n_images: int) -> list[dict] | None:
                 return None  # duplicate or out-of-range index
             features = e.get("Features")
             by_index[idx] = {
-                "room_type": str(e.get("RoomType") or "Unknown"),
+                "room_type": _normalize_room_type(e.get("RoomType")),
                 "color": _normalize_color(e.get("Color") if isinstance(e.get("Color"), str) else None),
                 "features": [str(f) for f in features] if isinstance(features, list) else [],
             }
@@ -132,7 +149,7 @@ def parse_vision_content(raw: str, url: str) -> PhotoResult:
         data = json.loads(raw)
         return PhotoResult(
             photo_url=url,
-            room_type=data.get("RoomType") or "Unknown",
+            room_type=_normalize_room_type(data.get("RoomType")),
             color=_normalize_color(data.get("Color")),
             features=data.get("Features") or [],
         )
