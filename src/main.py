@@ -19,6 +19,7 @@ from src.img_analyzer.router import router as img_analyzer_router
 from src.img_analyzer.test_router import router as vision_test_router
 from src.models.search import ParsedQuery
 from src.search.orchestrator import search
+from src.search.photo_search import NoPhotoCriteriaError, search_photos
 from src.search.query_parser import QueryParseError
 
 logging.basicConfig(
@@ -349,6 +350,48 @@ class DebugInfo(BaseModel):
     stats: dict
     filter_steps: list[dict]
     bounds_applied: bool
+
+
+class PhotoSearchRequest(BaseModel):
+    query: str
+    propertyIds: list[str]  # property GUIDs
+
+    @field_validator("query")
+    @classmethod
+    def _photo_query_not_blank(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("query must not be empty")
+        return v.strip()
+
+    @field_validator("propertyIds")
+    @classmethod
+    def _ids_not_empty(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("propertyIds must contain at least one GUID")
+        if len(v) > 500:
+            raise ValueError("propertyIds is limited to 500 GUIDs per request")
+        return v
+
+
+@app.post("/search/photos")
+async def search_photos_endpoint(request: PhotoSearchRequest):
+    """Photo-level search within given properties: returns matching photo URLs per
+    property (properties without matches are omitted). Matching is per photo — e.g.
+    "golden kitchens" returns every kitchen photo that looks golden."""
+    try:
+        pool = await get_pool()
+        results = await search_photos(pool, request.query, request.propertyIds)
+        return {"results": results}
+    except HTTPException:
+        raise
+    except NoPhotoCriteriaError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except QueryParseError as e:
+        logger.warning(f"Photo search parse failed for '{request.query}': {e}")
+        raise HTTPException(status_code=503, detail="Could not interpret the query right now. Please try again.")
+    except Exception as e:
+        logger.exception(f"Photo search failed for query '{request.query}': {e}")
+        raise HTTPException(status_code=500, detail="Photo search failed due to an internal error.")
 
 
 class SearchResponse(BaseModel):
