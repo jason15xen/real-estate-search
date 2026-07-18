@@ -14,6 +14,7 @@ import time
 import httpx
 
 from config.settings import settings
+from src.img_analyzer.db_ingest import _extract_locality
 
 logger = logging.getLogger(__name__)
 
@@ -49,17 +50,48 @@ async def reverse_geocode(lat: float, lon: float) -> dict | None:
         return None
 
 
+_STATE_ABBREV = {
+    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
+    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
+    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
+    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
+    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
+    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
+    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
+    "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
+    "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK",
+    "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
+    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
+    "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV",
+    "wisconsin": "WI", "wyoming": "WY", "district of columbia": "DC",
+}
+
+
+def _abbrev_state(name: str) -> str:
+    """'Florida' -> 'FL' (feed convention); already-short values pass through."""
+    cleaned = name.strip()
+    return _STATE_ABBREV.get(cleaned.lower(), cleaned) if len(cleaned) > 2 else cleaned
+
+
 async def enrich_location_fields(data: dict) -> bool:
-    """Fill missing `county` / `locality`-equivalent fields in a raw Zillow record
-    IN PLACE using reverse geocoding. Returns True if anything was filled.
-    No-op (and no network call) when the feed already provides the data."""
+    """Supplement MISSING location fields in a raw Zillow record IN PLACE using
+    reverse geocoding: address.city / address.state / address.zipcode, county, and
+    the Photon locality structure. Fields the feed already provides are never
+    touched, and complete records cost zero network calls. Returns True if
+    anything was filled."""
     if not settings.photon_enrich:
         return False
-    county_missing = not str(data.get("county") or "").strip()
-    # locality is derived from PhotonPropertyFullAddress by the ingest extractor;
-    # only synthesize it when the feed carries neither.
-    locality_missing = not data.get("PhotonPropertyFullAddress")
-    if not county_missing and not locality_missing:
+    addr = data.get("address") if isinstance(data.get("address"), dict) else {}
+    missing = {
+        "county": not str(data.get("county") or "").strip(),
+        # "missing" = the ingest extractor would yield NULL (covers absent AND
+        # degenerate Photon structures, e.g. empty features)
+        "locality": _extract_locality(data) is None,
+        "city": not str(addr.get("city") or "").strip(),
+        "state": not str(addr.get("state") or "").strip(),
+        "zipcode": not str(addr.get("zipcode") or "").strip(),
+    }
+    if not any(missing.values()):
         return False
 
     try:
@@ -74,13 +106,23 @@ async def enrich_location_fields(data: dict) -> bool:
         return False
 
     filled = False
-    if county_missing and props.get("county"):
+    if missing["county"] and props.get("county"):
         data["county"] = props["county"]
         filled = True
-    if locality_missing and props.get("city"):
+    if missing["locality"] and props.get("city"):
         # Photon's `city` is the OSM place name (e.g. "Viera") — exactly what the
         # locality column exists to hold. Mimic the feed's exact Photon response
         # structure so _extract_locality picks it up unchanged.
         data["PhotonPropertyFullAddress"] = {"features": [{"properties": props}]}
+        filled = True
+    addr_updates = {}
+    if missing["city"] and props.get("city"):
+        addr_updates["city"] = props["city"]
+    if missing["state"] and props.get("state"):
+        addr_updates["state"] = _abbrev_state(props["state"])
+    if missing["zipcode"] and props.get("postcode"):
+        addr_updates["zipcode"] = props["postcode"]
+    if addr_updates:
+        data["address"] = {**addr, **addr_updates}
         filled = True
     return filled
