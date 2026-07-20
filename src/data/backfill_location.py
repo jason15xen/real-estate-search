@@ -19,7 +19,8 @@ import time
 
 from src.data.database import get_pool
 from src.data.import_pois import ensure_coverage
-from src.data.photon import _abbrev_state, reverse_geocode
+from src.data.photon import reverse_geocode
+from src.data.us_states import abbrev_state
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -61,7 +62,7 @@ async def main(limit: int | None = None) -> None:
         if not props:
             failed += 1
         else:
-            state = _abbrev_state(props["state"]) if props.get("state") else None
+            state = abbrev_state(props["state"]) if props.get("state") else None
             async with pool.acquire() as conn:
                 # Only empty fields take the geocoded value; record data always wins.
                 await conn.execute(

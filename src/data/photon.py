@@ -14,6 +14,7 @@ import time
 import httpx
 
 from config.settings import settings
+from src.data.us_states import abbrev_state
 from src.img_analyzer.db_ingest import _extract_locality
 
 logger = logging.getLogger(__name__)
@@ -48,29 +49,6 @@ async def reverse_geocode(lat: float, lon: float) -> dict | None:
     except Exception as e:  # noqa: BLE001 — enrichment is best-effort
         logger.warning("Photon reverse geocode failed for (%s, %s): %s", lat, lon, e)
         return None
-
-
-_STATE_ABBREV = {
-    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
-    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
-    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
-    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
-    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
-    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
-    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
-    "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
-    "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK",
-    "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
-    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
-    "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV",
-    "wisconsin": "WI", "wyoming": "WY", "district of columbia": "DC",
-}
-
-
-def _abbrev_state(name: str) -> str:
-    """'Florida' -> 'FL' (feed convention); already-short values pass through."""
-    cleaned = name.strip()
-    return _STATE_ABBREV.get(cleaned.lower(), cleaned) if len(cleaned) > 2 else cleaned
 
 
 async def enrich_location_fields(data: dict) -> bool:
@@ -119,7 +97,7 @@ async def enrich_location_fields(data: dict) -> bool:
     if missing["city"] and props.get("city"):
         addr_updates["city"] = props["city"]
     if missing["state"] and props.get("state"):
-        addr_updates["state"] = _abbrev_state(props["state"])
+        addr_updates["state"] = abbrev_state(props["state"])
     if missing["zipcode"] and props.get("postcode"):
         addr_updates["zipcode"] = props["postcode"]
     if addr_updates:

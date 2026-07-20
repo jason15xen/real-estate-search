@@ -4,6 +4,7 @@ import logging
 
 import asyncpg
 
+from src.data.us_states import country_variants, state_variants
 from src.models.search import (
     AreaCriterion,
     Criterion,
@@ -200,13 +201,17 @@ async def apply_hard_filters(
                 conditions.append(f"district ILIKE ${param_idx}")
                 params.append(_like_contains(criterion.district))
                 param_idx += 1
-            if criterion.state:
-                conditions.append(f"LOWER(state) = LOWER(${param_idx})")
-                params.append(criterion.state)
+            # State/country are matched against ALL accepted forms: users type
+            # "Florida" while records store "FL" (an exact compare returned 0 results).
+            # An empty variant list would make `= ANY(ARRAY[])` always FALSE and zero
+            # the whole query, so a blank value adds no condition at all.
+            if criterion.state and (sv := state_variants(criterion.state)):
+                conditions.append(f"LOWER(state) = ANY(${param_idx}::text[])")
+                params.append(sv)
                 param_idx += 1
-            if criterion.country:
-                conditions.append(f"LOWER(country) = LOWER(${param_idx})")
-                params.append(criterion.country)
+            if criterion.country and (cv := country_variants(criterion.country)):
+                conditions.append(f"LOWER(country) = ANY(${param_idx}::text[])")
+                params.append(cv)
                 param_idx += 1
 
         elif isinstance(criterion, PropertyCriterion):
