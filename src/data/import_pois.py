@@ -156,7 +156,9 @@ async def _county_bboxes(conn, only_uncovered: bool) -> list[tuple[str, tuple, i
                max(ST_Y(geom::geometry)) AS north, max(ST_X(geom::geometry)) AS east,
                count(*) AS n
         FROM properties
-        WHERE geom IS NOT NULL {cond}
+        WHERE geom IS NOT NULL
+          AND NOT (ST_X(geom::geometry) = 0 AND ST_Y(geom::geometry) = 0)  -- undisclosed-address stubs
+          {cond}
         GROUP BY 1
     """)
     return [
