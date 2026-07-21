@@ -401,9 +401,18 @@ async def search_photos_endpoint(request: PhotoSearchRequest):
         raise HTTPException(status_code=500, detail="Photo search failed due to an internal error.")
 
 
+class PropertyResult(BaseModel):
+    """One matched property: identity + what a map pin needs (coords, price)."""
+    id: str
+    # "" when the listing has no coordinates (undisclosed address) — never a fake 0,0.
+    Latitude: float | str = ""
+    Longitude: float | str = ""
+    Price: int | None = None
+
+
 class SearchResponse(BaseModel):
     query: str
-    zillowProperties: list[str]
+    zillowProperties: list[PropertyResult]
     # Place the user searched INSIDE (for a map boundary); None when the query names
     # no place or is relational ("near X" / "between X and Y").
     area: str | None = None
@@ -438,7 +447,7 @@ async def search_properties(request: SearchRequest):
                 detail="Could not extract any search criteria from the query; please rephrase.",
             )
 
-        guids = result["guids"]
+        results = result["results"]
 
         debug_info = None
         if request.debug:
@@ -451,7 +460,7 @@ async def search_properties(request: SearchRequest):
 
         return SearchResponse(
             query=request.query,
-            zillowProperties=guids,
+            zillowProperties=results,
             area=result.get("area"),
             debug=debug_info,
         )

@@ -272,16 +272,38 @@ async def _match_color_rooms(
     return list(result_ids)
 
 
-async def _load_guids(pool: asyncpg.Pool, property_ids: list[int]) -> list[str]:
-    """Load GUIDs for matched IDs in one SELECT (/search returns only GUIDs)."""
+async def _load_results(pool: asyncpg.Pool, property_ids: list[int]) -> list[dict]:
+    """Load the matched properties for /search: id + map coordinates + price, in one
+    SELECT, ordered by id so the result list is stable across identical requests.
+    Coordinates come back as "" for the rare 'undisclosed address' listings whose feed
+    record carries no latitude/longitude (stored as 0,0 because the column is NOT NULL);
+    returning 0,0 would drop a map pin in the Atlantic."""
     if not property_ids:
         return []
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT guid FROM properties WHERE id = ANY($1) ORDER BY id",
+            """
+            SELECT guid,
+                   ST_Y(geom::geometry) AS lat,
+                   ST_X(geom::geometry) AS lon,
+                   price_usd
+            FROM properties
+            WHERE id = ANY($1)
+            ORDER BY id
+            """,
             property_ids,
         )
-    return [row["guid"] for row in rows]
+    results = []
+    for r in rows:
+        lat, lon = r["lat"], r["lon"]
+        placeable = not (lat == 0 and lon == 0)
+        results.append({
+            "id": r["guid"],
+            "Latitude": lat if placeable else "",
+            "Longitude": lon if placeable else "",
+            "Price": r["price_usd"],
+        })
+    return results
 
 
 def _criterion_labels(criterion) -> list[str]:
@@ -610,20 +632,20 @@ async def search(
         {alt for alts in alternatives.values() for alt in alts}
     )
 
-    guids = await _load_guids(pool, property_ids)
+    results = await _load_results(pool, property_ids)
 
     stats = {
         "after_hard_filters": after_hard_filter_count,
         "after_proximity_filters": after_proximity_count,
         "after_color_room_match": after_color_room_count,
         "after_feature_match": after_feature_count,
-        "final_results": len(guids),
+        "final_results": len(results),
     }
 
     logger.info(f"Pipeline complete: {stats}")
 
     return {
-        "guids": guids,
+        "results": results,
         "parsed_query": parsed_query,
         "stats": stats,
         "filter_steps": filter_steps if debug else None,
