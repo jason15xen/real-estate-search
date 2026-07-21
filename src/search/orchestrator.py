@@ -275,7 +275,7 @@ async def _match_color_rooms(
 async def _load_results(pool: asyncpg.Pool, property_ids: list[int]) -> list[dict]:
     """Load the matched properties for /search: id + map coordinates + price, in one
     SELECT, ordered by id so the result list is stable across identical requests.
-    Coordinates come back as "" for the rare 'undisclosed address' listings whose feed
+    Coordinates come back as null for the rare 'undisclosed address' listings whose feed
     record carries no latitude/longitude (stored as 0,0 because the column is NOT NULL);
     returning 0,0 would drop a map pin in the Atlantic."""
     if not property_ids:
@@ -299,8 +299,8 @@ async def _load_results(pool: asyncpg.Pool, property_ids: list[int]) -> list[dic
         placeable = not (lat == 0 and lon == 0)
         results.append({
             "id": r["guid"],
-            "Latitude": lat if placeable else "",
-            "Longitude": lon if placeable else "",
+            "Latitude": lat if placeable else None,
+            "Longitude": lon if placeable else None,
             "Price": r["price_usd"],
         })
     return results

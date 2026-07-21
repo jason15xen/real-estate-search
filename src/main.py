@@ -404,9 +404,9 @@ async def search_photos_endpoint(request: PhotoSearchRequest):
 class PropertyResult(BaseModel):
     """One matched property: identity + what a map pin needs (coords, price)."""
     id: str
-    # "" when the listing has no coordinates (undisclosed address) — never a fake 0,0.
-    Latitude: float | str = ""
-    Longitude: float | str = ""
+    # null when the listing has no coordinates (undisclosed address) — never a fake 0,0.
+    Latitude: float | None = None
+    Longitude: float | None = None
     Price: int | None = None
 
 
