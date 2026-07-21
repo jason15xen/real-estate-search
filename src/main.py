@@ -1,6 +1,7 @@
 """Real Estate AI Search FastAPI app — multi-phase pipeline (LLM parse → hard filters → proximity → feature matching) returning only properties matching ALL criteria."""
 
 import asyncio
+import gzip
 import json
 import logging
 from contextlib import asynccontextmanager
@@ -9,6 +10,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, field_validator
 from starlette.responses import Response
 
@@ -19,6 +21,7 @@ from src.img_analyzer.router import router as img_analyzer_router
 from src.img_analyzer.test_router import router as vision_test_router
 from src.models.search import ParsedQuery
 from src.search.orchestrator import search
+from src.search.photo_search import UnsupportedPhotoQueryError, search_photos
 from src.search.query_parser import QueryParseError
 
 logging.basicConfig(
@@ -163,6 +166,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Compress large JSON responses (photo-URL lists shrink ~5x; browsers negotiate via Accept-Encoding).
+app.add_middleware(GZipMiddleware, minimum_size=8192)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -262,9 +268,14 @@ async def log_request_response(request: Request, call_next):
     )
 
     try:
+        # GZipMiddleware sits inside this middleware, so large responses arrive here
+        # compressed — decompress for the log only (the client gets the original bytes).
+        log_body = resp_body
+        if new_response.headers.get("content-encoding") == "gzip":
+            log_body = gzip.decompress(resp_body)
         entry = {
             "req": _decode_body(req_body, request.headers.get("content-type", "")),
-            "res": _decode_body(resp_body, new_response.headers.get("content-type", "")),
+            "res": _decode_body(log_body, new_response.headers.get("content-type", "")),
         }
         await _append_log_entry(entry)
     except Exception as e:
@@ -351,9 +362,51 @@ class DebugInfo(BaseModel):
     bounds_applied: bool
 
 
+class PhotoSearchRequest(BaseModel):
+    query: str
+    propertyIds: list[str]  # property GUIDs
+
+    @field_validator("query")
+    @classmethod
+    def _photo_query_not_blank(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("query must not be empty")
+        return v.strip()
+
+    @field_validator("propertyIds")
+    @classmethod
+    def _ids_not_empty(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("propertyIds must contain at least one GUID")
+        if len(v) > 500:
+            raise ValueError("propertyIds is limited to 500 GUIDs per request")
+        return v
+
+
+@app.post("/search/photos")
+async def search_photos_endpoint(request: PhotoSearchRequest):
+    """Photo filtering within given properties using a FIXED query vocabulary
+    (see photo_search.QUERY_ROOM_MAP): returns matching photo URLs per property;
+    properties without matches are omitted. No LLM involved — instant and free."""
+    try:
+        pool = await get_pool()
+        results = await search_photos(pool, request.query, request.propertyIds)
+        return {"results": results}
+    except HTTPException:
+        raise
+    except UnsupportedPhotoQueryError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Photo search failed for query '{request.query}': {e}")
+        raise HTTPException(status_code=500, detail="Photo search failed due to an internal error.")
+
+
 class SearchResponse(BaseModel):
     query: str
     zillowProperties: list[str]
+    # Place the user searched INSIDE (for a map boundary); None when the query names
+    # no place or is relational ("near X" / "between X and Y").
+    area: str | None = None
     debug: DebugInfo | None = None
 
 
@@ -399,6 +452,7 @@ async def search_properties(request: SearchRequest):
         return SearchResponse(
             query=request.query,
             zillowProperties=guids,
+            area=result.get("area"),
             debug=debug_info,
         )
     except HTTPException:

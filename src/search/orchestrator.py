@@ -7,6 +7,7 @@ import asyncpg
 
 from config.settings import settings
 from src.data.feature_registry import registry
+from src.data.us_states import expand_state
 from src.models.search import (
     AreaCriterion,
     AreaRelationCriterion,
@@ -398,6 +399,23 @@ async def _collect_hard_filter_steps(
     return steps
 
 
+def extract_search_area(criteria) -> str | None:
+    """The place the user is searching INSIDE, for the client to draw a map boundary
+    (e.g. "3 bed house in Titusville" -> "Titusville"). Returns None when the query
+    names no such place OR when it is RELATIONAL — "near X", "neighbors of X",
+    "between X and Y" — because those cover a ring/corridor, not X's own polygon, so
+    a single boundary would be misleading. Most-specific location field wins."""
+    for c in criteria:
+        if isinstance(c, LocationCriterion):
+            for value in (c.neighborhood, c.locality, c.district, c.city, c.county):
+                if value and str(value).strip():
+                    return str(value).strip()
+            if c.state and c.state.strip():
+                # State expanded to its full name — "Florida" geocodes where "FL" is ambiguous.
+                return expand_state(c.state)
+    return None
+
+
 async def search(
     query: str,
     pool: asyncpg.Pool,
@@ -609,4 +627,5 @@ async def search(
         "parsed_query": parsed_query,
         "stats": stats,
         "filter_steps": filter_steps if debug else None,
+        "area": extract_search_area(parsed_query.criteria),
     }

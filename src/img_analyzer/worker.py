@@ -11,6 +11,7 @@ import asyncpg
 from config.settings import settings
 from src.data.database import get_pool
 from src.data.import_pois import ensure_coverage
+from src.data.photon import enrich_location_fields
 from src.img_analyzer import batch_vision
 from src.img_analyzer.analyzer import _pick_jpeg_url, analyze_photos, inject_features
 from src.img_analyzer.db_ingest import (
@@ -390,6 +391,13 @@ async def _process_one_row(pool: asyncpg.Pool, row: asyncpg.Record) -> bool:
     status = row["status"]
     expected_updated_at = row["updated_at"]
     try:
+        # Fill missing county/locality from coordinates (Photon) BEFORE extraction so
+        # every ingest path sees complete location data; best-effort, never blocks.
+        try:
+            if await enrich_location_fields(raw_data):
+                logger.info(f"Worker {item_id}: location enriched via reverse geocode")
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Worker {item_id}: location enrichment failed: {e}")
         if status == "unprocessed":
             marked = await _process_unprocessed(pool, item_id, raw_data, expected_updated_at)
         elif status == "image_only_processed":
@@ -456,6 +464,11 @@ async def _batch_step(pool: asyncpg.Pool) -> int:
     for entry in ready:
         item_id = entry["item_id"]
         try:
+            try:
+                if await enrich_location_fields(entry["data"]):
+                    logger.info(f"Worker {item_id}: location enriched via reverse geocode")
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"Worker {item_id}: location enrichment failed: {e}")
             if entry["status"] == "partial_image_only_processed":
                 ok = await _process_partial(pool, item_id, entry["data"],
                                             entry["updated_at"], precomputed=entry["results"])
