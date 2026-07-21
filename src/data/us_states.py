@@ -53,3 +53,11 @@ def country_variants(value: str) -> list[str]:
         if cleaned in group:
             return sorted(group)
     return [cleaned]
+
+
+def expand_state(value: str) -> str:
+    """'FL' -> 'Florida' (title-cased full name); full names and unknown values pass
+    through unchanged. Used where a human-geocodable place name is needed."""
+    cleaned = (value or "").strip()
+    full = _ABBREV_TO_NAME.get(cleaned.lower())
+    return full.title() if full else cleaned

@@ -404,6 +404,9 @@ async def search_photos_endpoint(request: PhotoSearchRequest):
 class SearchResponse(BaseModel):
     query: str
     zillowProperties: list[str]
+    # Place the user searched INSIDE (for a map boundary); None when the query names
+    # no place or is relational ("near X" / "between X and Y").
+    area: str | None = None
     debug: DebugInfo | None = None
 
 
@@ -449,6 +452,7 @@ async def search_properties(request: SearchRequest):
         return SearchResponse(
             query=request.query,
             zillowProperties=guids,
+            area=result.get("area"),
             debug=debug_info,
         )
     except HTTPException:
