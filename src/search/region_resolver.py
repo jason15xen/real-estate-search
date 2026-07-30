@@ -1,8 +1,8 @@
 """Resolve the place a query searched INSIDE to a row of the regions table.
 
-The /search response has always returned the area as a bare name ("Downtown"), but
-names are not unique — "Downtown" appears 137 times in the catalog — so the client
-also needs the region's unique id. Resolution matches the name against regions rows
+/search returns the searched area as regionName ("Rockledge, FL") + regionId, because
+names alone are not unique — "Downtown" appears 137 times in the catalog — so the
+client keys on the id. Resolution matches the name against regions rows
 of the types implied by WHICH LocationCriterion field the name came from (see
 _FIELD_REGION_TYPES), narrows duplicates with the criterion's own state/city context,
 and as a last resort with the states/cities of the properties the search actually
@@ -83,6 +83,48 @@ async def resolve_region(
         # Canonical catalog spelling, not the user's — "rockledge" -> "Rockledge, FL".
         "region_name": f"{row['regionname']}, {row['statecode']}",
     }
+
+
+async def keep_majority_location(
+    pool: asyncpg.Pool, criteria, property_ids: list[int]
+) -> list[int]:
+    """When a place NAME was searched WITHOUT a state, same-named places in different
+    states can all match ("Rockledge" hits FL and GA listings) — one map, two places.
+    Trim the results to the single state holding the most matches so the response
+    describes one location; ties break deterministically (highest count, then
+    statecode A→Z) so identical requests return identical results.
+
+    Untouched cases: no place searched (feature-only queries legitimately span the
+    catalog), a state was given (the hard filter already pinned it), or the results
+    already sit in one state. Never raises — trimming is enrichment, so failures
+    return the ids unchanged."""
+    target = search_area_target(criteria)
+    if target is None or not property_ids:
+        return property_ids
+    _, _, crit = target
+    if crit.state and crit.state.strip():
+        return property_ids
+
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT id, state FROM properties WHERE id = ANY($1)", property_ids
+            )
+        by_state: dict[str, list[int]] = {}
+        for r in rows:
+            by_state.setdefault(abbrev_state(r["state"]).upper(), []).append(r["id"])
+        if len(by_state) <= 1:
+            return property_ids
+        winner = min(by_state, key=lambda s: (-len(by_state[s]), s))
+        logger.info(
+            f"Majority-location trim: keeping {winner} "
+            f"({len(by_state[winner])}/{len(property_ids)} results; "
+            f"dropped states: {sorted(s for s in by_state if s != winner)})"
+        )
+        return by_state[winner]
+    except Exception:
+        logger.exception("Majority-location trim failed — keeping all results")
+        return property_ids
 
 
 async def _resolve_region(

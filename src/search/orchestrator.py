@@ -22,7 +22,11 @@ from src.search.feature_resolver import resolve_feature_phrases
 from src.search.filter_engine import apply_hard_filters
 from src.search.geo_search import apply_area_relation_filters, apply_proximity_filters
 from src.search.query_parser import parse_query
-from src.search.region_resolver import extract_search_area, resolve_region
+from src.search.region_resolver import (
+    extract_search_area,
+    keep_majority_location,
+    resolve_region,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -615,6 +619,18 @@ async def search(
         {alt for alts in alternatives.values() for alt in alts}
     )
 
+    # A place name searched without a state can match same-named places in several
+    # states at once ("Rockledge" -> FL + GA pins on one map). Keep only the state
+    # with the most matches; no-ops for feature-only or state-qualified queries.
+    before_majority = len(property_ids)
+    property_ids = await keep_majority_location(pool, parsed_query.criteria, property_ids)
+    if debug and len(property_ids) != before_majority:
+        filter_steps.append({
+            "step": "majority_location",
+            "count": len(property_ids),
+            "dropped": before_majority - len(property_ids),
+        })
+
     results = await _load_results(pool, property_ids)
 
     stats = {
@@ -622,6 +638,7 @@ async def search(
         "after_proximity_filters": after_proximity_count,
         "after_color_room_match": after_color_room_count,
         "after_feature_match": after_feature_count,
+        "after_majority_location": len(property_ids),
         "final_results": len(results),
     }
 
