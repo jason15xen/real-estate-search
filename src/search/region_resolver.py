@@ -51,8 +51,8 @@ def search_area_target(criteria) -> tuple[str, str, LocationCriterion] | None:
 
 
 def extract_search_area(criteria) -> str | None:
-    """The area NAME for the client's map boundary (kept for response compatibility;
-    the unique id comes from resolve_region)."""
+    """The PARSED area name — the fallback display name when no regions row resolves
+    (the canonical name then comes from resolve_region instead)."""
     target = search_area_target(criteria)
     if target is None:
         return None
@@ -63,23 +63,31 @@ def extract_search_area(criteria) -> str | None:
 
 async def resolve_region(
     pool: asyncpg.Pool, criteria, property_ids: list[int]
-) -> int | None:
-    """regions.regionid for the searched area, or None (no area, unknown name, or
-    ambiguous after narrowing). property_ids are the search's matched properties:
-    their states/cities break ties between same-named candidates and veto candidates
-    that contradict every result. Never raises: regionId is enrichment, so any
-    failure (e.g. regions table not yet imported) degrades to None instead of
-    failing the whole /search."""
+) -> dict | None:
+    """{"region_id": regions.regionid, "region_name": "<RegionName>, <StateCode>"}
+    for the searched area (e.g. {"region_id": 811179, "region_name": "Aquarian
+    Acres, KS"}), or None (no area, unknown name, or ambiguous after narrowing).
+    property_ids are the search's matched properties: their states/cities break
+    ties between same-named candidates and veto candidates that contradict every
+    result. Never raises: region info is enrichment, so any failure (e.g. regions
+    table not yet imported) degrades to None instead of failing the whole /search."""
     try:
-        return await _resolve_region(pool, criteria, property_ids)
+        row = await _resolve_region(pool, criteria, property_ids)
     except Exception:
-        logger.exception("Region resolution failed — returning no regionid")
+        logger.exception("Region resolution failed — returning no region")
         return None
+    if row is None:
+        return None
+    return {
+        "region_id": row["regionid"],
+        # Canonical catalog spelling, not the user's — "rockledge" -> "Rockledge, FL".
+        "region_name": f"{row['regionname']}, {row['statecode']}",
+    }
 
 
 async def _resolve_region(
     pool: asyncpg.Pool, criteria, property_ids: list[int]
-) -> int | None:
+) -> asyncpg.Record | None:
     target = search_area_target(criteria)
     if target is None:
         return None
@@ -119,7 +127,7 @@ async def _resolve_region(
 
             candidates = await conn.fetch(
                 """
-                SELECT regionid, statecode, city
+                SELECT regionid, regionname, statecode, city
                 FROM regions
                 WHERE regiontype = $1
                   AND lower(regionname) = ANY($2)
@@ -144,7 +152,7 @@ async def _resolve_region(
                 by_city = [c for c in narrowed if c["city"].strip().lower() in prop_cities]
                 narrowed = by_city or narrowed
             if len(narrowed) == 1:
-                return narrowed[0]["regionid"]
+                return narrowed[0]
             if not narrowed:
                 # Every candidate at this level is in a state none of the results
                 # are in — same-named places elsewhere ("Silver Lake" towns in

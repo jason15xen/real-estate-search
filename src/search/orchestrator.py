@@ -627,13 +627,17 @@ async def search(
 
     logger.info(f"Pipeline complete: {stats}")
 
+    # Canonical region for the searched area ("Downtown" repeats 137x, so clients key
+    # on region_id). Unresolved -> id None; name falls back to the parsed place name
+    # (no state code — none is verified) so the client keeps its map label.
+    region = await resolve_region(pool, parsed_query.criteria, property_ids)
+
     return {
         "results": results,
         "parsed_query": parsed_query,
         "stats": stats,
         "filter_steps": filter_steps if debug else None,
-        "area": extract_search_area(parsed_query.criteria),
-        # Unique id for `area` (names like "Downtown" repeat across the country);
-        # None when there's no area or the name can't be resolved unambiguously.
-        "region_id": await resolve_region(pool, parsed_query.criteria, property_ids),
+        "region_id": region["region_id"] if region else None,
+        "region_name": region["region_name"] if region
+                       else extract_search_area(parsed_query.criteria),
     }
