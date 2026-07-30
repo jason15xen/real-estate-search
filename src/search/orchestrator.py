@@ -7,7 +7,6 @@ import asyncpg
 
 from config.settings import settings
 from src.data.feature_registry import registry
-from src.data.us_states import expand_state
 from src.models.search import (
     AreaCriterion,
     AreaRelationCriterion,
@@ -23,6 +22,7 @@ from src.search.feature_resolver import resolve_feature_phrases
 from src.search.filter_engine import apply_hard_filters
 from src.search.geo_search import apply_area_relation_filters, apply_proximity_filters
 from src.search.query_parser import parse_query
+from src.search.region_resolver import extract_search_area, resolve_region
 
 logger = logging.getLogger(__name__)
 
@@ -272,16 +272,38 @@ async def _match_color_rooms(
     return list(result_ids)
 
 
-async def _load_guids(pool: asyncpg.Pool, property_ids: list[int]) -> list[str]:
-    """Load GUIDs for matched IDs in one SELECT (/search returns only GUIDs)."""
+async def _load_results(pool: asyncpg.Pool, property_ids: list[int]) -> list[dict]:
+    """Load the matched properties for /search: id + map coordinates + price, in one
+    SELECT, ordered by id so the result list is stable across identical requests.
+    Coordinates come back as null for the rare 'undisclosed address' listings whose feed
+    record carries no latitude/longitude (stored as 0,0 because the column is NOT NULL);
+    returning 0,0 would drop a map pin in the Atlantic."""
     if not property_ids:
         return []
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT guid FROM properties WHERE id = ANY($1) ORDER BY id",
+            """
+            SELECT guid,
+                   ST_Y(geom::geometry) AS lat,
+                   ST_X(geom::geometry) AS lon,
+                   price_usd
+            FROM properties
+            WHERE id = ANY($1)
+            ORDER BY id
+            """,
             property_ids,
         )
-    return [row["guid"] for row in rows]
+    results = []
+    for r in rows:
+        lat, lon = r["lat"], r["lon"]
+        placeable = not (lat == 0 and lon == 0)
+        results.append({
+            "id": r["guid"],
+            "Latitude": lat if placeable else None,
+            "Longitude": lon if placeable else None,
+            "Price": r["price_usd"],
+        })
+    return results
 
 
 def _criterion_labels(criterion) -> list[str]:
@@ -397,23 +419,6 @@ async def _collect_hard_filter_steps(
         prev = count
 
     return steps
-
-
-def extract_search_area(criteria) -> str | None:
-    """The place the user is searching INSIDE, for the client to draw a map boundary
-    (e.g. "3 bed house in Titusville" -> "Titusville"). Returns None when the query
-    names no such place OR when it is RELATIONAL — "near X", "neighbors of X",
-    "between X and Y" — because those cover a ring/corridor, not X's own polygon, so
-    a single boundary would be misleading. Most-specific location field wins."""
-    for c in criteria:
-        if isinstance(c, LocationCriterion):
-            for value in (c.neighborhood, c.locality, c.district, c.city, c.county):
-                if value and str(value).strip():
-                    return str(value).strip()
-            if c.state and c.state.strip():
-                # State expanded to its full name — "Florida" geocodes where "FL" is ambiguous.
-                return expand_state(c.state)
-    return None
 
 
 async def search(
@@ -610,22 +615,29 @@ async def search(
         {alt for alts in alternatives.values() for alt in alts}
     )
 
-    guids = await _load_guids(pool, property_ids)
+    results = await _load_results(pool, property_ids)
 
     stats = {
         "after_hard_filters": after_hard_filter_count,
         "after_proximity_filters": after_proximity_count,
         "after_color_room_match": after_color_room_count,
         "after_feature_match": after_feature_count,
-        "final_results": len(guids),
+        "final_results": len(results),
     }
 
     logger.info(f"Pipeline complete: {stats}")
 
+    # Canonical region for the searched area ("Downtown" repeats 137x, so clients key
+    # on region_id). Unresolved -> id None; name falls back to the parsed place name
+    # (no state code — none is verified) so the client keeps its map label.
+    region = await resolve_region(pool, parsed_query.criteria, property_ids)
+
     return {
-        "guids": guids,
+        "results": results,
         "parsed_query": parsed_query,
         "stats": stats,
         "filter_steps": filter_steps if debug else None,
-        "area": extract_search_area(parsed_query.criteria),
+        "region_id": region["region_id"] if region else None,
+        "region_name": region["region_name"] if region
+                       else extract_search_area(parsed_query.criteria),
     }

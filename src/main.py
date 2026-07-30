@@ -401,12 +401,27 @@ async def search_photos_endpoint(request: PhotoSearchRequest):
         raise HTTPException(status_code=500, detail="Photo search failed due to an internal error.")
 
 
+class PropertyResult(BaseModel):
+    """One matched property: identity + what a map pin needs (coords, price)."""
+    id: str
+    # null when the listing has no coordinates (undisclosed address) — never a fake 0,0.
+    Latitude: float | None = None
+    Longitude: float | None = None
+    Price: int | None = None
+
+
 class SearchResponse(BaseModel):
     query: str
-    zillowProperties: list[str]
-    # Place the user searched INSIDE (for a map boundary); None when the query names
-    # no place or is relational ("near X" / "between X and Y").
-    area: str | None = None
+    zillowProperties: list[PropertyResult]
+    # Place the user searched INSIDE (for a map boundary/label); None when the query
+    # names no place or is relational ("near X" / "between X and Y"). When regionId
+    # is set this is the catalog's canonical "<RegionName>, <StateCode>" (e.g.
+    # "Rockledge, FL"); otherwise the bare place name as parsed from the query.
+    regionName: str | None = None
+    # Unique regions.regionid for regionName — names repeat across the country
+    # ("Downtown" x137), so clients should key on this. None when no place was
+    # named or the name couldn't be resolved to exactly one region.
+    regionId: int | None = None
     debug: DebugInfo | None = None
 
 
@@ -438,7 +453,7 @@ async def search_properties(request: SearchRequest):
                 detail="Could not extract any search criteria from the query; please rephrase.",
             )
 
-        guids = result["guids"]
+        results = result["results"]
 
         debug_info = None
         if request.debug:
@@ -451,8 +466,9 @@ async def search_properties(request: SearchRequest):
 
         return SearchResponse(
             query=request.query,
-            zillowProperties=guids,
-            area=result.get("area"),
+            zillowProperties=results,
+            regionName=result.get("region_name"),
+            regionId=result.get("region_id"),
             debug=debug_info,
         )
     except HTTPException:
