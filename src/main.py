@@ -416,6 +416,10 @@ class SearchResponse(BaseModel):
     # Place the user searched INSIDE (for a map boundary); None when the query names
     # no place or is relational ("near X" / "between X and Y").
     area: str | None = None
+    # Unique regions.regionid for `area` — area names repeat across the country
+    # ("Downtown" x137), so clients should key on this. None when area is None or
+    # the name couldn't be resolved to exactly one region.
+    regionId: int | None = None
     debug: DebugInfo | None = None
 
 
@@ -462,6 +466,7 @@ async def search_properties(request: SearchRequest):
             query=request.query,
             zillowProperties=results,
             area=result.get("area"),
+            regionId=result.get("region_id"),
             debug=debug_info,
         )
     except HTTPException:

@@ -241,3 +241,19 @@ CREATE TABLE IF NOT EXISTS poi_coverage (
     county TEXT PRIMARY KEY,
     imported_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Region catalog (city/neighborhood/ZIP/county/state), loaded from
+-- src/data/region/regions_data.sql via `python -m src.data.import_regions`.
+-- /search resolves the extracted area name to a row here so the client gets a
+-- regionid that is unique even when the name isn't ("Downtown" exists 137 times).
+-- Column names match the INSERT statements in the data file (lowercased).
+CREATE TABLE IF NOT EXISTS regions (
+    id          UUID PRIMARY KEY,     -- source GUID
+    regionid    INTEGER NOT NULL UNIQUE,  -- the ID clients consume
+    regiontype  TEXT NOT NULL,        -- '0' city, '1' neighborhood, '2' ZIP, '3' county, '4' state
+    regionname  TEXT NOT NULL,        -- place name (for type '2': the ZIP code itself)
+    statecode   TEXT NOT NULL,        -- 2-letter state
+    city        TEXT NOT NULL         -- parent city for types '1'/'2'; = statecode for '0'/'3'; '' for '4'
+);
+CREATE INDEX IF NOT EXISTS idx_regions_type_name ON regions (regiontype, lower(regionname));
+CREATE INDEX IF NOT EXISTS idx_regions_statecode ON regions (statecode);
