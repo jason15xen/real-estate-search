@@ -1,0 +1,1310 @@
+property_id,guid,street,city,price_usd
+4383,ac0814a8-51f7-4827-7390-08dede53f575,0 Cocoa Pl,Cocoa,14800
+4505,308f697e-1974-4345-73e9-08dede53f575,0 Cocoa Pl,Cocoa,14800
+3147,8873388b-dd15-4446-6eac-08dede53f575,0 Cocoa Pl,Cocoa,14800
+4436,5ec2411c-1b85-4195-73b8-08dede53f575,0 Lemon St,Cocoa,175000
+4542,1c5b6c1b-e656-4ae0-741f-08dede53f575,0 Lemon St,Cocoa,175000
+3172,431cdd49-15ed-4571-6ec8-08dede53f575,0 Lemon St,Cocoa,175000
+4440,173f3af9-13ea-4f49-73a9-08dede53f575,0 Unknown Rd,Cocoa,60000
+4448,d4bf94d8-5ab0-452e-73cd-08dede53f575,0 W State Rd #520,Cocoa,69900
+3200,f77c769d-bc3f-49a5-6ee1-08dede53f575,0 W State Rd #520,Cocoa,69900
+4406,4b902e7c-0b0d-4623-7394-08dede53f575,1001 N Indian River Dr,Cocoa,1575000
+4386,64430228-e673-422a-7393-08dede53f575,1005 Greenwood Way,Cocoa,329900
+4481,9c1845b2-a98f-4840-73e2-08dede53f575,100 Riverside Dr APT 301,Cocoa,660000
+3132,87a785d5-a4aa-4ed6-6ea8-08dede53f575,100 Riverside Dr APT 301,Cocoa,660000
+4547,e23af638-4409-4915-7424-08dede53f575,102 Riverside Dr APT 203,Cocoa,469000
+3174,d26e7bb8-67f5-47aa-6ecc-08dede53f575,102 Riverside Dr APT 203,Cocoa,469000
+4514,5a2900f7-08fa-4057-7402-08dede53f575,1042 Azalea Ln,Cocoa,169900
+3160,b99d4a69-2884-4291-6eb9-08dede53f575,1042 Azalea Ln,Cocoa,169900
+4419,1bbaf350-6a2b-43a1-73a1-08dede53f575,1042 Azalea Ln,Cocoa,169900
+4409,f6d0b191-9e89-4819-7397-08dede53f575,1042 Hickory Ln,Cocoa,299000
+4489,0e1dcaae-5fc5-4479-73f2-08dede53f575,1042 Hickory Ln,Cocoa,299000
+3152,f0666ffc-cbe9-4788-6eb1-08dede53f575,1042 Hickory Ln,Cocoa,299000
+4437,b75ed01d-48ae-4c2e-73b9-08dede53f575,1044 Cypress Ln,Cocoa,240000
+4543,04b7c693-263f-42ce-7420-08dede53f575,1044 Cypress Ln,Cocoa,240000
+3173,83540dda-1bc1-48e7-6ec9-08dede53f575,1044 Cypress Ln,Cocoa,240000
+4377,f467b0ff-1b0e-4214-7384-08dede53f575,104 Grace Ave,Cocoa,329000
+3215,28262914-7e1f-4327-6ee6-08dede53f575,104 Riverside Dr APT 203,Cocoa,495000
+4575,62bbdef2-38fb-4751-7444-08dede53f575,104 Riverside Dr APT 203,Cocoa,495000
+4572,cf37f3c5-25be-4cd9-743d-08dede53f575,104 Riverside Dr APT 403,Cocoa,434000
+3199,d7663adb-7287-4412-6ee0-08dede53f575,104 Riverside Dr APT 403,Cocoa,434000
+3164,541db3b2-355b-449d-6eca-08dede53f575,104 Riverside Dr APT 602,Cocoa,525000
+4544,3141a651-e53c-4803-7421-08dede53f575,104 Riverside Dr APT 602,Cocoa,525000
+4488,bde5a8ac-1255-4f05-73f1-08dede53f575,1052 Broadmoor Dr,Cocoa,139900
+3151,d27098e0-92bb-4dc0-6eb0-08dede53f575,1052 Broadmoor Dr,Cocoa,139900
+4408,275ac4bb-32b7-43ec-7396-08dede53f575,1052 Broadmoor Dr,Cocoa,139900
+4376,08cae1e6-df85-49fa-7383-08dede53f575,1102 Greenwood Way,Cocoa,245000
+4426,e3eec52e-6926-4486-73b2-08dede53f575,115 N Indian River Dr APT 207,Cocoa,399999
+3177,f6cabb7d-9efa-4cb7-6ec3-08dede53f575,115 N Indian River Dr APT 207,Cocoa,399999
+4535,724789aa-42d9-42fa-7418-08dede53f575,115 N Indian River Dr APT 207,Cocoa,399999
+4510,ea866fab-75d4-446c-73eb-08dede53f575,116 Center St,Cocoa,315000
+4385,55412b3b-fdc6-450c-7392-08dede53f575,116 Center St,Cocoa,315000
+3148,6c069e9e-627e-42d7-6ead-08dede53f575,116 Center St,Cocoa,315000
+4387,4df0039a-ddde-4c2f-7387-08dede53f575,128 AURORA Street,Cocoa,199000
+4442,e7ef7702-33ab-44f2-73ab-08dede53f575,1317 Moss Ln,Cocoa,214900
+4430,d9b6407a-9949-4607-73bc-08dede53f575,1417 Wilson Rd,Cocoa,248000
+4427,e4ed24af-efa1-4c28-73b3-08dede53f575,1420 Belleview Rd,Cocoa,230000
+4443,84795b91-412d-4734-73ac-08dede53f575,1630 Terrace St,Cocoa,60000
+4381,49d17f66-89a7-49dc-738e-08dede53f575,1670 Terrace St,Cocoa,211900
+4388,99bd4315-0af8-4f4b-7388-08dede53f575,1670 Unknown St,Cocoa,55000
+4422,f80f9cf9-d79f-42a9-73a4-08dede53f575,1704 Ritzcraft St #338,Cocoa,25700
+4379,badc571b-d9a3-4c16-7386-08dede53f575,1706 Yellowstone St #840,Cocoa,36900
+4411,0969c457-52d3-468b-7399-08dede53f575,1711 Dixon Blvd,Cocoa,450000
+4444,80be1cd4-c55b-4216-73ad-08dede53f575,1711 Dixon Blvd APT 179,Cocoa,72000
+4415,9312f16c-1ada-46c6-739d-08dede53f575,1711 Dixon Blvd APT 245,Cocoa,74900
+4391,7b0c845a-7f4b-4a2e-738b-08dede53f575,1713 Dixon Blvd APT 163,Cocoa,58000
+4511,da160101-87b1-4ede-73ec-08dede53f575,19 N Indian River Dr #Penthouse 1,Cocoa,1600000
+3149,d36a97fd-a11b-491b-6eae-08dede53f575,19 N Indian River Dr #Penthouse 1,Cocoa,1600000
+4417,6b465e9a-55d9-4803-739f-08dede53f575,209 Plumosa Dr,Cocoa,200000
+4425,6943cf21-cf02-4c5f-73b1-08dede53f575,212 Plumosa Dr,Cocoa,214000
+4540,dc0b54d2-81a2-4996-741d-08dede53f575,214 Blake Ave,Cocoa,189000
+4434,7f5b15a4-6697-4096-73b6-08dede53f575,214 Blake Ave,Cocoa,189000
+3170,fac36a63-7175-4a3a-6ec6-08dede53f575,214 Blake Ave,Cocoa,189000
+4541,15ae9894-cfa8-43ab-741e-08dede53f575,214 Blake Ave #Sfr,Cocoa,189000
+3171,195fff47-aadf-4129-6ec7-08dede53f575,214 Blake Ave #Sfr,Cocoa,189000
+4435,6f45d89e-ad62-4047-73b7-08dede53f575,214 Blake Ave #Sfr,Cocoa,189000
+4210,69c81ed1-f691-4bfc-72d6-08dede53f575,218 Saldon Ln,Cocoa,60000
+4571,76499c99-ee70-41ea-7438-08dede53f575,21 Riverside Dr APT 902,Cocoa,1297000
+3195,bd783fb7-2592-4899-6edc-08dede53f575,21 Riverside Dr APT 902,Cocoa,1297000
+4564,ac80705f-d707-4fda-743a-08dede53f575,222 Rosa L Jones Dr,Cocoa,760000
+4439,8da7c3a4-7b16-42d0-73cb-08dede53f575,222 Rosa L Jones Dr,Cocoa,760000
+3197,9caaa140-14b5-4c94-6ede-08dede53f575,222 Rosa L Jones Dr,Cocoa,760000
+4456,38357cc8-fccc-4114-73bd-08dede53f575,230 First Light Cir,Cocoa,599000
+3181,d0ddf12a-d4f9-41eb-6ece-08dede53f575,230 First Light Cir,Cocoa,599000
+4550,4420351c-4644-4cfa-7427-08dede53f575,230 First Light Cir,Cocoa,599000
+4493,45a4425c-b2f2-4bba-73f6-08dede53f575,235 First Light Cir,Cocoa,539000
+3154,54a78668-7e29-48bf-6eb3-08dede53f575,235 First Light Cir,Cocoa,539000
+4410,8c37be9a-8620-44ff-7398-08dede53f575,235 First Light Cir,Cocoa,539000
+4380,974f9213-e580-437c-738d-08dede53f575,235 Sorrento Dr,Cocoa,365000
+3214,e37a77b8-9701-45ae-6ee5-08dede53f575,29 Riverside Dr APT 203,Cocoa,739900
+4580,47e5dd16-5137-4183-7441-08dede53f575,29 Riverside Dr APT 203,Cocoa,739900
+4405,29aa7a31-b9a3-499b-73a8-08dede53f575,316 Pine Ave,Cocoa,199000
+4441,d1c89a8b-3f24-4687-73aa-08dede53f575,329 Pineda St,Cocoa,349900
+4407,06cb04b8-bffe-462e-7395-08dede53f575,336 Bay Ave,Cocoa,249900
+4565,22237cea-8584-42ba-743b-08dede53f575,406 Prospect Ave,Cocoa,53000
+3198,2888594d-6d18-4029-6edf-08dede53f575,406 Prospect Ave,Cocoa,53000
+4447,26191920-ec9f-4245-73cc-08dede53f575,406 Prospect Ave,Cocoa,53000
+4452,138c8b2a-d03b-4fc4-73d0-08dede53f575,433 King St,Cocoa,315000
+3217,07e06ef6-73ce-4556-6ee8-08dede53f575,433 King St,Cocoa,315000
+4576,45ce03d6-f9b4-448b-7445-08dede53f575,433 King St,Cocoa,315000
+4500,be8b2571-b6e2-4f47-73fd-08dede53f575,439 Barbara Jenkins St,Cocoa,274000
+3157,dbca6058-2678-4a75-6eb6-08dede53f575,439 Barbara Jenkins St,Cocoa,274000
+4416,cec385a1-5d44-479a-739e-08dede53f575,439 Barbara Jenkins St,Cocoa,274000
+4414,41b57f18-7131-4338-739c-08dede53f575,504 Blake Ave,Cocoa,169900
+3156,9410546d-9dfe-4ed3-6eb5-08dede53f575,504 Blake Ave,Cocoa,169900
+4498,d1c405ea-e12f-46b7-73fb-08dede53f575,504 Blake Ave,Cocoa,169900
+3205,065fee9e-fe2e-41ab-6eec-08dede53f575,506 Stone St,Cocoa,225000
+4464,c60b8242-1ba2-43f0-73d5-08dede53f575,506 Stone St,Cocoa,225000
+4588,7e5cc855-c3e7-4473-744a-08dede53f575,506 Stone St,Cocoa,225000
+3155,02b11bab-e176-4890-6eb4-08dede53f575,515 S Wilson Avenue,Cocoa,175000
+4412,a49bec43-393a-4c34-739a-08dede53f575,515 S Wilson Avenue,Cocoa,175000
+4495,4806606d-d6c6-462c-73f8-08dede53f575,515 S Wilson Avenue,Cocoa,175000
+4532,1e3d00b5-5e11-4ba5-7415-08dede53f575,535 S Kentucky Ave,Cocoa,142000
+4424,041c7ebd-0b41-4155-73b0-08dede53f575,535 S Kentucky Ave,Cocoa,142000
+3175,919d29ce-cea1-418f-6ec1-08dede53f575,535 S Kentucky Ave,Cocoa,142000
+4530,3013a1b8-cacd-4d25-7413-08dede53f575,610 Forrest Ave,Cocoa,199900
+3168,b41b2aae-c8e9-4cfc-6ebf-08dede53f575,610 Forrest Ave,Cocoa,199900
+4445,779a7b96-bde0-4fbd-73ae-08dede53f575,610 Forrest Ave,Cocoa,199900
+4520,fc47833d-a311-46d0-7409-08dede53f575,614 Paw Paw St,Cocoa,199000
+4423,d0d8f061-b332-4190-73a5-08dede53f575,614 Paw Paw St,Cocoa,199000
+3162,bfb37599-7d43-4fe9-6ebb-08dede53f575,614 Paw Paw St,Cocoa,199000
+4479,c2b506d9-6ef3-4b77-73c8-08dede53f575,618 S Varr Ave,Cocoa,174900
+4560,2f9402b1-372f-43e8-7431-08dede53f575,618 S Varr Ave,Cocoa,174900
+3193,3e50a2f3-36e2-486a-6eda-08dede53f575,618 S Varr Ave,Cocoa,174900
+4428,db685b1e-868f-4df8-73b4-08dede53f575,621 S Georgia Ave,Cocoa,229900
+3169,31c1a18f-4436-4c1a-6ec0-08dede53f575,713 Thomas Ave,Cocoa,285000
+4446,19f6c28b-e62a-4ef8-73af-08dede53f575,713 Thomas Ave,Cocoa,285000
+4531,8333d208-cf99-4733-7414-08dede53f575,713 Thomas Ave,Cocoa,285000
+4431,d9d61db9-41f4-4228-73c9-08dede53f575,714 S Georgia Ave,Cocoa,269900
+4468,92d009ea-f234-4e6b-73d8-08dede53f575,7 Mitchell St,Cocoa,2300000
+3124,53a14e41-6fba-458d-6ea6-08dede53f575,7 Mitchell St,Cocoa,2300000
+4375,60b410a9-d543-4a2a-7382-08dede53f575,7 Mitchell St,Cocoa,2300000
+4553,c808d9cb-c5fe-4556-742a-08dede53f575,800 N Fiske Blvd APT 506,Cocoa,65000
+3184,287b57e1-b3a2-45dd-6ed1-08dede53f575,800 N Fiske Blvd APT 506,Cocoa,65000
+4459,666c9e88-3d22-46af-73c0-08dede53f575,800 N Fiske Blvd APT 506,Cocoa,65000
+3190,35e488fc-e491-4076-6ed7-08dede53f575,800 N Fiske Blvd APT 606,Cocoa,46000
+4559,4da88d9d-dde1-4e9e-7430-08dede53f575,800 N Fiske Blvd APT 606,Cocoa,46000
+4476,4d955df7-a427-481d-73c5-08dede53f575,800 N Fiske Blvd APT 606,Cocoa,46000
+4552,bfbb3bf7-5eae-43a2-7429-08dede53f575,800 N Fiske Blvd APT 710,Cocoa,65000
+3183,3904cb31-c563-4a45-6ed0-08dede53f575,800 N Fiske Blvd APT 710,Cocoa,65000
+4458,24b226db-8066-4edd-73bf-08dede53f575,800 N Fiske Blvd APT 710,Cocoa,65000
+4462,66770256-07d6-4560-73c3-08dede53f575,800 N Fiske Blvd APT 711,Cocoa,46000
+4557,edff6580-449c-4b70-742e-08dede53f575,800 N Fiske Blvd APT 711,Cocoa,46000
+3188,01df7d16-a9ae-4c81-6ed5-08dede53f575,800 N Fiske Blvd APT 711,Cocoa,46000
+4558,22731028-f07a-487f-742f-08dede53f575,800 N Fiske Blvd APT 712,Cocoa,46000
+4463,2b1ee13e-49a9-4c64-73c4-08dede53f575,800 N Fiske Blvd APT 712,Cocoa,46000
+3189,98cc7ba3-f19d-48cd-6ed6-08dede53f575,800 N Fiske Blvd APT 712,Cocoa,46000
+3186,8474c6d5-5ad1-4fef-6ed3-08dede53f575,800 N Fiske Blvd APT 714,Cocoa,49900
+4461,1285fe5e-4ef3-4261-73c2-08dede53f575,800 N Fiske Blvd APT 714,Cocoa,49900
+4556,e31667a0-f93a-4b8c-742d-08dede53f575,800 N Fiske Blvd APT 714,Cocoa,49900
+4551,ff7aca6d-5041-4384-7428-08dede53f575,800 N Fiske Blvd APT 802,Cocoa,46000
+3182,917efbfc-215f-4842-6ecf-08dede53f575,800 N Fiske Blvd APT 802,Cocoa,46000
+4457,e1046ed9-b03e-4380-73be-08dede53f575,800 N Fiske Blvd APT 802,Cocoa,46000
+4421,f0993eed-08ab-4c7b-73a3-08dede53f575,840 Morning Side Dr,Cocoa,295000
+4579,6e893c8d-7b34-454d-7440-08dede53f575,875 N Indian River Dr,Cocoa,2195000
+3210,dfc6f833-81f1-4a07-6ee3-08dede53f575,875 N Indian River Dr,Cocoa,2195000
+4450,081717af-ae0b-4429-73ce-08dede53f575,875 N Indian River Dr,Cocoa,2195000
+3185,74c8d2bd-98d4-4e38-6ed2-08dede53f575,905 Avon Pl,Cocoa,249000
+4460,9950a58f-55b7-4802-73c1-08dede53f575,905 Avon Pl,Cocoa,249000
+4554,39e4d5ae-42d1-4937-742b-08dede53f575,905 Avon Pl,Cocoa,249000
+4438,d510b23b-b16d-44c7-73ba-08dede53f575,907 Fern Ave,Cocoa,108000
+4545,613a3ab2-2e98-4cea-7422-08dede53f575,907 Fern Ave,Cocoa,108000
+3165,9b741f1b-76a7-4e16-6ecb-08dede53f575,907 Fern Ave,Cocoa,108000
+4378,6069937b-693e-421e-7385-08dede53f575,914 Clearlake Rd #115B,Cocoa,18900
+4413,99a3fe28-e5f6-4503-739b-08dede53f575,914 Clearlake Rd Lot 205A,Cocoa,8000
+4453,77b0cc01-4a72-401f-73d1-08dede53f575,920 Boardwalk Ln #852,Cocoa,3000
+3131,b4b95881-7f2e-45f8-6ea5-08dede53f575,924 Fern Ave,Cocoa,254900
+4466,ac80ad19-985c-4e3e-73d7-08dede53f575,924 Fern Ave,Cocoa,254900
+4374,ec25a54d-95d3-4407-7381-08dede53f575,924 Fern Ave,Cocoa,254900
+3196,31fc2d6e-7d4a-4926-6edd-08dede53f575,93 Delannoy Ave APT 405,Cocoa,792000
+4563,55835f2b-3ec0-476e-7439-08dede53f575,93 Delannoy Ave APT 405,Cocoa,792000
+4548,c1aedaa7-e449-49c4-7425-08dede53f575,93 Delannoy Ave APT 406,Cocoa,750000
+3180,c3ef141a-6982-4d36-6ecd-08dede53f575,93 Delannoy Ave APT 406,Cocoa,750000
+3194,7b340893-7e0b-4456-6edb-08dede53f575,93 Delannoy Ave APT 601,Cocoa,869950
+4569,56df8dc9-298c-40cf-7436-08dede53f575,93 Delannoy Ave APT 601,Cocoa,869950
+3144,9475f15a-e3f7-4a7e-6ea9-08dede53f575,93 Delannoy Ave APT 801,Cocoa,869900
+4482,907f81de-be73-48dd-73e3-08dede53f575,93 Delannoy Ave APT 801,Cocoa,869900
+3161,79e8a013-aa24-4214-6eba-08dede53f575,"Breeze Plan, New Homes in Cocoa",Cocoa,262990
+4420,43711094-5181-4e35-73a2-08dede53f575,"Breeze Plan, New Homes in Cocoa",Cocoa,262990
+4515,683964e8-5855-47ea-7403-08dede53f575,"Breeze Plan, New Homes in Cocoa",Cocoa,262990
+4403,71b2ea22-fdde-4a01-73a6-08dede53f575,"Cypress Plan, New Homes in Cocoa",Cocoa,270490
+4523,ae3d5d56-126b-44f5-740c-08dede53f575,"Cypress Plan, New Homes in Cocoa",Cocoa,270490
+3163,8196f557-1991-4f60-6ebc-08dede53f575,"Cypress Plan, New Homes in Cocoa",Cocoa,270490
+4389,0fb42eff-3f14-429e-7389-08dede53f575,"Element Plan, New Homes in Cocoa",Cocoa,286490
+4501,da94e230-723c-4d60-73e5-08dede53f575,"Element Plan, New Homes in Cocoa",Cocoa,286490
+3145,b1442942-5ea8-49d9-6eaa-08dede53f575,"Element Plan, New Homes in Cocoa",Cocoa,286490
+4578,cae12c8a-bd72-4d8a-7447-08dede53f575,S Fiske Blvd,Cocoa,199000
+3202,9b2010ee-37a6-48f6-6ee9-08dede53f575,S Fiske Blvd,Cocoa,199000
+4454,c9fd22e8-daf2-4720-73d2-08dede53f575,S Fiske Blvd,Cocoa,199000
+3201,fc32500a-7eee-4cfc-6ee2-08dede53f575,Wet Slip Cocoa Village Marina E #E13-13,Cocoa,51000
+5308,466d0989-c6b5-453a-7716-08dede53f575,1000 N Atlantic Ave APT 215,Cocoa Beach,549000
+5435,65ddcdda-69a9-4193-778d-08dede53f575,1044 Samar Rd,Cocoa Beach,750000
+5320,8b1a44fe-0835-4656-772c-08dede53f575,112 Esther Dr,Cocoa Beach,1625000
+5416,fc07bece-ca53-40da-7789-08dede53f575,113 Deleon Rd,Cocoa Beach,1149000
+5377,177b68bb-98b7-44a7-7768-08dede53f575,118 N Atlantic Ave,Cocoa Beach,749999
+5398,91f08c23-ead5-484f-777a-08dede53f575,124 Aucila Rd,Cocoa Beach,1145000
+5323,fd78f812-2383-4be8-7723-08dede53f575,131 Cedar Ave,Cocoa Beach,990000
+5225,66ee20fd-ccf6-4c3f-76cf-08dede53f575,15 N Atlantic Ave APT 302,Cocoa Beach,675000
+5230,0f29b20f-b8f5-4149-76d4-08dede53f575,160 June Dr,Cocoa Beach,819000
+5301,dd8b8d8e-8307-4dde-7719-08dede53f575,162 & 164 Woodland Ave,Cocoa Beach,699000
+5333,ada22c8a-3050-42f4-772e-08dede53f575,200 Rose Dr,Cocoa Beach,1299900
+5419,facfef84-6501-4e38-778b-08dede53f575,220 S 5th St APT 205,Cocoa Beach,245000
+5373,a927b9cf-23eb-4a47-775f-08dede53f575,238 Woodland Ave APT 2,Cocoa Beach,239000
+5261,bf746db7-ec3b-4d72-76dd-08dede53f575,255 Woodland Ave APT 1,Cocoa Beach,364900
+5262,a91b75ab-82ea-4da3-76de-08dede53f575,279 S Brevard Ave,Cocoa Beach,645000
+5271,50dc3dab-348c-4e4f-76f6-08dede53f575,27 Westview Ln,Cocoa Beach,1150000
+5247,6a0f7f9e-bf15-4201-76e3-08dede53f575,302 Corona Ave,Cocoa Beach,989000
+5348,6724f662-ab67-4b31-7749-08dede53f575,310 N Atlantic Ave,Cocoa Beach,595000
+5421,7a1e0a82-6f31-4e27-7796-08dede53f575,315 S BREVARD AVENUE,Cocoa Beach,520000
+5346,7a64d01e-ff76-4347-7747-08dede53f575,325 N Orlando Ave,Cocoa Beach,639999
+5289,f2792af2-fb86-49dd-770a-08dede53f575,335 N Brevard Ave,Cocoa Beach,859000
+5327,302eac76-1c34-4574-773a-08dede53f575,344 N Brevard Ave,Cocoa Beach,465000
+5291,a1d24f31-6b22-4352-7710-08dede53f575,364 Formosa Dr,Cocoa Beach,745000
+5316,8943e8e5-38e8-432d-7728-08dede53f575,375 Cyprus Dr,Cocoa Beach,775000
+5228,e596af35-7ff2-4abe-76d2-08dede53f575,383 N Atlantic Ave APT 105,Cocoa Beach,389900
+5322,ec700987-b2ae-4392-7722-08dede53f575,383 N Atlantic Ave APT 505,Cocoa Beach,450000
+5298,512b9069-435b-4386-7713-08dede53f575,402 N 1st St APT 10,Cocoa Beach,385000
+5250,1bec0004-127a-4891-76e6-08dede53f575,402 S Orlando Ave,Cocoa Beach,1799000
+5385,b3ee70f7-6c19-42ed-7772-08dede53f575,416 N 4th St,Cocoa Beach,995000
+5340,de258e64-093f-4b53-7738-08dede53f575,433 Blakey Blvd,Cocoa Beach,799000
+5276,b085abfe-ad57-4808-7701-08dede53f575,514 Cocoa Isles Blvd,Cocoa Beach,1025000
+5244,f2d06d79-5476-4ed7-76e0-08dede53f575,551 S Brevard Ave APT 305,Cocoa Beach,258500
+5374,33271ee8-978b-4f0a-7760-08dede53f575,580 S Brevard Ave APT 815,Cocoa Beach,355000
+5407,7eb0f8e2-b120-46df-777f-08dede53f575,640 N Atlantic Ave #3B,Cocoa Beach,345900
+5239,f5827e3f-c314-4dac-76d7-08dede53f575,650 N Atlantic Ave APT 406,Cocoa Beach,345000
+5280,fa8d884e-21dc-4404-76fd-08dede53f575,65 N Atlantic Ave #205,Cocoa Beach,2199000
+5332,e7218576-a17e-4917-772d-08dede53f575,714 Catalina Rd APT 2,Cocoa Beach,179000
+5311,201f481f-9f30-43dc-771b-08dede53f575,750 N Atlantic Ave APT 1104,Cocoa Beach,679000
+5402,9f02f5ca-7ed3-4caa-7782-08dede53f575,750 N Atlantic Ave APT 208,Cocoa Beach,525000
+5341,7411b4a7-5be3-4d97-7739-08dede53f575,750 N Atlantic Ave APT 209,Cocoa Beach,625000
+5405,a6d0879b-bb97-4af3-777d-08dede53f575,756 S Orlando Ave APT 106,Cocoa Beach,325000
+5223,81b1d97e-fcd4-49c7-76cd-08dede53f575,830 N Atlantic Ave APT B203,Cocoa Beach,599000
+5321,b8f00dae-c544-41e5-7721-08dede53f575,830 N Atlantic Ave APT B903,Cocoa Beach,600000
+5371,865bfc54-2317-45ba-7764-08dede53f575,841 S Orlando Ave,Cocoa Beach,399000
+5263,b2a45fe6-916e-4ee3-76df-08dede53f575,921 S Orlando Ave,Cocoa Beach,995000
+5397,493727a1-15ae-473e-7779-08dede53f575,925 Samar Rd,Cocoa Beach,635000
+5330,5ef276c6-c710-4590-7732-08dede53f575,926 Santa Cruz Rd,Cocoa Beach,739000
+5295,18edf6bc-e3a5-49cc-770e-08dede53f575,935 Samar Rd,Cocoa Beach,635000
+3113,6283a902-3cee-408e-6e99-08dede53f575,None 115th St,Fellsmere,450000
+3961,acdba848-029a-49e9-71db-08dede53f575,1000 N Riverside Dr,Indialantic,2745000
+3947,7e56c67c-2e6d-4d0d-71ce-08dede53f575,100 Flug Ave,Indialantic,1775000
+3920,44ab3ca3-89e5-47b3-71b1-08dede53f575,100 Tampa Ave,Indialantic,1475000
+3933,d4763760-318d-4219-71bd-08dede53f575,1011 S Miramar Ave APT 6,Indialantic,239900
+3894,3f23daf5-866d-4b17-719c-08dede53f575,1011 S Miramar Ave APT 9,Indialantic,239900
+3973,c400256d-336d-49b9-71e7-08dede53f575,104 4th Ave,Indialantic,849000
+3982,72bc425c-a475-4377-71f4-08dede53f575,104 Jupiter Court,Indialantic,499999
+4001,d0734722-8f9e-49a2-7202-08dede53f575,106 4th Ave,Indialantic,799000
+3989,5b72d852-8c55-4c14-71fd-08dede53f575,107 Franklyn Ave,Indialantic,879000
+3908,3ebc8fef-484b-42f2-71a5-08dede53f575,109 Ormond Dr,Indialantic,839000
+3998,5335a0b8-bc01-41e0-71fb-08dede53f575,1125 N Highway A1a Suite 501,Indialantic,1485000
+3963,e2e276b7-5f1c-417a-71df-08dede53f575,1145 N Shannon Ave APT 16,Indialantic,254900
+3952,865b96a1-c636-4f9b-71d7-08dede53f575,116 Tampa Ave,Indialantic,685000
+3936,c0ad9090-1294-4c82-71c0-08dede53f575,1209 S Riverside Dr,Indialantic,799000
+3915,695bdfe6-3251-48b5-71ac-08dede53f575,121 Del Mar,Indialantic,354900
+3960,72339f2d-ea52-4095-71da-08dede53f575,122 1st Ave,Indialantic,799000
+4003,028306fd-01d0-4126-7204-08dede53f575,124 Coral Way E,Indialantic,1500000
+3972,8373ae08-9473-4e3d-71e6-08dede53f575,1318 S Miramar Ave APT 208,Indialantic,299000
+3939,a2d8aaaf-d333-4703-71c3-08dede53f575,136 14th Ave,Indialantic,1299000
+3945,efe29b14-5c96-4a7e-71cc-08dede53f575,1415 N Highway A1a APT 206,Indialantic,554900
+3954,28cf6e00-47a6-4dd2-71d0-08dede53f575,1455 N Highway A1a #302,Indialantic,2400000
+3978,5dfd8c7d-4d35-497c-71f0-08dede53f575,1505 N Highway A1a APT 501,Indialantic,699000
+4002,4ac9c3a3-0a2d-42a1-7203-08dede53f575,1505 N Highway A1a APT 502,Indialantic,649900
+3953,5de7345e-5eae-4659-71cf-08dede53f575,1725 N Highway A1a #304,Indialantic,699000
+4014,2c42520a-b6dc-42bb-7207-08dede53f575,1760 N A1a Hwy,Indialantic,1500000
+3958,2f24fd92-8523-48d5-71d4-08dede53f575,1795 N Highway A1a #204,Indialantic,1750000
+3957,f99644ff-0df9-4f97-71d9-08dede53f575,1801 Island Club Dr #577,Indialantic,209800
+3987,f801542b-db05-44a2-71ed-08dede53f575,1835 Highway A1a N #A-503,Indialantic,1385000
+3919,cd8e1faf-d36d-49ec-71b0-08dede53f575,1866 Bel Ct,Indialantic,1199000
+3904,189b8e7b-8595-45d9-719b-08dede53f575,1 Eighth Ave APT 1202,Indialantic,989000
+4015,a3309c22-a973-477f-7208-08dede53f575,2035 Sea Ave,Indialantic,789000
+3917,5e744781-2a42-4587-71ae-08dede53f575,205 Ponce De Leon Dr,Indialantic,116600
+3996,5dd18f71-7a40-4f3a-71f8-08dede53f575,211 Avenida De Paz,Indialantic,405000
+3926,2019b0b1-7884-4aa6-71b7-08dede53f575,214 Tampa Ave,Indialantic,599000
+3983,26011227-01a1-466e-71f5-08dede53f575,2160 N Highway A1a Hwy APT 202,Indialantic,310000
+3999,32c367eb-7711-43c1-71fc-08dede53f575,2160 N Highway A1a Hwy APT 302,Indialantic,319500
+3988,faf3bb7b-52cb-4613-71fa-08dede53f575,220 Avenida De Paz,Indialantic,525000
+3935,efb55a0f-82c3-4b9c-71bf-08dede53f575,223 6th Ave,Indialantic,750000
+3942,5e7059f3-5889-4010-71c7-08dede53f575,2320 Abalone Ave,Indialantic,649000
+3968,c404ae1c-5c79-4fd9-71dd-08dede53f575,240 Avenida Central,Indialantic,499500
+3937,0562018f-da5d-4ba9-71c1-08dede53f575,241 Avenida Central,Indialantic,419000
+3992,ff0379c9-c35f-463c-71ea-08dede53f575,2700 N Highway A1a APT 10-107,Indialantic,240000
+3966,5d814e9b-df35-47fe-71e8-08dede53f575,2700 N Highway A1a APT 11-109,Indialantic,215000
+3975,65072c49-8d26-443d-71e5-08dede53f575,2700 N Highway A1a APT 11-205,Indialantic,199900
+3893,e8d1b068-0a99-4068-719f-08dede53f575,2700 N Highway A1a APT 15-101,Indialantic,272900
+3951,bae9f735-23e7-4cdb-71d6-08dede53f575,2700 N Highway A1a APT 18-202,Indialantic,199000
+3940,1041424f-7c29-418c-71c5-08dede53f575,2700 N Highway A1a APT 3-202,Indialantic,228000
+3895,97253206-34d9-4507-719d-08dede53f575,2700 N Highway A1a APT 4-103,Indialantic,225000
+3986,cc48c447-408a-4dad-71ec-08dede53f575,2700 N Highway A1a APT 4-202,Indialantic,249000
+3905,f4136fec-6045-42e4-71a2-08dede53f575,2700 N Highway A1a APT 5-103,Indialantic,234000
+3994,878ebee5-bae3-4763-71ff-08dede53f575,2727 N Highway A1a APT 501,Indialantic,775000
+3943,b02cf7a9-9b10-4a65-71c8-08dede53f575,2745 N Highway A1a #501,Indialantic,2475000
+3965,06556d28-14b8-468c-71e1-08dede53f575,2765 N Highway A1a #404,Indialantic,2340000
+4000,10719150-4694-40c9-7201-08dede53f575,2765 N Highway A1a #503,Indialantic,2595000
+3913,49e70554-88a3-4786-71aa-08dede53f575,2805 N Highway A1a APT 203,Indialantic,699000
+3959,1f1da693-5ac2-4e09-71d5-08dede53f575,282 Fay Dr,Indialantic,505000
+3890,ca56da33-191c-488a-7196-08dede53f575,2835 N Highway A1a APT 503,Indialantic,545000
+3931,1d928c78-e2a9-4d63-71bc-08dede53f575,2835 N Highway A1a APT 902,Indialantic,675000
+3950,1f1ac72f-5062-4234-71ca-08dede53f575,2855 N Highway A1a APT E,Indialantic,925450
+3896,28d39721-70a9-4916-719e-08dede53f575,2875 N Highway A1a APT 503,Indialantic,799000
+3984,a09ef275-ff0b-4ad9-71f6-08dede53f575,2925 N Highway A1a #103,Indialantic,419900
+3916,5fd7ca85-47c6-416f-71ad-08dede53f575,2925 N Jimmy Buffett Memorial Hwy #101,Indialantic,379900
+3891,41d26096-db0c-40e3-7197-08dede53f575,292 Sand Dollar Rd,Indialantic,550000
+3956,22034e5d-5e65-4fdd-71d8-08dede53f575,305 Sand Pine Rd,Indialantic,759900
+3930,50fa2228-f2f4-462a-71bb-08dede53f575,314 Tampa Ave,Indialantic,1150000
+3938,1f2fd1fa-3067-4c55-71c2-08dede53f575,320 Palm Ct,Indialantic,675000
+3980,2252044d-f217-4ce7-71f2-08dede53f575,331 Avenida Del Sol,Indialantic,695000
+3903,bf2678b9-6ba1-4170-719a-08dede53f575,333 Cocoa Ave,Indialantic,775000
+4012,64fbf428-3d89-4308-7205-08dede53f575,360 E Riviera Blvd,Indialantic,595000
+3928,cdb4befc-8e2a-4e48-71b9-08dede53f575,370 Normandy Dr,Indialantic,865000
+3907,6507a4bd-2c66-435f-71a4-08dede53f575,381 E Riviera Blvd,Indialantic,700000
+3914,b7a09519-1071-4bd5-71ab-08dede53f575,403 12th Ave,Indialantic,780000
+3964,2e0aaf41-2133-434f-71e0-08dede53f575,419 10th Ave,Indialantic,635000
+3921,7d4e1e05-f2f2-485b-71b2-08dede53f575,431 Mosswood Blvd,Indialantic,750000
+3955,333add0c-175a-43e8-71d1-08dede53f575,435 10th Ave,Indialantic,599900
+3922,018670c3-977a-404d-71b3-08dede53f575,440 3rd Ave,Indialantic,534900
+3962,9385d3f1-97bc-4a62-71dc-08dede53f575,451 Sea Horse Ave,Indialantic,425000
+3941,dd7ebcdd-dd03-403b-71c6-08dede53f575,50 11th Ave APT 302,Indialantic,525000
+3969,8b7b587d-9f01-4839-71de-08dede53f575,57 Highland Dr,Indialantic,870000
+3995,cea07ee7-7c30-41f5-7200-08dede53f575,601 N Miramar Ave APT 107,Indialantic,729000
+3911,19f79d41-a0a6-4af7-71a8-08dede53f575,601 N Miramar Ave APT 110,Indialantic,699900
+3985,92dfb8c1-cb9b-43ab-71f7-08dede53f575,601 N Miramar Ave APT 205,Indialantic,689500
+3906,cd1c2f60-7ea6-4f4e-71a3-08dede53f575,605 N Shannon Ave,Indialantic,1099000
+3944,4a82ce54-6a06-4b92-71cb-08dede53f575,700 Wavecrest Ave APT 205,Indialantic,514900
+3974,0f208134-d555-4288-71e4-08dede53f575,725 Puesta Del Sol Plz,Indialantic,994000
+3997,78ceda41-0a96-4365-71f9-08dede53f575,735 N Highway A1a APT 302,Indialantic,950000
+3910,0b7fd267-1d11-4ad2-71a7-08dede53f575,735 N Highway A1a APT 505,Indialantic,1200000
+3977,1d01ce26-261b-4d78-71ef-08dede53f575,760 Nightingale Dr,Indialantic,479000
+3981,d68bfbae-9c4a-4edd-71f3-08dede53f575,808 Puesta Del Sol Plz,Indialantic,799900
+3967,b8332c4d-4cb7-418d-71d2-08dede53f575,877 N Highway A1a APT 308,Indialantic,320000
+3991,6b9c8c77-5a13-439f-71e9-08dede53f575,901 S Palm Ave,Indialantic,825000
+3993,59263f27-974f-49ad-71eb-08dede53f575,925 N Highway A1a APT 305,Indialantic,1295000
+4013,1f442181-dbb3-4206-7206-08dede53f575,989 N Highway A1a APT 5,Indialantic,1099990
+6286,ecb4c2c3-a51d-4331-7afa-08dede53f575,0 Windchime Ln,Melbourne,3500000
+6298,a2379fb1-9e75-49ef-7afb-08dede53f575,1001 W Eau Gallie Blvd APT 101,Melbourne,94900
+6252,2bc71dae-1b35-4547-7ade-08dede53f575,1001 W Eau Gallie Blvd APT 314,Melbourne,129900
+2250,44ecafec-967e-4b6c-6b2f-08dede53f575,1010 Luminary Cir APT 101,Melbourne,299900
+5813,ad584319-a756-400f-791d-08dede53f575,1010 Luminary Cir APT 101,Melbourne,299900
+6440,217fd249-47d7-4a88-7b8d-08dede53f575,1020 Venetian Dr Unit 102,Melbourne,264999
+6345,2cc41faa-b298-4517-7b32-08dede53f575,1045 Venetian Dr Unit 102,Melbourne,229000
+2259,8d0c6f82-2276-4d81-6b36-08dede53f575,1070 Luminary Cir APT 105,Melbourne,253000
+5836,ee8db082-1933-475e-7924-08dede53f575,1070 Luminary Cir APT 105,Melbourne,253000
+5691,bdf1a2af-6843-4539-789c-08dede53f575,1075 Luminary Cir APT 101,Melbourne,269999
+2130,953aee85-ad1b-4b32-6abb-08dede53f575,1075 Luminary Cir APT 101,Melbourne,269999
+6312,bfcd2c4d-582c-4ba0-7b09-08dede53f575,1075 McClendon St,Melbourne,1100000
+2201,1217e540-dea9-4243-6af3-08dede53f575,1082 S Fork Cir,Melbourne,274900
+6295,8dd15b98-80c2-4ad1-7af7-08dede53f575,1087 Swan St,Melbourne,295900
+2125,8a1a1cc7-cf80-4354-6aaf-08dede53f575,110 Lagoon Ave,Melbourne,349900
+2169,2a6cf646-88df-4d06-6ac3-08dede53f575,110 Turpial Way APT 106,Melbourne,190000
+2269,79940915-7deb-49a8-6b3c-08dede53f575,1116 Salem Rd #D111,Melbourne,189900
+2170,0fd76d28-1a29-4e5e-6ad6-08dede53f575,1116 Sleepy Hollow Rd #D086,Melbourne,149900
+2273,c4377c2d-cd31-4916-6b45-08dede53f575,1125 Gainey Dr,Melbourne,375000
+2122,e07a3669-37c9-4839-6aac-08dede53f575,1125 Luminary Cir APT 101,Melbourne,0
+5674,5d628132-9203-4870-7893-08dede53f575,1125 Luminary Cir APT 101,Melbourne,0
+5806,9074577b-7102-4cd1-7916-08dede53f575,1125 Luminary Cir APT 102,Melbourne,297000
+2255,b6458752-1936-41a5-6b29-08dede53f575,1125 Luminary Cir APT 102,Melbourne,297000
+2251,29e9cbf0-2ca4-48de-6b33-08dede53f575,1145 Castleberry Rd #C194,Melbourne,114900
+6299,3c33df5d-8d68-4fa6-7afc-08dede53f575,1149 Houston St,Melbourne,1750000
+2220,6f757a4a-d1d5-4cb4-6b08-08dede53f575,1159 Harry Sutton Rd,Melbourne,16500
+2219,c6a6f687-cdb3-4703-6b07-08dede53f575,1159 Harry Sutton Rd #C253,Melbourne,10000
+2266,ddad8a9e-3775-40fc-6b39-08dede53f575,1163 Paul Bryce Dr #D048,Melbourne,169900
+2279,b3bf4bd0-7c7d-4a24-6b3f-08dede53f575,1201 Stansted Rd,Melbourne,38000
+2192,63b7c4c4-9b3d-47b5-6aec-08dede53f575,1211 E New Haven Ave #402,Melbourne,448000
+2233,d6acac1d-e61f-4e6d-6b1e-08dede53f575,1265 Luminary Cir APT 105,Melbourne,275500
+5603,3ff8ce17-8fb8-43bb-783d-08dede53f575,127 San Paulo Ct #1,Melbourne,125900
+6276,28ededd9-bc71-4665-7ae5-08dede53f575,1311 Boxwood Dr,Melbourne,259900
+2128,ff630f28-50f9-4ea5-6ab9-08dede53f575,135 Bauer Dr #34,Melbourne,159900
+6315,61a531ba-4608-47c3-7b0c-08dede53f575,1365 Pineapple Ave,Melbourne,989999
+5582,ef6aa9b6-c087-4744-7833-08dede53f575,137 San Paulo Cir #137-4,Melbourne,189900
+6283,3785ee3b-ab86-4fc1-7aec-08dede53f575,1395 Ashwood Dr,Melbourne,350000
+6294,d3b23ac1-78a7-4f3e-7af6-08dede53f575,1395 Windchime Ln,Melbourne,200000
+6291,36eee9e7-0193-4788-7af3-08dede53f575,1415 Windchime Ln,Melbourne,250000
+6290,c3781ec0-64b8-49c6-7af2-08dede53f575,1425 Windchime Ln,Melbourne,250000
+2137,e5795474-a819-4248-6ab1-08dede53f575,1435 Harbor City Blvd #803,Melbourne,875000
+3527,1659181e-649b-467f-7031-08dede53f575,1435 Harbor City Blvd #803,Melbourne,875000
+3573,2652794f-57f1-4344-7058-08dede53f575,1435 S Harbor City Blvd #401,Melbourne,899900
+2225,04ad99c1-d8fd-44da-6b11-08dede53f575,1435 S Harbor City Blvd #401,Melbourne,899900
+3528,e6b00233-4cea-4934-7032-08dede53f575,1435 S Harbor City Blvd #803,Melbourne,875000
+2138,d9c5b662-e39a-4aec-6ab2-08dede53f575,1435 S Harbor City Blvd #803,Melbourne,875000
+6289,67ae23a8-4dcf-47fa-7af1-08dede53f575,1435 Windchime Ln,Melbourne,250000
+6304,11450032-bd91-4206-7afe-08dede53f575,1437 Pineapple Ave APT 701,Melbourne,525000
+6288,23f16a78-f03c-487c-7af0-08dede53f575,1455 Windchime Ln,Melbourne,275000
+6281,4bb83b8c-6517-40f0-7aea-08dede53f575,1456 N Brook Dr,Melbourne,335000
+2207,70d3183b-8af3-4ae2-6afd-08dede53f575,145 Bauer Dr,Melbourne,48999
+3596,b2d223e9-7c00-43df-706d-08dede53f575,1465 S Harbor City Blvd #1002,Melbourne,1850000
+2296,45563e29-308c-4e25-6b4a-08dede53f575,1465 S Harbor City Blvd #1002,Melbourne,1850000
+2162,21bd4082-19e2-47c4-6ad9-08dede53f575,1465 S Harbor City Blvd #502,Melbourne,785000
+3552,aaf8e482-9f5d-421d-7044-08dede53f575,1465 S Harbor City Blvd #502,Melbourne,785000
+3577,7b01509d-1879-4b66-705a-08dede53f575,1465 S Harbor City Blvd #702,Melbourne,699900
+2228,904084f1-ab4d-463d-6b17-08dede53f575,1465 S Harbor City Blvd #702,Melbourne,699900
+3524,685e01df-bf1b-4f61-7030-08dede53f575,1465 S Harbor City Blvd #902,Melbourne,898250
+2123,4393ca4f-2f46-46a6-6aad-08dede53f575,1465 S Harbor City Blvd #902,Melbourne,898250
+6287,6e3f43c3-75f0-4d05-7aef-08dede53f575,1465 Windchime Ln,Melbourne,325000
+6284,207d166e-14b6-4769-7aee-08dede53f575,1475 Windchime Ln,Melbourne,325000
+6300,c2e6d2fe-5701-4d9e-7aff-08dede53f575,1479 Beechfern Dr #Par8,Melbourne,229999
+2145,42610189-a4c7-4cf8-6acf-08dede53f575,1480 Roosevelt Ave APT 201,Melbourne,324000
+6262,f492fb38-b693-42f8-7ad9-08dede53f575,1516 Autumn Woods Dr,Melbourne,278000
+2143,aac11b29-db7a-4a54-6ab7-08dede53f575,156 Bauer Dr #15,Melbourne,159900
+3549,9cdffb54-b4ee-47b3-7039-08dede53f575,1604 Park Ave,Melbourne,252000
+2133,1f7c77c5-ec13-4128-6abe-08dede53f575,1604 Park Ave,Melbourne,252000
+2216,ba30848d-ea6a-465e-6b0c-08dede53f575,1616 Elizabeth St,Melbourne,350000
+3572,6bbf37d7-f80d-4139-7057-08dede53f575,1616 Elizabeth St,Melbourne,350000
+3613,6dac8ba4-3742-4c4f-7083-08dede53f575,1620-1622 Peachtree St,Melbourne,569900
+2293,01520785-0028-4084-6b62-08dede53f575,1620-1622 Peachtree St,Melbourne,569900
+6271,8aac2371-9051-4a50-7ae0-08dede53f575,1654 Highland Ave,Melbourne,614900
+3052,f34942ec-1964-49b9-6e45-08dede53f575,1664 Vista Lake Cir,Melbourne,345000
+5844,fb7df669-4212-4b23-7935-08dede53f575,168-198 Hidden Woods Pl,Melbourne,1300000
+2294,4287c212-58a6-4481-6b63-08dede53f575,168-198 Hidden Woods Pl,Melbourne,1300000
+5744,8136ab71-834e-4336-78dd-08dede53f575,168-238 Hidden Woods Pl,Melbourne,3895000
+2185,7c532d6d-d02f-4121-6ae8-08dede53f575,168-238 Hidden Woods Pl,Melbourne,3895000
+3555,9826a1c1-20da-437a-7047-08dede53f575,1707 Platt St,Melbourne,350000
+2180,aa92fb35-f1e1-4f5f-6ae2-08dede53f575,1707 Platt St,Melbourne,350000
+2301,65ac677b-f64c-4651-6b60-08dede53f575,1714 Fletcher St,Melbourne,249900
+3612,e5b57f0b-37fb-4954-7082-08dede53f575,1714 Fletcher St,Melbourne,249900
+3971,e7e4479b-3c67-4d34-71e3-08dede53f575,1800 Charlesmont Dr #6107,Melbourne,294000
+3532,3051d3a7-da88-4bae-7033-08dede53f575,1802 Fletcher St,Melbourne,405000
+2141,b178495a-d9eb-4ffc-6ab5-08dede53f575,1802 Fletcher St,Melbourne,405000
+2177,700b2b7c-3f17-4524-6adf-08dede53f575,1807-1809 Riverview Dr,Melbourne,3590000
+2229,34bed9b4-91ea-4283-6b1b-08dede53f575,1807 Riverview Dr,Melbourne,1795000
+2243,6925bbd2-aab7-45e0-6b1c-08dede53f575,1809 Riverview Dr,Melbourne,1795000
+2127,2a0234e2-d5d8-45f9-6ab8-08dede53f575,180 Bauer Dr #21,Melbourne,157900
+3979,ba25dad2-e360-4e26-71f1-08dede53f575,180 Paradise Blvd #18023,Melbourne,225000
+3589,9cf3cfba-4db4-46cb-7062-08dede53f575,1810 S Park Ave,Melbourne,339000
+2244,bf6b4466-996f-49f3-6b25-08dede53f575,1810 S Park Ave,Melbourne,339000
+2275,cba0dd71-86b8-4320-6b47-08dede53f575,1817 Palm Boulevard,Melbourne,225000
+6261,00a8856e-cbc9-4fb3-7ad8-08dede53f575,1839 Clover Cir,Melbourne,325000
+3929,7c5949ab-e125-4651-71ba-08dede53f575,1850 Charlesmont Drive #119,Melbourne,235000
+2146,89b40333-998f-43e7-6ac7-08dede53f575,188 Crystal Lake Rd,Melbourne,345000
+3536,4eca04fa-d5bb-4844-7037-08dede53f575,1903 Stockton St,Melbourne,340000
+2129,1e6f4283-b93a-4f22-6aba-08dede53f575,1903 Stockton St,Melbourne,340000
+2132,6ec846d8-1043-46c5-6abd-08dede53f575,1904 Pine St,Melbourne,199000
+3537,c83dacfd-22d9-4695-7038-08dede53f575,1904 Pine St,Melbourne,199000
+3558,5c745ac1-e255-4f56-704a-08dede53f575,1905 Stockton St,Melbourne,580000
+2190,15260077-6597-4998-6aea-08dede53f575,1905 Stockton St,Melbourne,580000
+3578,c657f3ac-89db-43c7-705b-08dede53f575,1906 Pine St,Melbourne,299000
+2217,c14121da-f101-41c2-6b18-08dede53f575,1906 Pine St,Melbourne,299000
+3898,7f6b06ba-dbd6-4fcb-71a1-08dede53f575,190 Paradise Blvd #1908,Melbourne,250000
+3990,2f01c240-3f90-437c-71fe-08dede53f575,190 Paradise Blvd APT 9,Melbourne,272999
+6314,9772f9e5-ea83-4324-7b0b-08dede53f575,1920 Magnolia Ave,Melbourne,250000
+6307,fc5c566f-74e0-4661-7b04-08dede53f575,1932 Cedarwood Drive,Melbourne,297000
+6251,8d16d18b-ba53-46a8-7add-08dede53f575,1983 Southland Ave,Melbourne,188000
+3595,3b5b3572-fcf8-4b2f-7068-08dede53f575,2013-2101 Vernon Pl,Melbourne,1039800
+2267,b1c62981-64a5-4820-6b3a-08dede53f575,2013-2101 Vernon Pl,Melbourne,1039800
+6282,4ddfb9e3-9186-4a67-7aeb-08dede53f575,2013 Guava Ave,Melbourne,420000
+2299,a189eeae-ab9f-40c8-6b5e-08dede53f575,2013 Vernon Pl,Melbourne,519900
+3610,f209e229-9a91-44a0-7080-08dede53f575,2013 Vernon Pl,Melbourne,519900
+3077,c6af3205-85fd-46ba-6e66-08dede53f575,205 Sagamore St,Melbourne,519000
+5846,c8a2f388-f0ab-4df7-7937-08dede53f575,207-237 Hidden Woods Pl,Melbourne,1300000
+2303,d399781b-fb77-4a88-6b65-08dede53f575,207-237 Hidden Woods Pl,Melbourne,1300000
+6301,289a5343-1666-4276-7b00-08dede53f575,207 San Juan Cir,Melbourne,110000
+5845,bae0d4a5-3608-4c92-7936-08dede53f575,208-238 Hidden Woods Pl,Melbourne,1300000
+2295,6a15eb92-8b3c-4b1d-6b64-08dede53f575,208-238 Hidden Woods Pl,Melbourne,1300000
+3949,f0dec948-6d8d-45df-71c9-08dede53f575,2085 Seawind Ct,Melbourne,475000
+2202,ff3fd9bc-301e-43a5-6af4-08dede53f575,2093 Greenway Dr,Melbourne,599900
+3576,73957df8-e3a1-4716-704e-08dede53f575,2093 Greenway Dr,Melbourne,599900
+2300,b6e12323-5c0e-42e9-6b5f-08dede53f575,2101 Vernon Pl,Melbourne,519900
+3611,bd90c559-38e1-4392-7081-08dede53f575,2101 Vernon Pl,Melbourne,519900
+3619,ccb4b028-493b-4bf7-7084-08dede53f575,2106 Vernon Pl,Melbourne,1395000
+2304,c0fcdbd4-d58c-4384-6b66-08dede53f575,2106 Vernon Pl,Melbourne,1395000
+6296,837da69b-189a-4cdb-7af8-08dede53f575,2111 Sandalwood Dr,Melbourne,295000
+2135,ee659c2f-6f70-49ec-6ac0-08dede53f575,2148 Country Club Rd,Melbourne,605000
+3550,1556d9b1-3336-497f-703a-08dede53f575,2148 Country Club Rd,Melbourne,605000
+2175,c9c5e911-6ed1-4560-6ae5-08dede53f575,2188 Country Club Rd,Melbourne,599900
+3557,0e38ab33-3032-46e3-7049-08dede53f575,2188 Country Club Rd,Melbourne,599900
+2298,ca40145b-3291-4d52-6b5d-08dede53f575,2202 Livnats Ln,Melbourne,1200000
+3609,64afe96b-9b0e-451d-707f-08dede53f575,2202 Livnats Ln,Melbourne,1200000
+2289,7e4d1cc3-db4b-4c83-6b58-08dede53f575,2205 Livnats Ln,Melbourne,1200000
+3618,03ade563-e87d-427b-707a-08dede53f575,2205 Livnats Ln,Melbourne,1200000
+2297,3cf5f182-a7ab-4355-6b5c-08dede53f575,2212 Livnats Ln,Melbourne,1200000
+3608,fd264f13-1b68-4ad2-707e-08dede53f575,2212 Livnats Ln,Melbourne,1200000
+2290,2f7389b8-33a7-4746-6b59-08dede53f575,2215 Livnats Ln,Melbourne,1200000
+3605,6b3d4588-52a6-474f-707b-08dede53f575,2215 Livnats Ln,Melbourne,1200000
+2232,1a42fe52-2ff7-43a9-6b1d-08dede53f575,2220 Front St APT 303,Melbourne,655000
+2249,fb293998-5a4f-4997-6b2e-08dede53f575,2220 Front St APT 404,Melbourne,600000
+2292,2b3ad849-1b23-45de-6b5b-08dede53f575,2222 Livnats Ln,Melbourne,1200000
+3607,5d5fb0c0-2457-4167-707d-08dede53f575,2222 Livnats Ln,Melbourne,1200000
+3617,3aa606dc-be31-4c5b-7079-08dede53f575,2225 Livnats Ln,Melbourne,1200000
+2288,2b5057c6-4e3c-428e-6b57-08dede53f575,2225 Livnats Ln,Melbourne,1200000
+3606,621d97ea-f77c-42f3-707c-08dede53f575,2232 Livnats Ln,Melbourne,1200000
+2291,f2eaeb90-7a03-4131-6b5a-08dede53f575,2232 Livnats Ln,Melbourne,1200000
+3616,0cde9761-3d3b-4987-7078-08dede53f575,2235 Livnats Ln,Melbourne,1200000
+2282,e09d7474-5127-4f5e-6b56-08dede53f575,2235 Livnats Ln,Melbourne,1200000
+2274,8fbf9de1-9780-4f19-6b46-08dede53f575,2240 Front St APT 103,Melbourne,720000
+2287,11a1ce48-6555-48e9-6b55-08dede53f575,2242 Livnats Ln,Melbourne,1300000
+3615,aa130538-2a35-4ea9-7077-08dede53f575,2242 Livnats Ln,Melbourne,1300000
+2284,1ad4fafc-6552-465d-6b52-08dede53f575,2245 Livnats Ln,Melbourne,1300000
+3603,e1a9b04c-1592-478d-7074-08dede53f575,2245 Livnats Ln,Melbourne,1300000
+2285,1ee022a4-add9-4e4a-6b53-08dede53f575,2252 Livnats Ln,Melbourne,1300000
+3604,23a1addf-5bc3-4e14-7075-08dede53f575,2252 Livnats Ln,Melbourne,1300000
+3602,8e5bde5e-4fcb-4cfe-7073-08dede53f575,2255 Livnats Ln,Melbourne,1300000
+2283,f4e1446c-dd20-4aa4-6b51-08dede53f575,2255 Livnats Ln,Melbourne,1300000
+2120,b8b0e7d9-3fa3-49dc-6aaa-08dede53f575,2260 Front St APT 204,Melbourne,475000
+3614,acdb1edf-2937-4642-7076-08dede53f575,2262 Livnats Ln,Melbourne,1300000
+2286,a7f153b5-1009-49c6-6b54-08dede53f575,2262 Livnats Ln,Melbourne,1300000
+3601,978d8874-ce4f-471e-7072-08dede53f575,2265 Livnats Ln,Melbourne,1300000
+2278,84c7a87b-41a7-4810-6b50-08dede53f575,2265 Livnats Ln,Melbourne,1300000
+2322,92a6a1d5-848d-431e-6b4f-08dede53f575,2275 Livnats Ln,Melbourne,1300000
+3600,9f357d44-4c13-4198-7071-08dede53f575,2275 Livnats Ln,Melbourne,1300000
+3598,a3df55f6-efac-4916-706f-08dede53f575,2282 Livnats Ln,Melbourne,1400000
+2320,3b198a70-481b-49b4-6b4d-08dede53f575,2282 Livnats Ln,Melbourne,1400000
+3049,db805c59-6b37-4bf2-6e4c-08dede53f575,2291 Commodore Blvd,Melbourne,399000
+2321,59f051d0-8a81-48bd-6b4e-08dede53f575,2292 Livnats Ln,Melbourne,1400000
+3599,2bb3bb06-58b6-430f-7070-08dede53f575,2292 Livnats Ln,Melbourne,1400000
+2319,0b73f270-f21f-4bef-6b4c-08dede53f575,2295 Livnats Ln,Melbourne,1400000
+3597,19fb8e77-8d7b-41d0-706e-08dede53f575,2295 Livnats Ln,Melbourne,1400000
+2248,0878fdb9-08f4-473b-6b2d-08dede53f575,2300 Front St APT 400,Melbourne,1995000
+2199,692e5627-7783-4658-6af1-08dede53f575,2300 FRONT Street #400,Melbourne,1995000
+6309,98a6e6d4-b429-41c2-7b06-08dede53f575,232 San Juan Cir,Melbourne,75000
+6275,f48bc88c-eca5-46d8-7ae4-08dede53f575,2333 Meadow Cove Blvd,Melbourne,429998
+3563,aa431b6a-a758-4772-7043-08dede53f575,2343 Grant St,Melbourne,239900
+2172,35d6ea37-83be-48fa-6ad8-08dede53f575,2343 Grant St,Melbourne,239900
+3932,f193d7c3-ce8e-4148-71c4-08dede53f575,2345 N Riverside Dr,Melbourne,1460000
+3948,b6d56eae-a271-48e5-71d3-08dede53f575,2355 N RIVERSIDE Drive,Melbourne,1495000
+3924,f04cec44-8c8e-4e1a-71b5-08dede53f575,2395 Brookside Way,Melbourne,1900000
+2214,80c3af7f-19d3-40e3-6b0a-08dede53f575,2407 Dunbar Ave,Melbourne,369000
+3902,e4989b7a-a04e-437a-7199-08dede53f575,2410 Sea Ave,Melbourne,610000
+3591,ae9a0eb1-24bb-4807-7064-08dede53f575,2415 S Fairway Dr,Melbourne,372000
+2246,05f45a14-ac99-410a-6b27-08dede53f575,2415 S Fairway Dr,Melbourne,372000
+3060,0e7153f1-7590-4f32-6e55-08dede53f575,2465 Green St,Melbourne,69000
+2167,c67f529d-8fe7-4668-6ac1-08dede53f575,2507 Manorwood Dr,Melbourne,345000
+3551,596b21a4-0018-41f4-703b-08dede53f575,2507 Manorwood Dr,Melbourne,345000
+2159,f8e19a1b-f00a-4b6a-6ad5-08dede53f575,2517 Lipscomb St,Melbourne,279000
+2256,8980f485-bd89-4457-6b2a-08dede53f575,2521 Pond St,Melbourne,225000
+3925,47aa175a-c880-497e-71b6-08dede53f575,255 Paradise Blvd APT 14,Melbourne,349000
+2121,2840f163-d0a3-408c-6aab-08dede53f575,2599 Senator Way,Melbourne,415000
+2107,7f28ffcc-070b-4f40-6aa5-08dede53f575,2715 Bruce D Buggs St,Melbourne,250000
+3547,15c01157-e7ff-4f38-702e-08dede53f575,2715 Bruce D Buggs St,Melbourne,250000
+6249,0f275282-8934-423d-7adb-08dede53f575,2770 Revolution St Unit 104,Melbourne,0
+6248,ea6ed803-8d94-4ff0-7ada-08dede53f575,2775 Reston St Unit 101,Melbourne,269900
+3934,87ff41e2-b965-4a28-71be-08dede53f575,284 Intrepid Way,Melbourne,365000
+2157,9f8f657d-6751-4ebf-6ad3-08dede53f575,2905 Emory St,Melbourne,280000
+2277,29471ac4-a1e1-45a2-6b49-08dede53f575,2912 Main St,Melbourne,397500
+2236,53284678-85e7-4a95-6b21-08dede53f575,2917 Stetson St,Melbourne,475000
+2191,20c0e122-0ea7-40b3-6aeb-08dede53f575,3042 Plummer Cir,Melbourne,245000
+3897,6ee16173-292c-436a-71a0-08dede53f575,3069 Rio Bonita St,Melbourne,842900
+3538,b468e27a-b07d-4db1-703c-08dede53f575,306 Hailwood Dr,Melbourne,369000
+2155,b83f07ae-ae76-4f74-6ac6-08dede53f575,306 Hailwood Dr,Melbourne,369000
+3892,3860616d-d8dc-4d6f-7198-08dede53f575,3104 Cobia Ln,Melbourne,469000
+2264,47c338f3-58d8-415b-6b42-08dede53f575,3117 Vassar St,Melbourne,299900
+2152,f9abd93c-165d-4fd4-6acd-08dede53f575,312 Waddell St,Melbourne,85000
+3927,65843cb9-7c48-45a4-71b8-08dede53f575,3135 Cobia Ln,Melbourne,435000
+2173,da227f18-9542-4500-6ae3-08dede53f575,317 Dartmouth Ave,Melbourne,315000
+3918,1c8a65e0-2a6f-4025-71af-08dede53f575,3244 Lusitania Ln,Melbourne,379000
+3923,2ec0d798-a61e-4373-71b4-08dede53f575,3271 Titanic Cir #39,Melbourne,514900
+3909,da9e2125-eb7f-408d-71a6-08dede53f575,3358 Cutty Sark Way,Melbourne,360000
+3056,197c2d37-33a9-42aa-6e51-08dede53f575,3480 Milwaukee Ave,Melbourne,535000
+2235,f0c7581e-c8be-46b8-6b20-08dede53f575,3547 Mount Carmel Ln,Melbourne,285000
+3912,d5de76ce-657e-448d-71a9-08dede53f575,3579 Poseidon Way,Melbourne,920000
+2211,41f8f69b-243d-46df-6b04-08dede53f575,366 Waddell St,Melbourne,14500
+2124,00706a39-b94a-4cba-6aae-08dede53f575,3737 Astral Rd,Melbourne,369990
+3569,1fda09a7-0f92-4f22-7054-08dede53f575,3753 Astral Rd,Melbourne,414990
+2204,fadf0ab4-ddb4-4c47-6b00-08dede53f575,3753 Astral Rd,Melbourne,414990
+2270,a8ad18a2-296a-4918-6b3d-08dede53f575,3767 Mount Carmel Ln,Melbourne,359900
+2189,f60b5ee3-ea3c-4e2e-6af7-08dede53f575,3768 Astral Rd,Melbourne,434990
+3564,7acc733b-b082-49cc-704f-08dede53f575,3768 Astral Rd,Melbourne,434990
+2158,9f65ab8b-dd3a-41a8-6ad4-08dede53f575,3905 Veranda Ct #2,Melbourne,280000
+2119,49524e83-d954-4e36-6aa9-08dede53f575,3973 Bayberry Dr,Melbourne,249900
+5754,33fc51e0-1351-4ff8-78db-08dede53f575,"3 BEDROOM Plan, Hidden Woods",Melbourne,359900
+2183,f50b28a1-fe5b-47c3-6ae6-08dede53f575,"3 BEDROOM Plan, Hidden Woods",Melbourne,359900
+2276,b4ac56c9-33e4-4c2a-6b48-08dede53f575,4006 Dewberry Cir,Melbourne,294500
+6279,22972691-7a58-43e0-7ae8-08dede53f575,401 Poinciana Dr,Melbourne,269000
+2237,96b47759-d6a0-45c4-6b22-08dede53f575,4037 Edward St,Melbourne,220000
+2181,78e82afd-e929-4490-6aed-08dede53f575,4040 Knight Ave,Melbourne,297500
+2210,c6d4fff0-44ca-4915-6b03-08dede53f575,4050 Alamanda Key Dr,Melbourne,285000
+2281,b0c9c872-b0a7-416c-6b41-08dede53f575,4065 Negal Cir,Melbourne,575000
+2178,026bc921-5dc3-4f93-6ae0-08dede53f575,4077 Mount Carmel Ln,Melbourne,359900
+2161,8af31cd6-378a-4611-6ad2-08dede53f575,4137 Bayberry Dr,Melbourne,249000
+2144,41240add-64ce-4908-6ace-08dede53f575,4152 Collinwood Dr,Melbourne,300000
+2208,dbdd7e61-b77d-49b5-6afe-08dede53f575,415 Lorelei Ave,Melbourne,469000
+2230,37bbb358-5b51-4c6e-6b19-08dede53f575,4160 Negal Circle,Melbourne,725000
+3067,d7af4400-c567-402d-6e5f-08dede53f575,416 La Veta Dr,Melbourne,459000
+2280,a8190381-b954-4165-6b40-08dede53f575,4195 Negal Cir,Melbourne,562400
+2198,f70280fe-e6f3-4367-6af0-08dede53f575,419 Marquis St,Melbourne,269990
+2184,64fa1a79-ee80-48ca-6ae7-08dede53f575,4217 Mount Carmel Ln,Melbourne,389000
+2140,887e1066-070e-4650-6ab4-08dede53f575,421 Butler Street,Melbourne,249000
+2254,0ad5bb98-ee74-4fc3-6b28-08dede53f575,4220 Alamanda Key Dr,Melbourne,315000
+2227,cdef6b63-4137-43ce-6b16-08dede53f575,4225 Negal Cir,Melbourne,749900
+2131,2435ecc6-ac37-4abe-6abc-08dede53f575,4257 Mount Carmel Ln,Melbourne,339000
+3066,ce7da80b-7348-4503-6e5b-08dede53f575,425 La Veta Dr,Melbourne,375000
+2153,95f1a0ed-c170-4de8-6ac4-08dede53f575,4260 Silver Lake Dr,Melbourne,335000
+6278,6e302db4-a02f-467b-7ae7-08dede53f575,427 Lynn Ave,Melbourne,420000
+2305,9862a751-4077-4c4e-6b67-08dede53f575,429 & 427 S Babcock St,Melbourne,799000
+2271,7cc298a9-d25b-4eca-6b3e-08dede53f575,4335 Negal Cir,Melbourne,597400
+6306,d846d02d-0387-4b5e-7b03-08dede53f575,441 N Harbor City Blvd APT A11,Melbourne,149000
+6280,18ed9999-5dd1-409a-7ae9-08dede53f575,441 N Harbor City Blvd APT C11,Melbourne,285000
+6303,709a592f-0364-44b8-7afd-08dede53f575,441 N Harbor City Blvd APT C7,Melbourne,279900
+5822,0b6d7db2-b98e-4fe8-792a-08dede53f575,4439 Vermillion Dunes Ln,Melbourne,355000
+5733,ac623637-4cf2-4588-78cf-08dede53f575,4550 Radiant Way APT 102,Melbourne,290000
+2171,59a387c9-ba95-4d33-6ad7-08dede53f575,4550 Radiant Way APT 102,Melbourne,290000
+5786,fabfbce6-f8c6-4b4c-7901-08dede53f575,4555 Radiant Way APT 103,Melbourne,310000
+2213,20e331fa-7e5a-4b04-6b09-08dede53f575,4555 Radiant Way APT 103,Melbourne,310000
+2260,b3743686-c162-42bd-6b37-08dede53f575,4570 Radiant Way APT 104,Melbourne,255000
+5837,1c70d648-4237-4eac-7925-08dede53f575,4570 Radiant Way APT 104,Melbourne,255000
+2147,b870638d-079d-4c56-6ac8-08dede53f575,4570 Radiant Way APT 106,Melbourne,290000
+5717,2e4142b9-cc04-473a-78b6-08dede53f575,4570 Radiant Way APT 106,Melbourne,290000
+5688,a2b746dc-15c8-442e-7899-08dede53f575,4670 Beck Lake Trl APT 1-119,Melbourne,170000
+2139,79595010-06cb-44ef-6ab3-08dede53f575,4670 Beck Lake Trl APT 1-119,Melbourne,170000
+2166,39067012-f1d3-4ffa-6add-08dede53f575,4680 Lake Waterford Way APT 3-108,Melbourne,190000
+5750,5350b037-0cc0-448a-78d7-08dede53f575,4680 Lake Waterford Way APT 3-108,Melbourne,190000
+2262,c2ef1dc9-92d2-44ab-6b31-08dede53f575,4795 Pagosa Springs Cir,Melbourne,429000
+2261,f68c2177-5dbb-4979-6b30-08dede53f575,4822 Lake Waterford Way W #8224,Melbourne,249900
+5814,fce44499-2ef2-4c61-791e-08dede53f575,4822 Lake Waterford Way W #8224,Melbourne,249900
+6250,7c680c8e-30b9-4283-7adc-08dede53f575,485 Poinciana Dr,Melbourne,289000
+5751,32768447-6cf5-4552-78d8-08dede53f575,"4 BEDROOM Plan, Hidden Woods",Melbourne,379900
+2176,f8cd2974-1a62-43d6-6ade-08dede53f575,"4 BEDROOM Plan, Hidden Woods",Melbourne,379900
+2239,4031c995-0ebe-4eb6-6b24-08dede53f575,506 Selfridge Dr,Melbourne,54900
+3588,028ad9fb-ea9e-401f-7061-08dede53f575,506 Selfridge Dr,Melbourne,54900
+2154,995b1afe-d833-40ae-6ac5-08dede53f575,543 Heming Way,Melbourne,375000
+2226,e19af83a-8bab-4e00-6b12-08dede53f575,544 Dover Rd,Melbourne,41000
+3574,d058b09d-57c1-4fce-7059-08dede53f575,544 Dover Rd,Melbourne,41000
+3946,adb3665c-c0a5-4dd5-71cd-08dede53f575,568 Rio Casa Dr N,Melbourne,810000
+3970,3ce673d9-9d74-493c-71e2-08dede53f575,57 Calcutta Ct,Melbourne,365000
+6297,1f7211fb-0947-4cc7-7aed-08dede53f575,583 Young St,Melbourne,1325000
+6292,fcaad825-f42a-45e6-7af4-08dede53f575,589 Hillside Ct,Melbourne,600000
+3976,e479a45e-6a7e-4802-71ee-08dede53f575,594 Hummingbird Dr,Melbourne,799000
+2245,d354fd96-2d92-474d-6b26-08dede53f575,605 Hackney Dr,Melbourne,37000
+3590,d4f5a547-da79-471e-7063-08dede53f575,605 Hackney Dr,Melbourne,37000
+2252,7ab105f2-75b2-4d6d-6b34-08dede53f575,605 Plumgrove Rd #C108,Melbourne,99900
+2263,6d2a5aa0-6030-44be-6b32-08dede53f575,612 Old Orchard Rd #C074,Melbourne,139900
+2241,9a26303a-7dca-43cd-6b14-08dede53f575,612 Paul Bryce Dr #C003,Melbourne,25000
+2265,f38f28bf-54e6-48ca-6b43-08dede53f575,621 Playhouse Rd #C175,Melbourne,189900
+2302,1ce128d1-9852-4529-6b61-08dede53f575,628 Bird Cage Walk,Melbourne,28900
+6272,b94ffd15-761e-43a1-7ae1-08dede53f575,632 Teak Dr,Melbourne,325000
+2136,291a7915-f157-4366-6aa8-08dede53f575,633 Wisteria Dr,Melbourne,245000
+2206,43c337b3-6839-4e35-6b02-08dede53f575,635 Sleepy Hollow Rd #A027,Melbourne,49999
+2156,644d6fa0-68e9-4c41-6ad0-08dede53f575,637 E Lincoln Ave,Melbourne,419999
+3541,8291fa44-b6e2-4aa1-703f-08dede53f575,637 E Lincoln Ave,Melbourne,419999
+2188,bfa6afe3-8dac-4f98-6af6-08dede53f575,641 Old Orchard Rd #C061,Melbourne,19500
+2247,598fb7c3-34b2-4615-6b2c-08dede53f575,654 Fleet St #C226,Melbourne,13000
+6293,eab87286-d609-4189-7af5-08dede53f575,658 Young St,Melbourne,625000
+2253,18c21ea2-797a-4d9b-6b38-08dede53f575,680 Plumgrove Rd #C237,Melbourne,139900
+2258,ca345d4b-f533-42d5-6b35-08dede53f575,681 Plumgrove Rd #C091,Melbourne,89900
+6302,1a4252b1-136c-4727-7b01-08dede53f575,683 Old Oak St,Melbourne,450000
+3568,c15378b4-3003-4d90-7053-08dede53f575,692 Supernova Dr,Melbourne,454990
+2209,a7257d87-df6a-4ffd-6aff-08dede53f575,692 Supernova Dr,Melbourne,454990
+2193,47155118-aef8-4597-6af8-08dede53f575,693 Supernova Dr,Melbourne,449990
+3565,3a5925c4-e7e6-4110-7050-08dede53f575,693 Supernova Dr,Melbourne,449990
+3570,3afd6793-822d-42de-7055-08dede53f575,701 E Fee Ave #703,Melbourne,549500
+2205,8df442dc-ab1e-423d-6b01-08dede53f575,701 E Fee Ave #703,Melbourne,549500
+6277,cf040e23-5586-4d16-7ae6-08dede53f575,702 Shady Ln,Melbourne,599000
+2197,5d964903-0fd6-450f-6aef-08dede53f575,741 Indian Oaks Dr,Melbourne,325000
+2224,5d3b537e-9374-47d8-6b10-08dede53f575,742 Floyd Bennett Dr #A155,Melbourne,39900
+6270,f274d68b-85c1-43d2-7adf-08dede53f575,750 Whitmire Dr,Melbourne,750000
+2212,373cb158-fe68-4ac2-6b05-08dede53f575,754 Hickam Dr #A224,Melbourne,32000
+2268,046480df-88f4-4803-6b3b-08dede53f575,755 Floyd Bennett Dr #A236,Melbourne,94500
+2257,080c969a-d648-4940-6b2b-08dede53f575,809 Espanola Way,Melbourne,345000
+2150,b69df204-7188-4d90-6acb-08dede53f575,810 Benton Dr,Melbourne,379500
+3579,617d1096-b112-46aa-705c-08dede53f575,814 E New Haven Ave,Melbourne,1300000
+2231,0494ab0c-ea12-4ccd-6b1a-08dede53f575,814 E New Haven Ave,Melbourne,1300000
+5831,c4d73118-2fae-4f26-792c-08dede53f575,870 Luminary Cir APT 105,Melbourne,299990
+2272,3cdd3bb5-30d8-4fe0-6b44-08dede53f575,870 Luminary Cir APT 105,Melbourne,299990
+6310,9e30148e-f829-482f-7b07-08dede53f575,905 N Harbor City Blvd APT 106,Melbourne,449899
+6305,46c3c843-96ff-42f4-7b02-08dede53f575,905 N Harbor City Blvd APT 204,Melbourne,539000
+6311,53a9554b-dee7-4165-7b08-08dede53f575,905 N Harbor City Blvd APT 303,Melbourne,429900
+2160,8090e651-d040-4224-6ad1-08dede53f575,907 E Melbourne Ave,Melbourne,1595000
+2318,e4fc7a7e-af91-407a-6b4b-08dede53f575,907 Espanola Way,Melbourne,315000
+6308,bfba66b1-6e72-495f-7b05-08dede53f575,911 N Harbor City Blvd #64-C,Melbourne,52000
+6313,2a984163-f968-4660-7b0a-08dede53f575,913 Paddleboard Ct,Melbourne,543000
+2240,e1a0cea2-932b-4e57-6b13-08dede53f575,975 S Fork Cir,Melbourne,310000
+6274,03f14315-763f-4fcd-7ae3-08dede53f575,986 Sarno Rd,Melbourne,359000
+5690,c49690cb-fee9-49eb-789b-08dede53f575,990 Luminary Cir APT 105,Melbourne,274900
+2142,5f2483b8-e2bf-435e-6ab6-08dede53f575,990 Luminary Cir APT 105,Melbourne,274900
+6273,70764935-2953-4e37-7ae2-08dede53f575,992 Mathers St,Melbourne,260000
+2163,61c5ba90-9433-4e46-6ada-08dede53f575,"Belmont Plan, Meridian at Mayfair : The Arbor Collection",Melbourne,359990
+2134,92f42263-2c7b-4166-6abf-08dede53f575,"Celeste Plan, Meridian at Mayfair : The Oaks Collection",Melbourne,406990
+2126,63e8d3d8-7ab6-48a1-6ab0-08dede53f575,"Columbus Plan, Meridian at Mayfair : The Arbor Collection",Melbourne,404990
+2151,ae7a00ef-f776-4cee-6acc-08dede53f575,"Dawn II Plan, Meridian at Mayfair : The Oaks Collection",Melbourne,429990
+2200,edced061-9b37-4bcf-6af2-08dede53f575,"Dawn Plan, Meridian at Mayfair : The Oaks Collection",Melbourne,429990
+2196,84bb07fd-8533-408c-6afb-08dede53f575,"Eclipse Plan, Meridian at Mayfair : The Oaks Collection",Melbourne,465990
+2182,417515a4-91be-4a9f-6aee-08dede53f575,"Edison Plan, Meridian at Mayfair : The Arbor Collection",Melbourne,414990
+2148,97696dc5-53a0-4156-6ac9-08dede53f575,"Georgia Plan, Meridian at Mayfair : The Arbor Collection",Melbourne,434990
+2174,b57d3c8e-de5c-46fc-6ae4-08dede53f575,"Homes Available Soon, Meridian at Mayfair : The Townhomes Collection",Melbourne,0
+2203,36b264b8-3c7e-46b6-6afc-08dede53f575,"Honor Plan, Meridian at Mayfair : The Oaks Collection",Melbourne,485990
+2109,200f398d-55a8-4de0-6aa7-08dede53f575,"Jefferson Plan, Meridian at Mayfair : The Arbor Collection",Melbourne,444990
+2195,29a65243-8c10-48a9-6afa-08dede53f575,None Iss,Melbourne,350000
+3566,ce3d9788-f00b-4a7c-7051-08dede53f575,None Iss,Melbourne,350000
+2186,a3a52d4f-21bd-4fbf-6ae9-08dede53f575,"Nova Plan, Meridian at Mayfair : The Oaks Collection",Melbourne,515990
+3554,ec5890ad-d0f9-4f7f-7046-08dede53f575,Tbd Bryan St,Melbourne,144000
+2179,12c30128-3aaa-43d3-6ae1-08dede53f575,Tbd Bryan St,Melbourne,144000
+3058,1e8fbee4-1c53-49c6-6e53-08dede53f575,544 S Wildwood Ln,Melbourne Village,435000
+3076,ab34b207-f434-479a-6e65-08dede53f575,620 W Pine Rd,Melbourne Village,599900
+3881,b8f9cee4-f9e6-4e5e-7189-08dede53f575,104 Parrotfish Ln #104,Merritt Island,459000
+3880,c8ca8335-15b4-42ce-7188-08dede53f575,104 Parrotfish Ln S #104,Merritt Island,459000
+3845,d909c7dd-1333-4ca5-7167-08dede53f575,1060 Montego Bay Dr N,Merritt Island,689000
+3882,c68b67c4-236d-45a9-718a-08dede53f575,1165 King St,Merritt Island,260000
+3831,abbee97f-e611-48f2-7155-08dede53f575,1315 Paul St,Merritt Island,350000
+4086,b40f4ee8-b013-467b-7262-08dede53f575,134 Starboard Ln APT 402,Merritt Island,384999
+3167,e92781df-c8a6-4072-6ebe-08dede53f575,134 Starboard Ln APT 402,Merritt Island,384999
+3859,265f9a29-acc9-41cf-7174-08dede53f575,1350 Scorpious Ct,Merritt Island,565000
+3853,baafcb8c-2cd1-4502-7161-08dede53f575,1370 Mercury St,Merritt Island,735000
+3901,d800c0c1-9cca-46e8-7193-08dede53f575,1440 Sykes Creek Dr,Merritt Island,995000
+3836,1b6ec191-050e-4340-715a-08dede53f575,1460 Saturn St,Merritt Island,450000
+3857,bd9cac17-265b-4fcd-716f-08dede53f575,1550 Mars St,Merritt Island,740000
+3824,691c979f-5e33-49b2-715b-08dede53f575,1580 Mercury St,Merritt Island,610000
+3889,3049fdb8-c5f8-4a8f-7195-08dede53f575,1585 Sykes Creek Dr,Merritt Island,975000
+3875,9ec23f6f-de9c-45da-7184-08dede53f575,173 Las Palmas,Merritt Island,555000
+3844,a16dd6ba-f684-419d-7166-08dede53f575,180 Florida Blvd,Merritt Island,439900
+3846,a6495a0b-648c-4788-7168-08dede53f575,182 Sykes Loop Dr,Merritt Island,605000
+3828,15c3c0be-6f4c-4901-7152-08dede53f575,1941 Sykes Creek Dr,Merritt Island,1150000
+3856,6e886917-e6ea-4b78-716e-08dede53f575,195 Sea Breeze Cir,Merritt Island,539000
+3879,6c2d3943-955a-4393-7187-08dede53f575,2025 Sykes Creek Dr,Merritt Island,774999
+3887,6bbacfbd-87b4-46cb-7190-08dede53f575,202 Ivory Coral Ln #201,Merritt Island,798000
+3842,a7a5f79b-8007-4a26-716a-08dede53f575,202 Ivory Coral Ln #302,Merritt Island,494900
+3885,5486c3ac-9e91-49a5-718e-08dede53f575,202 Ivory Coral Ln #405,Merritt Island,499000
+3886,60f470fc-06dc-41bd-718f-08dede53f575,202 Ivory Coral Ln #501,Merritt Island,998000
+3850,c5abbf06-f36f-4d09-7173-08dede53f575,202 Ivory Coral Ln Unit 506,Merritt Island,520000
+3883,fa32c629-89e5-4717-718b-08dede53f575,205 Hickory Ave,Merritt Island,280000
+3861,f44bde12-8c71-4ce4-7176-08dede53f575,2087 Hidden Grove Ln #105,Merritt Island,210000
+3835,21da8552-6e53-4124-7159-08dede53f575,2097 Hidden Grove Ln #102,Merritt Island,210000
+3888,41ed97c3-c895-491f-7194-08dede53f575,2097 Hidden Grove Ln #209,Merritt Island,184900
+3899,197c91fe-73b2-4763-7191-08dede53f575,2100 Leeward Ln,Merritt Island,1100000
+3832,91bd50c1-5964-4c59-7156-08dede53f575,212 Sykes Point Ln,Merritt Island,1769000
+3852,59b81218-e114-4d0e-7160-08dede53f575,2135 N Courtenay Pkwy #211,Merritt Island,169500
+3884,b1ad7a3e-be7b-48bc-718d-08dede53f575,2135 N Courtenay Pkwy #217,Merritt Island,215000
+3900,5ac77582-ab43-4141-7192-08dede53f575,2135 N Courtenay Pkwy #236,Merritt Island,205000
+3829,e3e66001-bc63-4a8f-7153-08dede53f575,2135 N Courtenay Pkwy APT D132,Merritt Island,163500
+3839,77b04305-9b4a-495e-7163-08dede53f575,2165 Topaz Ct,Merritt Island,324900
+3876,88b98ff9-1c7d-4030-718c-08dede53f575,2180 N Courtenay Pkwy,Merritt Island,225000
+3833,d1e5d695-259b-4384-7157-08dede53f575,2195 N Tropical Trl,Merritt Island,699000
+3843,7bd02c47-298f-40f3-716b-08dede53f575,219 Sykes Point Ln,Merritt Island,1850000
+3868,79a1e194-6af8-4e6b-717d-08dede53f575,230 Willow Ave,Merritt Island,274999
+3863,84b4b7ff-e67c-44a5-7178-08dede53f575,240 Spring Dr APT 2,Merritt Island,179000
+3864,3d06fd76-aac8-432c-7179-08dede53f575,2415 Raintree Lake Cir,Merritt Island,380000
+3869,bf038dfc-dc51-40aa-717e-08dede53f575,2455 N Tropical Trl #17,Merritt Island,18000
+3826,b863a6ec-f0d3-429d-715d-08dede53f575,2455 N Tropical Trl #6,Merritt Island,50000
+3837,6409fa37-e324-4bbc-715e-08dede53f575,256 Via De La Reina,Merritt Island,849000
+3834,0ebe606c-78f5-4e7b-7158-08dede53f575,2709 Cutlass Point Ln APT 103,Merritt Island,385000
+3878,9cf47334-74fa-4608-7186-08dede53f575,2730 Cutlass Point Ln APT 101,Merritt Island,430000
+3877,013df454-6357-461f-7185-08dede53f575,285 Hickory Ave,Merritt Island,347500
+3851,c513842a-a292-4dfc-715f-08dede53f575,315 Ursa Ave,Merritt Island,599000
+3841,9a2e105e-672e-4b24-7165-08dede53f575,360 Diana Blvd,Merritt Island,820000
+3847,6536b64b-d96d-4aca-7169-08dede53f575,380 Diana Blvd,Merritt Island,760000
+3838,721cfcab-74b1-4b4c-7162-08dede53f575,390 Ursa Ave,Merritt Island,724000
+3865,17102d98-8d78-4f1c-717a-08dede53f575,390 WAINAI Drive,Merritt Island,1349000
+3870,78e3f3ab-11da-4d6b-717f-08dede53f575,466 Houston Ln,Merritt Island,299000
+3874,d4c4e6e1-690a-46d4-7183-08dede53f575,468 Houston Ln,Merritt Island,279000
+3873,ec36e382-ecd3-47eb-7182-08dede53f575,470 Houston Ln,Merritt Island,279000
+3871,20aabc9d-59ad-4434-7180-08dede53f575,472 Houston Ln,Merritt Island,279000
+3848,b31488a3-9b4d-4283-7171-08dede53f575,474 Houston Ln,Merritt Island,279000
+3872,3db73a93-3077-4224-7181-08dede53f575,476 Houston Ln,Merritt Island,299000
+3855,3ba87f28-3a2d-4a88-716d-08dede53f575,478 Roosevelt Ave,Merritt Island,64900
+3860,27bb5f11-8765-408c-7175-08dede53f575,478 Roosevelt Ave Lot 70,Merritt Island,64900
+3858,a5737c60-d8ea-4bc1-7170-08dede53f575,486 Houston Ln,Merritt Island,299000
+3854,f1717d4a-8652-4e75-716c-08dede53f575,48 Hepburn Pl,Merritt Island,260000
+4132,bfbb330d-0f19-4a25-7290-08dede53f575,535 Robin Hood Dr,Merritt Island,947500
+3192,88d458b2-87a1-49e4-6ed9-08dede53f575,535 Robin Hood Dr,Merritt Island,947500
+3840,7d260f89-47cf-459f-7164-08dede53f575,60 Florida Blvd,Merritt Island,375000
+3866,6560ffe8-662c-4cf2-717b-08dede53f575,665 Venetian Way,Merritt Island,399000
+3830,c2813d7a-9bb3-429b-7154-08dede53f575,85 Catalina Isle Dr,Merritt Island,399000
+3849,1a83dfa1-2bcd-4a99-7172-08dede53f575,965 Date Ave,Merritt Island,245000
+3867,b3058806-d580-4749-717c-08dede53f575,975 Oak St,Merritt Island,1449500
+3825,3960c4e9-4f0e-4b86-715c-08dede53f575,"Pearson End Unit Plan, Banyan Point",Merritt Island,299990
+3862,cd2225f7-0194-4142-7177-08dede53f575,"Pearson Interior Unit Plan, Banyan Point",Merritt Island,279990
+5487,02b73606-dab8-417e-77d4-08dede53f575,0 Seminole St,Mims,225000
+5482,cb14e4be-4162-457f-77cf-08dede53f575,0 Travis St,Mims,99990
+5500,00041692-6f5d-418c-77d6-08dede53f575,0 Unknown Ave,Mims,80000
+5501,00aa2e29-1292-41f4-77d7-08dede53f575,1 Magoon Ave,Mims,125000
+5499,8ebcd14e-d44b-493a-77d5-08dede53f575,20G-34-37-10 98 #5,Mims,30000
+5483,4be7461d-557c-4ef9-77d0-08dede53f575,5361 Coleda Ln,Mims,625000
+5481,5c08f0e9-ad21-4512-77ce-08dede53f575,5450 Allen St,Mims,630000
+5484,6d6fcae6-d436-4deb-77d1-08dede53f575,5630 Us Highway 1,Mims,275000
+5486,7d46e004-52bf-4d8f-77d3-08dede53f575,5651 Travis St,Mims,415000
+5485,c6d62334-586e-4c31-77d2-08dede53f575,6215 Dixie Way,Mims,169000
+5885,73b5ccab-d486-4cea-7952-08dede53f575,1000 Abada Ct NE APT 101,Palm Bay,184900
+5988,96acb38e-210b-478b-79c2-08dede53f575,1000 Abada Ct NE APT 107,Palm Bay,149900
+6004,28c63dd5-f245-4b9a-79ce-08dede53f575,1000 Abada Ct NE APT 110,Palm Bay,190000
+6029,c6998bd8-b01f-4223-79f1-08dede53f575,1001 Abada Ct NE APT 107,Palm Bay,210500
+5865,bf06ae9c-8ea7-4da3-794d-08dede53f575,1011 Abada Ct NE APT 104,Palm Bay,189900
+5974,1c22573f-bd5a-42a4-79a6-08dede53f575,1011 NE Abada Ct Court NE #110,Palm Bay,185000
+5929,cd6bd05d-3c1f-4ae2-7990-08dede53f575,1012 Banff Dr NE,Palm Bay,447500
+5747,d4647d10-508a-4828-78d1-08dede53f575,1012 Banff Dr NE,Palm Bay,447500
+5987,77f3f32d-670c-42bc-79c1-08dede53f575,1020 Abada Ct NE APT 101,Palm Bay,149900
+5953,3175e3a4-12b3-4a60-799f-08dede53f575,1021 Abada Ct NE APT 107,Palm Bay,160000
+5855,78a6c408-b560-4ca6-7943-08dede53f575,1021 Abada Ct NE APT 108,Palm Bay,134900
+5943,88d5b0a0-69e9-445e-79a2-08dede53f575,1025 Morgan Cir NE,Palm Bay,465000
+6045,3c616381-a8da-41f8-7a04-08dede53f575,1030 Abada Ct NE APT 108,Palm Bay,195000
+5899,66139ca9-d3e1-4c7f-7976-08dede53f575,1039 Hooper Ave NE,Palm Bay,79900
+5708,319f9e91-85dd-4cf2-78b1-08dede53f575,1039 Hooper Ave NE,Palm Bay,79900
+5729,0cc30c07-488b-4d90-78cb-08dede53f575,1045 Connolly Ln NE,Palm Bay,511500
+5928,a93fab40-733b-4d2d-798c-08dede53f575,1045 Connolly Ln NE,Palm Bay,511500
+6386,50a10c72-97b9-4720-7b57-08dede53f575,1056 Wood Ct NE,Palm Bay,129900
+3808,fb0aeeae-e842-4fd6-713f-08dede53f575,1056 Wood Ct NE,Palm Bay,129900
+5939,d04f78cc-049f-4a9f-798d-08dede53f575,1075 Connolly Ln,Palm Bay,478500
+5730,e4914c51-08ca-488b-78cc-08dede53f575,1075 Connolly Ln,Palm Bay,478500
+5909,2d177e74-7812-4ce5-797f-08dede53f575,1075 Connolly Ln NE,Palm Bay,478500
+5720,5413c806-60f3-4315-78bc-08dede53f575,1075 Connolly Ln NE,Palm Bay,478500
+5923,ad7482d5-3bc0-4138-7984-08dede53f575,1082 Eleuthera Dr NE,Palm Bay,290000
+5743,6b0d9372-afe9-4755-78c3-08dede53f575,1082 Eleuthera Dr NE,Palm Bay,290000
+6030,b7b236f7-58b5-4169-79f2-08dede53f575,1085 Connolly Ln NE,Palm Bay,489500
+5804,07217462-f397-4dd7-7918-08dede53f575,1085 Connolly Ln NE,Palm Bay,489500
+3498,7c35f2ad-fee3-48a2-6ff1-08dede53f575,1091 Cordova St SE,Palm Bay,89900
+5898,f0f6ea07-247a-4c63-7975-08dede53f575,1094 Connolly Ln NE,Palm Bay,500000
+5706,4c49da58-1686-4602-78af-08dede53f575,1094 Connolly Ln NE,Palm Bay,500000
+6463,6481367a-c6c9-4940-7b91-08dede53f575,1111 Scobey Ct NE,Palm Bay,249500
+5927,0108302f-2ab9-48ed-798b-08dede53f575,1112 Banff Dr NE,Palm Bay,450500
+5728,9aa09087-56a6-4365-78ca-08dede53f575,1112 Banff Dr NE,Palm Bay,450500
+5675,89c08c36-96eb-4500-788d-08dede53f575,1121 Morgan Cir NE,Palm Bay,419900
+5877,8aaceb47-e248-4cdb-794b-08dede53f575,1121 Morgan Cir NE,Palm Bay,419900
+5700,401bc550-d5c9-4575-78a8-08dede53f575,1131 Fairway Ct NE,Palm Bay,398000
+5895,384fec8b-c3e9-44b8-796c-08dede53f575,1131 Fairway Ct NE,Palm Bay,398000
+6028,25cff82f-aea4-4143-79f0-08dede53f575,1137 Morgan Cir NE,Palm Bay,365000
+5807,9b994c64-b930-4e7b-7917-08dede53f575,1137 Morgan Cir NE,Palm Bay,365000
+5874,389c466d-7bb5-4b38-7960-08dede53f575,1142 Banff Dr NE,Palm Bay,421000
+5694,a77587de-9e13-4fc3-78a1-08dede53f575,1142 Banff Dr NE,Palm Bay,421000
+5686,f191b802-e33d-490e-7897-08dede53f575,1143 Banff Dr NE,Palm Bay,550990
+5888,79738341-2512-4a78-7955-08dede53f575,1143 Banff Dr NE,Palm Bay,550990
+5916,203b3a72-518a-4ad9-7972-08dede53f575,1177 Eleuthera Dr NE,Palm Bay,303900
+5712,237e85bd-64b4-4864-78ad-08dede53f575,1177 Eleuthera Dr NE,Palm Bay,303900
+5830,d08d62fa-48d3-4e58-7921-08dede53f575,1180 Goldenrod Cir NE,Palm Bay,254000
+6039,eda9bff6-9e87-4c8b-79fc-08dede53f575,1180 Goldenrod Cir NE,Palm Bay,254000
+5765,583acf3d-e19a-4346-78ee-08dede53f575,1190 Riviera Dr NE,Palm Bay,380000
+5960,eff31767-73cb-4148-79b0-08dede53f575,1190 Riviera Dr NE,Palm Bay,380000
+5970,b056ac88-0c05-4500-79ad-08dede53f575,1196 Goldenrod Cir NE,Palm Bay,247900
+5779,293b79ca-b2a7-49fa-78ec-08dede53f575,1196 Goldenrod Cir NE,Palm Bay,247900
+5689,9cc92641-00eb-4612-789a-08dede53f575,1204 Connolly Ln NE,Palm Bay,553990
+5869,52a6d26e-beed-47da-7957-08dede53f575,1204 Connolly Ln NE,Palm Bay,553990
+5749,ce022c41-f335-4cd9-78d3-08dede53f575,1217 Ethel Cir NE,Palm Bay,235000
+5946,73b8b6e6-ea9d-4a24-7993-08dede53f575,1217 Ethel Cir NE,Palm Bay,235000
+5896,e5b0091a-5ac1-4198-796d-08dede53f575,1248 Riviera Dr NE,Palm Bay,339000
+5701,40bff472-8e54-497e-78a9-08dede53f575,1248 Riviera Dr NE,Palm Bay,339000
+5941,38c390c5-5683-4756-798f-08dede53f575,1274 Cimarron Cir NE,Palm Bay,544900
+5734,5fb51f2d-751f-4659-78d0-08dede53f575,1274 Cimarron Cir NE,Palm Bay,544900
+3659,0676be58-acb1-4bd8-70aa-08dede53f575,128 Mystic Blvd NE,Palm Bay,114900
+6034,3a2dbfcb-add2-4cf7-79f6-08dede53f575,1300 Arlington Ln NE APT 123,Palm Bay,155000
+5817,0ce37df3-e885-4fd8-791b-08dede53f575,1300 Arlington Ln NE APT 123,Palm Bay,155000
+5791,08babae0-3c61-424b-78ff-08dede53f575,1300 Arlington Ln NE APT 126,Palm Bay,92900
+5986,ca953fd2-6758-4959-79cc-08dede53f575,1300 Arlington Ln NE APT 126,Palm Bay,92900
+5839,392b755b-4005-4c8e-7930-08dede53f575,1311 Island Green Dr NE #B2-12,Palm Bay,305000
+5910,198f5bd7-f499-43d0-7980-08dede53f575,1313 Cromey Rd NE,Palm Bay,244995
+5722,c26a142c-f083-4414-78be-08dede53f575,1313 Cromey Rd NE,Palm Bay,244995
+5789,803db00c-4e1c-4b57-78fd-08dede53f575,1335 Golf Vista Ct NE,Palm Bay,334900
+6007,b3642c25-f5c9-4ee1-79c7-08dede53f575,1335 Golf Vista Ct NE,Palm Bay,334900
+5780,f0feec87-d14d-449d-78ed-08dede53f575,1340 Mariposa Dr NE,Palm Bay,324900
+5971,f4944507-4d55-40c8-79ae-08dede53f575,1340 Mariposa Dr NE,Palm Bay,324900
+5902,211630ed-131c-4034-797c-08dede53f575,1390 Mariposa Dr NE,Palm Bay,265000
+5737,e51c6acc-6106-4b30-78b9-08dede53f575,1390 Mariposa Dr NE,Palm Bay,265000
+5825,cd8a20c0-035b-4394-7912-08dede53f575,1399 Mariposa Dr NE,Palm Bay,260000
+6022,5564c917-7d5a-4511-79ea-08dede53f575,1399 Mariposa Dr NE,Palm Bay,260000
+5771,693adb85-e058-4541-78f4-08dede53f575,1411 Sheafe Ave NE APT 101,Palm Bay,169900
+5968,a7e8f411-4007-4221-79b8-08dede53f575,1411 Sheafe Ave NE APT 101,Palm Bay,169900
+5997,36656a8e-05d5-4504-79d4-08dede53f575,1412 Club Gardens Dr NE,Palm Bay,260000
+5795,a3059980-2d17-4fb9-7904-08dede53f575,1412 Club Gardens Dr NE,Palm Bay,260000
+5883,096fdef8-92aa-493b-795c-08dede53f575,1416 Club Gardens Dr NE,Palm Bay,249900
+5705,54a6aebc-4108-4cbb-789f-08dede53f575,1416 Club Gardens Dr NE,Palm Bay,249900
+5954,c67d41e0-aa50-448d-79a0-08dede53f575,1423 Dunblane Way NE,Palm Bay,500990
+5758,d1a6c1b2-c6b7-4a77-78e2-08dede53f575,1423 Dunblane Way NE,Palm Bay,500990
+5695,71550ab1-b208-4489-78a2-08dede53f575,1442 Dunblane Way NE,Palm Bay,419000
+5890,5dceca98-a8f4-4934-7961-08dede53f575,1442 Dunblane Way NE,Palm Bay,419000
+5851,a3afe1a7-52fe-4553-793c-08dede53f575,1460 Par St NE,Palm Bay,720000
+3476,c0cb1c1c-2b36-46eb-6ffd-08dede53f575,146 Lehigh Ave SE,Palm Bay,415000
+6046,9323a259-67d7-4256-7a05-08dede53f575,1470 Sheafe Ave NE APT 106,Palm Bay,175000
+5681,d4bc98ab-b3e3-406f-7887-08dede53f575,1481 Mariposa Dr NE,Palm Bay,315000
+5857,98bb5ba4-530c-418e-7945-08dede53f575,1481 Mariposa Dr NE,Palm Bay,315000
+5763,cc0833e2-0535-4934-78d5-08dede53f575,1490 Mariposa Dr NE,Palm Bay,257000
+5948,ab8f8868-4ac9-4988-7995-08dede53f575,1490 Mariposa Dr NE,Palm Bay,257000
+5704,964d6327-0019-4942-789e-08dede53f575,1557 Waldorf Cir NE,Palm Bay,269900
+5882,62e054f3-ad2d-4ee4-795b-08dede53f575,1557 Waldorf Cir NE,Palm Bay,269900
+6057,676599ae-499c-4188-79ff-08dede53f575,1614 Riviera Dr NE,Palm Bay,230000
+5835,80bb6a8a-c72a-4c1f-7923-08dede53f575,1614 Riviera Dr NE,Palm Bay,230000
+5818,5bee4273-b3fb-42f3-7926-08dede53f575,1617 Sunny Brook Ln NE APT F103,Palm Bay,154000
+6060,942f65c6-7b8b-496e-7a02-08dede53f575,1617 Sunny Brook Ln NE APT F103,Palm Bay,154000
+5848,6f3eb380-9210-485d-7939-08dede53f575,1640 NE Sunny Brook Lane #a203,Palm Bay,175000
+5672,8261d3fd-345e-4d8b-7891-08dede53f575,1640 Sunny Brook Ln NE APT A209,Palm Bay,114000
+5868,e07778dd-3f69-4f34-7950-08dede53f575,1640 Sunny Brook Ln NE APT A209,Palm Bay,114000
+5798,cd01bfb0-4be3-4486-7907-08dede53f575,1648 Sunny Brook Ln NE APT M202,Palm Bay,145500
+6001,758c192d-bcb5-4963-79d9-08dede53f575,1648 Sunny Brook Ln NE APT M202,Palm Bay,145500
+6352,13875504-b2b6-4c6a-7b38-08dede53f575,1650 Alpha St NE,Palm Bay,275000
+3743,7ce73b9c-9c9e-4671-7100-08dede53f575,1650 Alpha St NE,Palm Bay,275000
+6350,292e8ba2-4657-4624-7b36-08dede53f575,1651 Alpha St NE,Palm Bay,347000
+3739,a8bed428-59a7-4bf0-70fc-08dede53f575,1651 Alpha St NE,Palm Bay,347000
+5957,f7f30e59-17ef-4366-79aa-08dede53f575,1656 Sunny Brook Lane Ne 104 201 203 #L101-103-204,Palm Bay,999000
+5784,39646cc7-2650-434c-78ea-08dede53f575,1656 Sunny Brook Lane Ne 104 201 203 #L101-103-204,Palm Bay,999000
+5796,f9d8bb90-4ad1-4239-7905-08dede53f575,1664 Sunny Brook Ln NE APT 103,Palm Bay,162000
+5995,ed158f27-637c-42e9-79d7-08dede53f575,1664 Sunny Brook Ln NE APT 103,Palm Bay,162000
+5964,7296a15e-5e1c-44a6-79b4-08dede53f575,1688 Sunny Brook Ln NE APT I201,Palm Bay,154900
+5768,d29b30b3-a70e-45f0-78f1-08dede53f575,1688 Sunny Brook Ln NE APT I201,Palm Bay,154900
+5849,aa18fafe-b020-420f-793a-08dede53f575,1698 NE Sunny Brook Lane #G206,Palm Bay,175000
+5673,00463b9c-afb4-4206-7892-08dede53f575,1717 Patty Cir NE,Palm Bay,188900
+5884,174935cd-7430-4b00-7951-08dede53f575,1717 Patty Cir NE,Palm Bay,188900
+5682,5597f6f0-6ea2-49da-7888-08dede53f575,1724 Mango St NE,Palm Bay,168900
+3813,d6b0db77-a546-40da-714a-08dede53f575,1751 Glenwood Street NE,Palm Bay,389000
+5940,257fc12c-b28b-425c-798e-08dede53f575,1772 Killian Dr NE,Palm Bay,519900
+5731,d6e6a4a8-04dd-4f01-78cd-08dede53f575,1772 Killian Dr NE,Palm Bay,519900
+3358,c6aa263b-20eb-479b-6f84-08dede53f575,1774 Emerson Dr SE,Palm Bay,329000
+5827,3dc872a1-298c-4573-7914-08dede53f575,1812 Kaileen Cir NE,Palm Bay,199000
+6025,0696944d-cdb5-424b-79ed-08dede53f575,1812 Kaileen Cir NE,Palm Bay,199000
+5767,96c2b2ac-6309-4d87-78f0-08dede53f575,1812 Vista Oaks Cir NE,Palm Bay,155000
+5963,4017c48a-d68e-4e30-79b3-08dede53f575,1812 Vista Oaks Cir NE,Palm Bay,155000
+5714,447ff63b-077d-437f-78b3-08dede53f575,1814 Kaileen Circle NE,Palm Bay,130000
+5900,287ace72-555d-4de6-7977-08dede53f575,1814 Kaileen Circle NE,Palm Bay,130000
+5783,f6be2d58-ad91-44b1-78e9-08dede53f575,1825 Market Circle Ne,Palm Bay,215000
+5976,e2b71fc1-dfe5-4b89-79a8-08dede53f575,1825 Market Circle Ne,Palm Bay,215000
+5793,a2dfed64-a5b5-4c39-78f6-08dede53f575,1845 Market Cir NE,Palm Bay,629000
+5982,62549458-b55c-483f-79ba-08dede53f575,1845 Market Cir NE,Palm Bay,629000
+5740,e0d2227c-e575-4e47-78c0-08dede53f575,1917 Manor Dr NE,Palm Bay,195000
+5911,f13ccff8-d5f8-43a3-7981-08dede53f575,1917 Manor Dr NE,Palm Bay,195000
+6019,5678a93e-d647-4770-79e7-08dede53f575,1922 Palm Bay Rd NE,Palm Bay,2850000
+5809,72f87863-6cfc-45bc-790e-08dede53f575,1922 Palm Bay Rd NE,Palm Bay,2850000
+5832,5ad12292-3d96-468a-792d-08dede53f575,1924 Sugarberry Ct NE,Palm Bay,249999
+6049,baf9c3bf-6ccb-4c23-7a08-08dede53f575,1924 Sugarberry Ct NE,Palm Bay,249999
+5840,75d27ed1-905c-417b-7931-08dede53f575,1941 Myrtle Ct NE,Palm Bay,45000
+5842,4e385f81-c566-4fcc-7933-08dede53f575,1941 Myrtle Ct NE Lot 4,Palm Bay,45000
+5838,ca49a978-83da-472f-792f-08dede53f575,1961 Bradway St NE,Palm Bay,349700
+5775,e676b1bb-f033-4160-78e3-08dede53f575,1966 Live Oak St NE,Palm Bay,159900
+5687,515dec8e-9cf6-4349-7898-08dede53f575,1981 Tallowood Ct NE,Palm Bay,210000
+5889,b48dc447-d60f-488b-7956-08dede53f575,1981 Tallowood Ct NE,Palm Bay,210000
+5879,e6e41e8e-801f-470c-7967-08dede53f575,2003 Killian Dr NE,Palm Bay,569900
+5697,cca4a394-93b4-4e55-78a5-08dede53f575,2003 Killian Dr NE,Palm Bay,569900
+5894,ff6e0844-4538-4413-7965-08dede53f575,2010 Algeria St NE,Palm Bay,374900
+6003,abbc9a92-bd81-4103-79cd-08dede53f575,2012 Dan Ct NE,Palm Bay,196000
+5785,17181d17-8bbd-4061-7900-08dede53f575,2012 Dan Ct NE,Palm Bay,196000
+5669,53b2c88e-d560-43d8-788c-08dede53f575,2012 Tree Ridge Ln NE,Palm Bay,649900
+5876,5af2a117-6657-49c6-794a-08dede53f575,2012 Tree Ridge Ln NE,Palm Bay,649900
+5811,7b9017df-ea77-4244-7910-08dede53f575,2016 Manor Dr NE,Palm Bay,150000
+6021,0d143181-61e8-4429-79e9-08dede53f575,2016 Manor Dr NE,Palm Bay,150000
+5984,c116ae4b-17fb-4bde-79ca-08dede53f575,2018 Manor Dr NE,Palm Bay,204900
+5790,40b9a247-8953-40dc-78fe-08dede53f575,2018 Manor Dr NE,Palm Bay,204900
+6041,6b2625f5-4dbe-4ee6-79f8-08dede53f575,2028 Gloria Cir NE,Palm Bay,365000
+5841,8b0ea27b-7b1d-4ca6-7932-08dede53f575,2035 Marlberry Ct NE,Palm Bay,45000
+5843,db3a79b5-e764-467f-7934-08dede53f575,2035 Marlberry Ct NE Lot 2,Palm Bay,45000
+3711,d339b848-0ad9-4444-70e3-08dede53f575,206 Ritter Ave NE,Palm Bay,329900
+5859,eea2981b-0b4a-445d-7940-08dede53f575,2072 Advana St,Palm Bay,445000
+5679,f3b76ff5-96cd-4ffb-7885-08dede53f575,2072 Advana St,Palm Bay,445000
+6023,d7b36479-6120-4bdf-79eb-08dede53f575,2101 Forest Knoll Dr NE #1-205,Palm Bay,110000
+5826,46042864-3c36-4ff9-7913-08dede53f575,2101 Forest Knoll Dr NE #1-205,Palm Bay,110000
+5944,f8c55605-1742-4bbd-79a3-08dede53f575,2126 Redwood Cir NE,Palm Bay,299900
+5759,45644646-af7e-4cd8-78e4-08dede53f575,2126 Redwood Cir NE,Palm Bay,299900
+5788,e67ee3b1-2af8-4fdf-7903-08dede53f575,2134 Palm Bay Rd NE,Palm Bay,130000
+5993,281f92c7-cbf8-4e94-79d1-08dede53f575,2134 Palm Bay Rd NE,Palm Bay,130000
+5858,f02daa05-fa3a-4065-793f-08dede53f575,2138 Advana St NE,Palm Bay,200000
+5667,4013b2d4-aceb-4278-7884-08dede53f575,2138 Advana St NE,Palm Bay,200000
+5860,7eb06e23-1043-4b16-7941-08dede53f575,2149 Acacia St NE,Palm Bay,335000
+5866,7d7d632e-c7fb-4d77-794e-08dede53f575,2153 Redwood Cir NE,Palm Bay,269000
+5676,2c8da2bb-1c9d-46cc-788e-08dede53f575,2153 Redwood Cir NE,Palm Bay,269000
+5935,9ee6d65e-eae5-4c24-799d-08dede53f575,2194 Spring Creek Cir NE,Palm Bay,304250
+5757,b2aaf232-20a8-44e5-78e1-08dede53f575,2194 Spring Creek Cir NE,Palm Bay,304250
+3774,3e2e0886-28e0-4882-711f-08dede53f575,2215 Fallon Blvd NE,Palm Bay,319000
+6010,798d6a92-0d41-48ca-79de-08dede53f575,2250 Spring Creek Cir NE,Palm Bay,369900
+5799,5431749d-9c40-4c45-7908-08dede53f575,2250 Spring Creek Cir NE,Palm Bay,369900
+6433,4887bcdf-a94d-4e27-7b7f-08dede53f575,268 Holiday Park Blvd NE,Palm Bay,114000
+3660,7866563c-90eb-4e5d-70ab-08dede53f575,270 Avens Road NE,Palm Bay,395000
+5867,b2a92ad2-af35-4f61-794f-08dede53f575,2715 Vista Oaks Cir NE,Palm Bay,210000
+5671,518f0e07-faf0-424f-7890-08dede53f575,2715 Vista Oaks Cir NE,Palm Bay,210000
+5774,139868c1-5fde-475b-78fa-08dede53f575,2913 Pinewood Dr NE #16,Palm Bay,108000
+5981,e62394f8-02bb-4db5-79c0-08dede53f575,2913 Pinewood Dr NE #16,Palm Bay,108000
+5966,a49184c3-cb62-4a53-79b6-08dede53f575,2917 Kaileen Cir NE,Palm Bay,158000
+5769,baf29eb9-706a-446d-78f2-08dede53f575,2917 Kaileen Cir NE,Palm Bay,158000
+3784,e5d908c2-bbba-42bf-7129-08dede53f575,320 Holiday Park Blvd NE,Palm Bay,125000
+6376,ad2de156-dd90-41fe-7b46-08dede53f575,320 Holiday Park Blvd NE,Palm Bay,125000
+5850,1910b5da-6511-495c-793b-08dede53f575,3414 Vista Oaks Cir NE,Palm Bay,169000
+3475,87b34b73-2f50-418c-6ffc-08dede53f575,3836 Jupiter Blvd SE,Palm Bay,65000
+5756,ce6d42c5-1360-4989-78e0-08dede53f575,3913 Vista Oaks Cir NE,Palm Bay,175000
+5934,0cf76903-fb55-4be6-799c-08dede53f575,3913 Vista Oaks Cir NE,Palm Bay,175000
+3503,524727cf-5535-4f09-7008-08dede53f575,3968 Jupiter Boulevard SE,Palm Bay,260000
+5773,6738b4b8-e169-43cc-78f9-08dede53f575,4014 Vista Oaks Cir NE,Palm Bay,159000
+5980,c0c934bc-1953-4c36-79bf-08dede53f575,4014 Vista Oaks Cir NE,Palm Bay,159000
+5958,d9d430eb-1c71-4f7d-79ab-08dede53f575,4017 Tree Ridge Ln NE,Palm Bay,125000
+5778,2afee738-8e7f-4e52-78eb-08dede53f575,4017 Tree Ridge Ln NE,Palm Bay,125000
+6337,3c115ee9-367e-430e-7b22-08dede53f575,401 Homestead Ave NE,Palm Bay,405900
+3700,5da129c3-27a5-411b-70d5-08dede53f575,401 Homestead Ave NE,Palm Bay,405900
+3635,60c28c8b-cbf4-432b-7094-08dede53f575,406 Karney Ave NE,Palm Bay,0
+3780,d6358b17-9a3f-44c7-7125-08dede53f575,411 Foxdall Ave NE,Palm Bay,374000
+6400,92c03e17-3030-4219-7b5d-08dede53f575,420 Nina Rd NE,Palm Bay,480000
+6478,c94f9397-52cb-46e3-7bb2-08dede53f575,430 Nogales Ave NE,Palm Bay,257900
+5742,278c5fa6-630f-40f0-78c2-08dede53f575,4331 Jetty Ln NE,Palm Bay,270000
+5741,ce24da45-150d-4f87-78c1-08dede53f575,4335 Jetty Ln NE,Palm Bay,270000
+5680,44b0a18d-9c93-4915-7886-08dede53f575,4401 Jetty Lane Ln NE,Palm Bay,309590
+5668,dcfa77b9-fda3-4aca-788b-08dede53f575,4401 Jetty Ln NE,Palm Bay,309590
+5702,15739a4b-6c6b-486d-78aa-08dede53f575,4427 Jetty Ln NE,Palm Bay,279390
+5852,4dc55f8b-6ca0-415d-793d-08dede53f575,4527 S Babcock Street,Palm Bay,3950000
+3738,2cf52c23-b5a3-44c1-70fb-08dede53f575,469 Holiday Park Blvd NE,Palm Bay,64900
+3649,b72911e0-239f-4e9d-709f-08dede53f575,478 Bradley Ave NE,Palm Bay,199000
+3722,92ee1201-a436-447d-70eb-08dede53f575,478 Karney Ave NE,Palm Bay,259000
+3758,cc0d2d1f-dc6b-4654-710f-08dede53f575,496 Ralwood Ln NE #55,Palm Bay,279999
+6354,3172085e-682d-4d7f-7b3a-08dede53f575,496 Ralwood Ln NE #55,Palm Bay,279999
+3716,9c0aa25f-814d-469d-70da-08dede53f575,523 Karney Ave NE,Palm Bay,275000
+3809,0e36f60a-9d9a-42ec-7140-08dede53f575,530 Janus Rd NE,Palm Bay,469990
+3385,b7b6af7c-04ab-4de8-6fa4-08dede53f575,600 Cardinal St SE,Palm Bay,369990
+5745,4c232b83-c44a-46d5-78de-08dede53f575,608 Cedar Side Cir NE,Palm Bay,225000
+5951,9e42cd58-8e8a-4b83-799b-08dede53f575,608 Cedar Side Cir NE,Palm Bay,225000
+3633,a43eeba4-db54-4cc4-7092-08dede53f575,625 Concord St NE,Palm Bay,250000
+3655,87222264-e9bc-44b0-70b1-08dede53f575,643 Binney St NE,Palm Bay,229000
+5932,3034fa6f-55a0-4209-7997-08dede53f575,653 Atlas Ave NE,Palm Bay,295000
+3664,1ab01adc-0611-4841-70b5-08dede53f575,667 Antigua St NE,Palm Bay,335000
+3666,e4677f6f-6ba1-4a75-70b9-08dede53f575,674 Firestone St NE,Palm Bay,499990
+3701,a22d799a-e90d-4ace-70d6-08dede53f575,721 Hyannie St NE,Palm Bay,390000
+5698,a28e6f4c-c267-4083-78a6-08dede53f575,725 Port Malabar Blvd NE APT 101,Palm Bay,119900
+5903,30e8bf5f-f8e4-4a8a-7968-08dede53f575,725 Port Malabar Blvd NE APT 101,Palm Bay,119900
+5677,d395dc99-7dc9-4dd4-7889-08dede53f575,725 Port Malabar Blvd NE APT 106,Palm Bay,145000
+5862,fd3b635a-36a0-46db-7947-08dede53f575,725 Port Malabar Blvd NE APT 106,Palm Bay,145000
+5847,97b7f3c9-237e-4621-7938-08dede53f575,725 Port Malabar Blvd NE APT 111,Palm Bay,199900
+5781,c104585a-8d1a-4bcd-78e7-08dede53f575,725 Port Malabar Blvd NE APT 301,Palm Bay,135000
+5975,03d9a3df-215f-4666-79a7-08dede53f575,725 Port Malabar Blvd NE APT 301,Palm Bay,135000
+3405,ab9ab502-d613-453d-6fae-08dede53f575,729 Chateau St SE,Palm Bay,0
+5938,5454cedf-6f04-4480-7989-08dede53f575,767 Castleford Ave,Palm Bay,379500
+5735,e3378cc6-1823-4caf-78c8-08dede53f575,767 Castleford Ave,Palm Bay,379500
+5920,3affcc4f-98e0-4eee-797a-08dede53f575,767 Castleford Ave NE,Palm Bay,379500
+5719,acabe016-9232-424c-78b8-08dede53f575,767 Castleford Ave NE,Palm Bay,379500
+3712,fd6c8fd7-b850-44f3-70e4-08dede53f575,772 Antilles Rd NE,Palm Bay,224750
+6048,c9d1fb52-3594-41e4-7a07-08dede53f575,772 Aragon Ave NE,Palm Bay,338910
+6031,5bf5244f-ca2d-4d37-79f3-08dede53f575,777 Castleford Ave NE,Palm Bay,401500
+5815,2a1b60d7-766c-46a2-7919-08dede53f575,777 Castleford Ave NE,Palm Bay,401500
+6458,bf8bef5d-7f5a-405d-7b8a-08dede53f575,785 Seymour Rd NE,Palm Bay,650000
+6017,3ba09f4c-5f64-4e4c-79e5-08dede53f575,785 Seymour Rd NE,Palm Bay,650000
+6470,e7d275fd-2bf8-46db-7baa-08dede53f575,825 Cricket Dr NE,Palm Bay,995000
+5947,71f87a44-c8fe-403f-7994-08dede53f575,853 Knecht Rd NE,Palm Bay,395000
+5762,cad45ccd-4b22-49d0-78d4-08dede53f575,853 Knecht Rd NE,Palm Bay,395000
+5724,cd92770f-e04d-4f43-78c7-08dede53f575,856 Castleford Ave,Palm Bay,376500
+5937,58595f52-7272-4b2b-7988-08dede53f575,856 Castleford Ave,Palm Bay,376500
+5711,881cf211-8642-4f68-78ac-08dede53f575,856 Castleford Ave NE,Palm Bay,376500
+5915,b3cb776b-30d3-4ef8-7971-08dede53f575,856 Castleford Ave NE,Palm Bay,376500
+5801,94d689f3-efb5-41d8-790a-08dede53f575,865 Dewberry Ter NE,Palm Bay,268000
+6013,8f75020c-8cad-4c90-79e1-08dede53f575,865 Dewberry Ter NE,Palm Bay,268000
+3733,56edf1ff-ac9b-406f-70f6-08dede53f575,867 Fairhaven St NE,Palm Bay,320000
+5925,a7fede7d-0a1d-4d98-7986-08dede53f575,876 Castleford Ave NE,Palm Bay,361500
+5727,99903687-4447-4351-78c6-08dede53f575,876 Castleford Ave NE,Palm Bay,361500
+5816,03afedf6-de9f-45d5-791a-08dede53f575,877 Castleford Ave NE,Palm Bay,399000
+6032,6db78771-7428-423b-79f4-08dede53f575,877 Castleford Ave NE,Palm Bay,399000
+5905,57b8e961-b891-47ca-796a-08dede53f575,882 Wateroak Dr NE,Palm Bay,230900
+5699,d0ce485c-df21-4777-78a7-08dede53f575,882 Wateroak Dr NE,Palm Bay,230900
+6000,eb3f3e1b-fe7c-4a56-79d8-08dede53f575,897 Castleford Ave NE,Palm Bay,340500
+5797,572e6aad-3eee-426b-7906-08dede53f575,897 Castleford Ave NE,Palm Bay,340500
+5924,d6d39043-d6d0-4738-7985-08dede53f575,906 Castleford Ave,Palm Bay,379500
+5726,d1080385-969d-4231-78c5-08dede53f575,906 Castleford Ave,Palm Bay,379500
+5914,00cd7fa1-a5a3-44c1-7970-08dede53f575,906 Castleford Ave NE,Palm Bay,379500
+5710,20c892d6-c92f-4266-78ab-08dede53f575,906 Castleford Ave NE,Palm Bay,379500
+5736,4e6b1392-7733-4c43-78c9-08dede53f575,907 Castleford Ave,Palm Bay,373500
+5926,eb145117-cb46-4979-798a-08dede53f575,907 Castleford Ave,Palm Bay,373500
+5908,a4ea6f7f-51d0-45ff-797e-08dede53f575,907 Castleford Ave NE,Palm Bay,373500
+5739,3e5fcdf3-ccd2-4ed0-78bb-08dede53f575,907 Castleford Ave NE,Palm Bay,373500
+3707,b71df8ac-6d64-465d-70df-08dede53f575,913 Dupont St NE,Palm Bay,420000
+6040,1cff3f62-3fc0-4c18-79f7-08dede53f575,926 Castleford Ave NE,Palm Bay,399050
+5812,8b027a00-b0e5-4fb2-791c-08dede53f575,926 Castleford Ave NE,Palm Bay,399050
+3788,517069ac-2ec5-4cc8-712d-08dede53f575,938 Jettie St NE,Palm Bay,325000
+3769,28c8afa0-8851-4e21-711a-08dede53f575,940 Forest St NE,Palm Bay,309900
+3820,79ed02d1-20d9-442a-714c-08dede53f575,986 Jettie St NE,Palm Bay,299900
+5828,55bd373d-0ade-4cbf-791f-08dede53f575,995 Connolly Ln,Palm Bay,464500
+6042,672337b6-ef04-4a4c-79f9-08dede53f575,995 Connolly Ln,Palm Bay,464500
+6043,849f1e4a-0d73-42cb-79fa-08dede53f575,995 Connolly Ln NE,Palm Bay,464500
+5829,f47c6db5-9196-40f1-7920-08dede53f575,995 Connolly Ln NE,Palm Bay,464500
+3727,179127eb-16df-4379-70f0-08dede53f575,998 Ripley Ter NE,Palm Bay,475000
+3336,1ae99367-3d6f-493e-6f6e-08dede53f575,999 Emerald Rd SE,Palm Bay,329000
+3657,f74ef308-b53d-43c4-70a8-08dede53f575,"Bamboo Plan, Palm Bay",Palm Bay,273990
+5945,32a3cd1d-e17c-4d54-7992-08dede53f575,"Brentwood Plan, Country Club Estates",Palm Bay,489990
+5748,5ecec0f2-8ae9-41a9-78d2-08dede53f575,"Brentwood Plan, Country Club Estates",Palm Bay,489990
+5716,0a984d4c-a0b4-4a37-78b5-08dede53f575,"Briella Plan, Country Club Estates",Palm Bay,449990
+5919,e836d25b-db51-40ef-7979-08dede53f575,"Briella Plan, Country Club Estates",Palm Bay,449990
+3810,023d7d99-e6b9-4fc0-7141-08dede53f575,"Captiva Plan, Palm Bay",Palm Bay,372990
+3480,fd4f19c6-f21e-42c4-6fea-08dede53f575,"Captiva Plan, Turtle Creek 75s",Palm Bay,609990
+3463,b78ccc77-bdfc-40fb-6fe8-08dede53f575,"Cedar Plan, Turtle Creek 75s",Palm Bay,602990
+3481,0d075eb2-f414-4a60-6feb-08dede53f575,"Charlotte Plan, Turtle Creek 75s",Palm Bay,589990
+3670,58814b6c-78f4-4669-70a0-08dede53f575,"Clearwater Plan, Palm Bay",Palm Bay,285990
+3459,caef60c8-4bd1-4883-6fe4-08dede53f575,"Coral Plan, Turtle Creek 75s",Palm Bay,639990
+3783,a65efb1c-6b16-4b48-7128-08dede53f575,"Delray Plan, Palm Bay",Palm Bay,316990
+3458,3076d5bb-aabe-44bd-6fe3-08dede53f575,"Delray Plan, Turtle Creek 75s",Palm Bay,565990
+3804,34135f0d-df91-4062-7145-08dede53f575,"Foxtail Plan, Palm Bay",Palm Bay,299990
+3530,0d060f84-945b-4702-7026-08dede53f575,"Harmony Plan, Palm Bay",Palm Bay,381900
+3479,d77d061c-f2f7-4679-6fe9-08dede53f575,"Highland Plan, Turtle Creek 75s",Palm Bay,553990
+3356,c44393ff-c5b6-47ea-6f82-08dede53f575,"Iris Plan, Palm Bay",Palm Bay,309900
+5696,02c54797-60ae-4ffb-78a3-08dede53f575,"Longleaf Plan, Country Club Estates",Palm Bay,469990
+5891,6a6e56c4-a082-440c-7962-08dede53f575,"Longleaf Plan, Country Club Estates",Palm Bay,469990
+3487,3fd4cb6b-62a0-480a-700d-08dede53f575,"Maple Plan, Palm Bay",Palm Bay,327900
+5685,8ed94d2d-8ea8-4bec-7896-08dede53f575,"Marigold Plan, Harbor Square",Palm Bay,309590
+3520,595eb7a0-c36d-46fb-701b-08dede53f575,"Marigold Plan, Palm Bay",Palm Bay,299900
+3462,8325bfc3-2b87-4abf-6fe7-08dede53f575,"Naples Plan, Turtle Creek 75s",Palm Bay,606990
+5787,09d29e03-918d-4083-7902-08dede53f575,NO STREET,Palm Bay,185000
+5992,ab8bd8ed-99a5-4550-79d0-08dede53f575,NO STREET,Palm Bay,185000
+3795,8e94b75b-18d7-4894-713b-08dede53f575,"Palm Plan, Palm Bay",Palm Bay,285990
+3473,e4c895e4-14d1-4c1c-6ffa-08dede53f575,"Passionflower II Plan, Aspire at Palm Bay",Palm Bay,363995
+3705,7a4503e0-a749-46e4-70dd-08dede53f575,"Royal Plan, Palm Bay",Palm Bay,310990
+3801,7635fdb3-4f48-486f-7135-08dede53f575,"Sanibel Plan, Palm Bay",Palm Bay,359990
+3461,5ed90959-3fc8-44ba-6fe6-08dede53f575,"Sanibel Plan, Turtle Creek 75s",Palm Bay,595990
+3696,7246efaf-fa61-49b8-70cd-08dede53f575,"Siesta Plan, Palm Bay",Palm Bay,309990
+3460,ca4040f0-75f5-4658-6fe5-08dede53f575,"Siesta Plan, Turtle Creek 75s",Palm Bay,555990
+5693,b758539e-7de9-424a-78a0-08dede53f575,"Springdale Plan, Harbor Square",Palm Bay,270000
+3443,51d8e57d-ff8d-4562-6fd4-08dede53f575,"Venice Plan, Palm Bay",Palm Bay,403900
+3512,626ccbdd-86f4-45af-7019-08dede53f575,"Violet Plan, Palm Bay",Palm Bay,289900
+1864,98cf0ea3-50a1-4b5f-c9cf-08dede4f8c96,0 Dr Joe Lee Smith Dr,Rockledge,2100000
+1918,f6f250f7-5bca-4dda-ca00-08dede4f8c96,0 Murrell Rd,Rockledge,2200000
+1927,e531853d-9866-44c5-ca09-08dede4f8c96,1003 Woodlawn Rd,Rockledge,229000
+3159,257dabf0-9d1f-42f5-6eb8-08dede53f575,1003 Woodlawn Rd,Rockledge,229000
+4418,a44c140b-bfde-4eb2-73a0-08dede53f575,1003 Woodlawn Rd,Rockledge,229000
+2040,5720f621-ff85-4cc8-ca7d-08dede4f8c96,1009 S Fiske Blvd,Rockledge,589000
+3216,627bd647-db4d-4e0a-6ee7-08dede53f575,1009 S Fiske Blvd,Rockledge,589000
+4451,b0511b27-0d17-434f-73cf-08dede53f575,1009 S Fiske Blvd,Rockledge,589000
+1952,1b21f293-c1ee-4a5d-ca22-08dede4f8c96,104 Bouganvillea Dr,Rockledge,489000
+3166,a9450f54-329a-4405-6ebd-08dede53f575,104 Bouganvillea Dr,Rockledge,489000
+1888,8b2eee83-11e2-4d22-c9d6-08dede4f8c96,1095 Georgia Ave,Rockledge,399900
+1981,97eb108a-ae9a-453b-ca40-08dede4f8c96,1112 Pinedale Rd,Rockledge,265000
+2007,e5c05bcc-7017-45e5-ca4d-08dede4f8c96,1126 Sangria Cir,Rockledge,419000
+1885,1b31d1a6-8d09-4b12-c9e5-08dede4f8c96,1139 Groves Dr,Rockledge,239900
+1958,6c3d16de-25ef-4c82-ca27-08dede4f8c96,1156 Valley View Ave,Rockledge,399900
+1856,7d16635a-1f84-48f2-c9c2-08dede4f8c96,1168 Winding Meadows Rd,Rockledge,499000
+2039,9bdd8695-12df-4807-ca7c-08dede4f8c96,118 Bougainvillea Dr,Rockledge,325000
+3211,2d3a44b9-d4ed-4362-6ee4-08dede53f575,118 Bougainvillea Dr,Rockledge,325000
+2028,0b522133-4f1f-42ab-ca74-08dede4f8c96,11 Bayshore Ct,Rockledge,1999000
+2019,f8e95f78-994e-465e-ca65-08dede4f8c96,1275 Troon Way,Rockledge,379900
+2010,49f41929-a759-48e8-ca5c-08dede4f8c96,130 Valencia Rd,Rockledge,999999
+3191,ba4e3956-c172-4a14-6ed8-08dede53f575,130 Valencia Rd,Rockledge,999999
+3187,0670a639-00a5-4b65-6ed4-08dede53f575,1312 Huntington Ln,Rockledge,289000
+1986,6567a6b1-952d-4291-ca54-08dede4f8c96,1312 Huntington Ln,Rockledge,289000
+2034,e1ed41d1-9848-4c2b-ca79-08dede4f8c96,1342 Nelson Ct,Rockledge,280000
+2017,038eb223-9460-484f-ca62-08dede4f8c96,1345 Lara Cir Unit 101,Rockledge,348500
+1996,d2648e46-e1a4-4870-ca56-08dede4f8c96,1345 Lara Cir Unit 104,Rockledge,285000
+1974,590f5771-4baf-4079-ca3c-08dede4f8c96,1353 Nelson Ct,Rockledge,326900
+1991,5b3cab80-8f00-4dad-ca50-08dede4f8c96,1354 Gem Cir,Rockledge,74900
+2030,376a5369-de98-4574-ca6a-08dede4f8c96,1355 Pheasant Run #68,Rockledge,50000
+1928,5d6cfbd3-5632-41ac-ca0f-08dede4f8c96,1356 Fountainview,Rockledge,69900
+1959,a7da97f2-8f71-4a98-ca28-08dede4f8c96,1366 Pheasant Run,Rockledge,55000
+1977,379a33a6-9f2f-486d-ca43-08dede4f8c96,1384 Indian Oaks Blvd,Rockledge,59000
+2031,9e2f4db4-e8a1-43cb-ca6b-08dede4f8c96,1393 Feather Sound #3,Rockledge,35000
+1951,78bb7ba9-2947-4301-ca21-08dede4f8c96,1397 Pheasant Run,Rockledge,62000
+1988,c349a984-d810-4ad4-ca49-08dede4f8c96,1401 Pheasant Run,Rockledge,44900
+1984,28e5c820-16d6-4e9c-ca46-08dede4f8c96,1402 Pheasant Run,Rockledge,71900
+2071,93e9d8b8-d2ba-4337-ca70-08dede4f8c96,1415 Lara Cir Unit 106,Rockledge,344999
+1920,c9a2e66e-e822-412e-ca02-08dede4f8c96,1489 Rockledge Dr,Rockledge,1850000
+1989,b11ac8df-5b52-451f-ca4a-08dede4f8c96,1503 Rockledge Dr,Rockledge,1400000
+2074,90c3fc19-f2a9-4138-ca7e-08dede4f8c96,151 Eyster Blvd,Rockledge,1500000
+2020,cd26cc5b-7724-411a-ca66-08dede4f8c96,1576 Peregrine Cir Unit 109,Rockledge,250000
+2003,8b5f3422-604a-457d-ca30-08dede4f8c96,1576 Peregrine Cir Unit 401,Rockledge,220000
+1994,04f29b4b-f066-41f2-ca53-08dede4f8c96,1626 Peregrine Cir Unit 110,Rockledge,245000
+1906,08a37c68-85ea-4941-c9f7-08dede4f8c96,1626 Peregrine Cir Unit 303,Rockledge,209000
+1997,ef05e26d-1e43-4b34-ca57-08dede4f8c96,1626 Peregrine Cir Unit 401,Rockledge,235000
+1913,32406fbf-e8ee-4ff2-c9f2-08dede4f8c96,1882 Murrell Rd APT I31,Rockledge,174900
+3178,6e83ba59-f8cd-4427-6ec4-08dede53f575,19 Orange Ave,Rockledge,350000
+1975,71473fbf-5c68-4105-ca3d-08dede4f8c96,19 Orange Ave,Rockledge,350000
+3125,5c75fe7a-89cd-4451-6ea7-08dede53f575,217 Sweet St,Rockledge,438000
+1896,f84ea7bf-8b8c-4995-c9c9-08dede4f8c96,217 Sweet St,Rockledge,438000
+1968,12783229-d35d-4503-ca36-08dede4f8c96,24 Hardee Cir N,Rockledge,400000
+3176,8aaf4459-31d3-4c17-6ec2-08dede53f575,24 Hardee Cir N,Rockledge,400000
+1912,fda26b4d-7ff1-451b-c9fd-08dede4f8c96,2846 Davis Ln,Rockledge,225000
+1948,91f2572b-49d2-473c-ca1e-08dede4f8c96,296 Tunbridge Dr,Rockledge,499900
+3203,bfce09e0-1e73-4c7f-6eea-08dede53f575,35 Loch Ness Dr,Rockledge,795000
+3150,5e52fcb0-0dbc-45bc-6eaf-08dede53f575,36 Patrick Ln,Rockledge,359990
+1900,5f2b7c7f-1c7a-43b9-c9ef-08dede4f8c96,36 Patrick Ln,Rockledge,359990
+1893,ddeed56e-b345-4371-c9ed-08dede4f8c96,3848 Lexmark Ln Unit 210,Rockledge,220000
+1987,973b8414-e21e-4eb3-ca48-08dede4f8c96,385 Tunbridge Dr,Rockledge,615000
+1960,f99d52d2-bf9a-49af-ca29-08dede4f8c96,3861 La Flor Dr,Rockledge,449900
+2027,6a78ede3-cdaf-492c-ca73-08dede4f8c96,3868 Lexmark Ln Unit 309,Rockledge,245495
+2006,e5bd7b00-2aaa-41a3-ca4c-08dede4f8c96,3901 Brantley Cir,Rockledge,443899
+1963,a91adc6c-098c-4b48-ca2c-08dede4f8c96,394 Tunbridge Dr,Rockledge,610000
+2041,aa9eddc8-4724-4292-ca82-08dede4f8c96,4031 Brantley Cir,Rockledge,420000
+3179,9b31a67f-c700-49f4-6ec5-08dede53f575,409 Rockledge Dr,Rockledge,1950000
+1980,7130540d-c7c6-4b8e-ca3f-08dede4f8c96,409 Rockledge Dr,Rockledge,1950000
+1846,f7c1117f-b683-480e-c9bd-08dede4f8c96,411 Wenthrop Cir,Rockledge,569900
+1852,2b88ccda-1f5b-4123-c9ba-08dede4f8c96,423 Stonehenge Cir,Rockledge,625000
+1899,0bb678ed-6817-4ef9-c9f1-08dede4f8c96,443 Cobblewood Dr,Rockledge,544000
+1925,2c613c24-fd1b-42bc-ca07-08dede4f8c96,44 Littlejohn Ln,Rockledge,792000
+3158,16e44e6f-d2fa-4622-6eb7-08dede53f575,44 Littlejohn Ln,Rockledge,792000
+2001,96b076c4-1e3a-4683-ca2e-08dede4f8c96,805 Topaz Dr,Rockledge,264900
+1847,09c24513-9a11-4355-c9c0-08dede4f8c96,813 Emerald Way,Rockledge,420000
+1940,77ce03d3-8698-4f22-ca16-08dede4f8c96,821 Hanover Ct,Rockledge,389900
+1881,b83fb8b0-e12d-49be-c9e4-08dede4f8c96,861 Yorktowne Dr,Rockledge,364900
+2072,64ae4da5-1931-42b4-ca71-08dede4f8c96,876 Brookview Ln,Rockledge,361000
+1886,97aa3565-f5bb-413d-c9e6-08dede4f8c96,894 Jamestown Dr,Rockledge,390000
+1876,2364a145-75e9-41c4-c9dc-08dede4f8c96,903 Jefferson Rd,Rockledge,380000
+1904,b70fe53a-1a1c-4b8c-c9f5-08dede4f8c96,907 Ocaso Ln Unit 101,Rockledge,287000
+1853,2a556f34-a7ef-4787-c9bb-08dede4f8c96,920 Beaverdale Ln,Rockledge,385000
+1861,f73794d0-c562-4d38-c9cc-08dede4f8c96,927 Jamestown Dr,Rockledge,439000
+1964,3fc48e5a-c58b-4827-ca32-08dede4f8c96,934 Barbara Ln,Rockledge,309000
+1941,d20e663a-451d-45bc-ca17-08dede4f8c96,938 Brunswick Ln,Rockledge,319900
+1866,fc0da1d5-4f03-4c95-c9d1-08dede4f8c96,952 Bayberry Ln,Rockledge,359900
+1931,a7620b82-3640-415b-ca12-08dede4f8c96,956 Beechfern Ln,Rockledge,338000
+2008,dcea5e22-7b6a-451c-ca55-08dede4f8c96,966 Trinity St,Rockledge,400000
+1868,a621f27e-df41-4845-c9c7-08dede4f8c96,969 Lovegrass Dr,Rockledge,664829
+2112,b1c071f0-038b-4fba-6aa4-08dede53f575,970 Kingfisher Way,Rockledge,425000
+2012,026e411e-ab75-466a-ca5e-08dede4f8c96,976 Trinity St,Rockledge,415000
+1976,64b5ace9-a228-4c11-ca3e-08dede4f8c96,979 Kings Post Rd,Rockledge,279900
+3153,f574dc35-a30d-4f7b-6eb2-08dede53f575,981 Palmer St,Rockledge,293000
+1914,6700ca20-f33a-405a-c9f3-08dede4f8c96,981 Palmer St,Rockledge,293000
+1884,a9414100-3cca-4a65-c9e1-08dede4f8c96,985 S Fiske Blvd #985 & 987,Rockledge,425000
+3146,f28742ef-e29c-4539-6eab-08dede53f575,985 S Fiske Blvd #985 & 987,Rockledge,425000
+4382,6da9d7ac-d787-4fa5-738f-08dede53f575,985 S Fiske Blvd #985 & 987,Rockledge,425000
+1877,f544b861-430a-41db-c9dd-08dede4f8c96,996 Botany Ln,Rockledge,335000
+3204,d1596cd0-f685-431d-6eeb-08dede53f575,Fiske,Rockledge,150000
+4449,ead604d5-0860-46d5-73d4-08dede53f575,Fiske,Rockledge,150000
+1962,3895387b-d27d-4cf0-ca2b-08dede4f8c96,"Homes Available Soon, The Reserve at Turtle Creek",Rockledge,0
+5169,c4f32e72-9e37-432e-7694-08dede53f575,0 Louisiana St,Titusville,179900
+5079,b2a66b56-4b67-47b7-7638-08dede53f575,1012 Rabun Ln,Titusville,175000
+5074,25868b39-5c07-475e-762c-08dede53f575,1038 Macon Dr,Titusville,374900
+5071,8cec0d3b-f100-434d-7632-08dede53f575,1089 Country Club Dr #722,Titusville,165000
+5034,baa39b62-7acc-493f-7617-08dede53f575,1130 Wedgewood Ln,Titusville,0
+5145,81498e53-c943-4b74-7680-08dede53f575,1140 Cheney Hwy Unit H,Titusville,179900
+5149,38e4c6b0-10dc-49ee-767e-08dede53f575,1150 Cheney Hwy Unit H,Titusville,149900
+5110,b294f0fd-b29a-4f2b-765b-08dede53f575,1220 Cheney Hwy Unit D,Titusville,150000
+5062,d3f645d8-e43d-46b1-761d-08dede53f575,126 Jackson St,Titusville,295000
+5126,8afe0eb4-0225-43be-7670-08dede53f575,1283 Cheney Hwy Unit A,Titusville,193900
+5119,0ae0d784-7669-4794-7663-08dede53f575,1325 Cheney Hwy Unit F,Titusville,199900
+5068,9a23a690-ab39-4f9b-7629-08dede53f575,1724 Elizabeth Ave,Titusville,285000
+5065,c0ecd357-0c05-4430-7630-08dede53f575,1805 Riverside Dr #205,Titusville,375000
+5044,f88755e1-5893-4c47-7618-08dede53f575,1805 Riverside Dr #410,Titusville,620000
+5050,40a6890b-65d3-4cb8-7620-08dede53f575,1805 Riverside Dr #504,Titusville,389900
+5066,7bb5cdcc-c050-4b66-7627-08dede53f575,1805 Riverside Dr Unit 506,Titusville,435000
+5045,d9022b2a-1b5e-4bb3-7619-08dede53f575,1825 Riverside Dr #502,Titusville,425000
+5157,3bd04c2d-ef22-48bd-768c-08dede53f575,1860 Knox McRae Dr Unit 102A,Titusville,140000
+5127,8d92d328-7b2b-4a29-7671-08dede53f575,190 E Olmstead Dr Unit B2,Titusville,158000
+5167,29d298c3-15fe-49d1-7692-08dede53f575,190 E Olmstead Dr Unit B8,Titusville,132500
+5115,88e635c0-331e-4109-765e-08dede53f575,190 E Olmstead Dr Unit D11,Titusville,139900
+5106,d1afb0c6-0133-441f-7657-08dede53f575,2055 Cathy Cir,Titusville,339999
+5134,ea4438cf-2cf0-4cbc-766f-08dede53f575,2185 Louisiana St,Titusville,464995
+5073,8c194285-b899-47bd-762b-08dede53f575,2225 S Washington Ave,Titusville,1200000
+5032,1d9a1e45-bacb-4c84-7615-08dede53f575,2240 White Sands Dr,Titusville,275000
+5075,47fcb23c-7ac3-4a01-762d-08dede53f575,2410 Savannah Blvd,Titusville,325000
+5072,c39b8fb0-c021-434b-7633-08dede53f575,2465 S Washington Ave APT A-108,Titusville,215000
+5069,6a4921b0-4e8d-4957-7634-08dede53f575,2465 S Washington Ave APT A-402,Titusville,199900
+5118,ec10445b-8ae4-46bf-7662-08dede53f575,2704 Haven Ln,Titusville,445419
+5147,f6ca1df9-4fbd-4f22-767c-08dede53f575,2714 Haven Ln,Titusville,373602
+5177,3f85ddce-fbd0-4709-767a-08dede53f575,2715 Haven Ln,Titusville,443615
+5139,4bac3a83-3300-45e0-7673-08dede53f575,2735 Haven Ln,Titusville,374601
+5067,fd591278-0de7-4924-7628-08dede53f575,2825 La Cita Ln,Titusville,375000
+5063,c939f647-7ab0-414e-762e-08dede53f575,2978 Sir Hamilton Cir #7,Titusville,95999
+5164,352aec21-6098-497e-768f-08dede53f575,300 Cheney Hwy,Titusville,499000
+5080,76ade47a-b1a0-4f89-7639-08dede53f575,3122 Sir Hamilton Cir,Titusville,89999
+5030,af06ff1c-7e03-4a42-7613-08dede53f575,3128 Sir Hamilton Cir #4,Titusville,120000
+5104,e7dd7f68-ab1c-40b2-7655-08dede53f575,313 La Paloma Ln,Titusville,140000
+5077,8a1c523e-c596-462e-7636-08dede53f575,3200 Royal Palm Ct,Titusville,320000
+5033,9f8e77fb-d6c6-4ef9-7616-08dede53f575,3203 S Washington Ave Unit 603,Titusville,579000
+5049,47076aba-4274-4e59-761f-08dede53f575,3205 S Washington Ave Unit 903B,Titusville,849000
+5156,8140a4ef-4197-44cc-768b-08dede53f575,340 Meredith Way,Titusville,499000
+5087,1d0fb78e-8ff3-42e1-7643-08dede53f575,3515 Sable Palm Ln Unit B,Titusville,130000
+5088,e1be9ce6-e377-4fdb-7644-08dede53f575,3515 Sable Palm Ln Unit C,Titusville,117900
+5160,af2a337d-589c-4eb5-7681-08dede53f575,3550 Belle Largo Way,Titusville,649900
+5057,1e3cd731-741d-4e82-7625-08dede53f575,3550 Belle Largo Way,Titusville,649900
+5091,6f5d182b-e783-446c-7647-08dede53f575,3555 Sable Palm Ln #7F,Titusville,129900
+5111,cff1e729-efce-471f-7648-08dede53f575,3555 Sable Palm Ln Unit B,Titusville,124900
+5064,e139a47d-a402-47d7-762f-08dede53f575,3560 Sawgrass Dr,Titusville,364000
+5124,1957c237-98e1-4cef-7668-08dede53f575,356 Blue Moon Dr,Titusville,347465
+5089,e7a274c1-953b-4981-7645-08dede53f575,3573 Par Ln,Titusville,85000
+5100,41251bb0-8a94-4e34-7651-08dede53f575,3580 Sable Palm Ln Unit C,Titusville,185000
+5042,84799f72-2dc1-492b-7611-08dede53f575,3585 Sable Palm Ln APT H,Titusville,116000
+5109,8cc2950e-4584-44f3-765a-08dede53f575,3585 Sable Palm Ln APT H,Titusville,116000
+5098,ce100bd4-d4ce-4a0c-764f-08dede53f575,3585 Sable Palm Ln Unit E,Titusville,149900
+5112,6fd95e0d-a2a6-4bf7-7649-08dede53f575,3590 Sable Palm Ln Unit B,Titusville,119900
+5116,0e453ef1-969e-4290-765f-08dede53f575,362 Daisy Ln,Titusville,22500
+5158,db6d1580-b885-4476-768d-08dede53f575,362 Lily Ln,Titusville,39000
+5159,0ff31c54-a279-4864-768e-08dede53f575,3680 Barna Ave Unit 216,Titusville,159000
+5051,7b6b1757-7d2b-4d22-7621-08dede53f575,3845 Raney Rd,Titusville,975000
+5148,49e98dd5-d7ed-4653-767d-08dede53f575,3845 Raney Rd,Titusville,975000
+5108,c352d097-7b10-4daa-7659-08dede53f575,3870 Raney Rd,Titusville,530000
+5041,e6e605fa-04f9-4f02-7610-08dede53f575,3870 Raney Rd,Titusville,530000
+5076,0fc2070b-3f91-446d-7635-08dede53f575,3916 Tanglewood Cir,Titusville,349900
+5166,7a74a2cc-6d4e-41d5-7691-08dede53f575,3916 Tanglewood Cir,Titusville,349900
+5141,8ca391ab-e1c3-43b9-7675-08dede53f575,3950 Raney Rd,Titusville,425000
+5060,c5e3f35f-19cf-42a0-761b-08dede53f575,3950 Raney Rd,Titusville,425000
+5155,6a8f11ee-a24b-4666-768a-08dede53f575,400 Forest Trace Cir,Titusville,385000
+5153,f481cd77-5bc2-4167-7688-08dede53f575,4023 Mount Sterling Ave,Titusville,174900
+5128,e004c20e-afbb-4596-7669-08dede53f575,4100 Trinidad Ave,Titusville,299000
+5168,e5515c34-d976-4600-7693-08dede53f575,4145 Polaris Ave,Titusville,348000
+5140,48c49f2a-e4e2-4633-7674-08dede53f575,4260 Capron Rd,Titusville,250000
+5163,db848fd1-3e6a-42a9-7684-08dede53f575,4345 Elliot Ave,Titusville,254900
+5133,771debbc-05db-4f12-766e-08dede53f575,460 L M Davey Ln,Titusville,235000
+5151,352cb51e-12da-4960-7686-08dede53f575,4625 Clyde Ln,Titusville,30000
+5107,ace667dc-0703-4055-7658-08dede53f575,4699 Sisson Rd,Titusville,147000
+5161,216f0b46-6207-453e-7682-08dede53f575,4745 Key Biscayne Dr,Titusville,274900
+5136,b44ff1de-2ef9-461b-7677-08dede53f575,4795 Key Biscayne Dr,Titusville,220000
+5162,33b9bb45-59b0-4aaf-7683-08dede53f575,4799 Sisson Rd,Titusville,169900
+5144,2a4bd845-619d-4622-767f-08dede53f575,4850 Key Madeira Dr,Titusville,265000
+5121,36c5564f-3fb1-47d2-7665-08dede53f575,4865 Key Biscayne Dr,Titusville,309900
+5122,d0273250-6fdd-49c0-7666-08dede53f575,4880 Barna Ave,Titusville,489900
+5137,a16aab41-7e75-4f35-7678-08dede53f575,511 L M Davey Ln,Titusville,316000
+5123,6f916b3d-c584-4d8f-7667-08dede53f575,514 L M Davey Ln,Titusville,339000
+5165,c22d3d13-0399-479f-7690-08dede53f575,5195 Sharlene Dr,Titusville,320000
+5138,0d0c7dad-43e0-4385-7672-08dede53f575,5250 Riveredge Dr,Titusville,1290000
+5143,62e105ee-7317-44cb-765d-08dede53f575,5515 Oak Hollow Dr,Titusville,374900
+5150,551ed3f0-b857-4ad6-7685-08dede53f575,557 L M Davey Ln,Titusville,450000
+5152,fa2c7335-4e20-4267-7687-08dede53f575,5643 Reagan Ave,Titusville,389900
+5053,645ade02-8e6a-4d07-7623-08dede53f575,565 Greenleaf Ln,Titusville,394995
+5117,173d23bd-d637-4fb6-7660-08dede53f575,565 Willowgreen Ln,Titusville,349000
+5031,2cb46f99-fa80-4133-7614-08dede53f575,565 Willowgreen Ln,Titusville,349000
+5052,b33cf306-564b-44d8-7622-08dede53f575,569 Macon Dr E,Titusville,410000
+5061,3d625b76-90ab-45d8-761c-08dede53f575,585 Harrison St,Titusville,344000
+5125,e3c651d3-7fe7-4687-7661-08dede53f575,590 Margie Dr,Titusville,279000
+5078,4dbfaa76-a1af-4b4c-7637-08dede53f575,616 Peachtree St,Titusville,330000
+5146,266b2221-fae2-4b68-767b-08dede53f575,625 Breakaway Trl,Titusville,499000
+5142,91ce9b5f-47bc-4528-765c-08dede53f575,685 Bella Vista Dr,Titusville,480000
+5043,be15ba11-8af0-43e7-7612-08dede53f575,685 Bella Vista Dr,Titusville,480000
+5056,4bf471b2-d1c6-4d42-7624-08dede53f575,719 Lucky St,Titusville,144900
+5058,592e2ba0-952b-45e2-7626-08dede53f575,746 Mason Dr,Titusville,319999
+5135,897be2aa-81b4-4cf0-7676-08dede53f575,755 Delespine Ave,Titusville,275000
+5054,ea29f154-a3f8-4ac7-761e-08dede53f575,802 Florencia Cir,Titusville,850000
+5176,93289336-d212-4c14-7679-08dede53f575,802 Florencia Cir,Titusville,850000
+5120,f17ecbdb-c54e-4442-7664-08dede53f575,845 Edgewood Rd,Titusville,244999
+5154,fb17adca-6365-4a54-7689-08dede53f575,850 Karen Dr,Titusville,280000
+5070,cfb44642-a1d9-4985-7631-08dede53f575,855 Sandhurst Ct,Titusville,314900
+5059,556cc654-b840-48f3-761a-08dede53f575,939 Macon Dr,Titusville,325000
+5055,db7cc6d0-7697-480e-762a-08dede53f575,959 Harrison St,Titusville,215000
+5129,6af26940-1143-498a-766a-08dede53f575,"Pearson Interior Unit Plan, Odyssey Ridge Townhomes",Titusville,289990
+5130,1f60f44a-acfc-40e6-766b-08dede53f575,"Perry End Unit Plan, Odyssey Ridge Townhomes",Titusville,329990
+5131,69d0d0ee-25a4-4427-766c-08dede53f575,Unknown Lot 10,Titusville,10000
+5132,9786d399-c820-4f22-766d-08dede53f575,Unknown Lot 11,Titusville,10000
+5596,2ee678b1-7032-44b7-7837-08dede53f575,122 East Ct,West Melbourne,295000
+5570,7ba1fcfc-7173-4c34-7823-08dede53f575,126 San Paulo Cir #1,West Melbourne,120000
+3069,39dfbe4c-cf2a-4ce2-6e5c-08dede53f575,1340 S Wickham Rd,West Melbourne,725000
+3074,cbdf3a20-7a71-4d60-6e63-08dede53f575,1363 Hailey St,West Melbourne,470000
+5586,2d266450-d588-471a-7827-08dede53f575,158 San Paulo Ct #6,West Melbourne,169900
+3044,2dec691f-5422-4bfe-6e47-08dede53f575,167 Woodland Dr,West Melbourne,289999
+3047,401a470a-1ddc-4d33-6e4a-08dede53f575,2041 Brookshire Cir,West Melbourne,435000
+3055,613b4521-e51f-423d-6e50-08dede53f575,2049 Maeve Cir,West Melbourne,406900
+3065,f0e46187-66c5-48d2-6e5a-08dede53f575,2180 Brookshire Cir,West Melbourne,350000
+3073,b7164146-d607-427e-6e62-08dede53f575,220 Stephenson Dr,West Melbourne,249500
+3062,8ce5bae2-ca96-4dec-6e57-08dede53f575,2242 Woodfield Cir,West Melbourne,679900
+3053,68db173d-df40-4a30-6e46-08dede53f575,227 Monaco Rd,West Melbourne,269900
+3072,9ad80ff1-3d6d-42b0-6e61-08dede53f575,2532 Ventura Cir,West Melbourne,429995
+5615,8ef58565-ccb8-42e6-7854-08dede53f575,255 San Paulo Cir #11,West Melbourne,160000
+5598,d7664ba1-96a2-4762-7849-08dede53f575,261 San Paulo Ct #6,West Melbourne,148000
+3064,27abcce8-5103-495e-6e59-08dede53f575,2623 Reflections Pl,West Melbourne,439900
+3075,6fa6b39c-53ec-4e1a-6e64-08dede53f575,2643 Bradfordt Dr,West Melbourne,310000
+3061,8a2ecca7-b63a-47fe-6e56-08dede53f575,2739 Whistler St,West Melbourne,419000
+3070,cd78aae4-b0c8-42aa-6e5d-08dede53f575,2748 Madrigal Ln,West Melbourne,542000
+3068,99f8ba68-c539-4170-6e60-08dede53f575,2766 Madrigal Ln,West Melbourne,419000
+3048,ad3c80fa-ff6e-41cf-6e4b-08dede53f575,3053 Morton Way,West Melbourne,569000
+3046,4b2b343b-b14f-4daa-6e49-08dede53f575,3150 Charon Ave,West Melbourne,475000
+5602,1b43a0dc-4479-4f67-783c-08dede53f575,3425 Irene St,West Melbourne,215000
+3063,e682f471-df9f-48c2-6e58-08dede53f575,511 Jean Cir,West Melbourne,90000
+3045,0f165102-d839-41f6-6e48-08dede53f575,6044 Serene Pl,West Melbourne,350000
+3059,a99eb3f2-63fa-4a5f-6e54-08dede53f575,615 Boughton Way,West Melbourne,399900
+3050,3a3e656c-66c7-4cb3-6e4d-08dede53f575,6165 Serene Pl,West Melbourne,394000
+3051,4a81a57d-a9ef-4a98-6e4e-08dede53f575,660 Boughton Way,West Melbourne,444999
+3078,0adf2a4a-8aa7-4f11-6e67-08dede53f575,665 Boughton Way,West Melbourne,485000
+3057,1e90bb04-ffdc-490f-6e52-08dede53f575,7485 Sheridan Rd,West Melbourne,649900
+3054,8051080d-42fb-4f10-6e4f-08dede53f575,7964 Timberlake Dr,West Melbourne,654900
+3071,ad5066fe-3bbe-4b35-6e5e-08dede53f575,855 Boughton Way,West Melbourne,420000

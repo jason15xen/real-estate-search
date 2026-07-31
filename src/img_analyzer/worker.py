@@ -357,13 +357,13 @@ async def _insert_primary_full(conn, item: dict) -> None:
             home_type, rent_estimate, year_built,
             lot_size_sqft, stories,
             has_pool, has_waterfront, description, financing,
-            county, locality, neighborhood
+            county, locality, neighborhood, zpid
         ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8,
             ST_MakePoint($9, $10)::geography,
             $11, $12, $13, $14, $15, $16, $17, $18,
             $19, $20, $21, $22, $23, $24, $25, $26, $27,
-            $28, $29, $30
+            $28, $29, $30, $31
         ) RETURNING id
     """,
         fields["guid"], fields["name"], fields["street"], fields["district"],
@@ -378,6 +378,7 @@ async def _insert_primary_full(conn, item: dict) -> None:
         fields["has_pool"], fields["has_waterfront"], fields["description"],
         fields["financing"],
         fields["county"], fields["locality"], fields["neighborhood"],
+        fields["zpid"],
     )
     await _insert_children(conn, prop_id, rooms_from_photos, _extract_schools(item))
 

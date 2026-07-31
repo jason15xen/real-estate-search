@@ -1,6 +1,7 @@
 """Search orchestrator: parse query -> hard filters -> proximity -> color -> feature matching."""
 
 import asyncio
+import json
 import logging
 
 import asyncpg
@@ -19,13 +20,13 @@ from src.models.search import (
     RoomCountCriterion,
 )
 from src.search.feature_resolver import resolve_feature_phrases
-from src.search.filter_engine import apply_hard_filters
+from src.search.filter_engine import apply_hard_filters, drop_district_name_outliers
 from src.search.geo_search import apply_area_relation_filters, apply_proximity_filters
 from src.search.query_parser import parse_query
 from src.search.region_resolver import (
     extract_search_area,
     keep_majority_location,
-    resolve_region,
+    resolve_search_region,
 )
 
 logger = logging.getLogger(__name__)
@@ -368,8 +369,11 @@ async def _collect_hard_filter_steps(
     criteria: list,
     bounds: dict | None,
     filters: dict | None = None,
+    area_region_id: int | None = None,
 ) -> list[dict]:
-    """Debug-only: apply bounds/filters/criteria one at a time, recording count per step."""
+    """Debug-only: apply bounds/filters/criteria one at a time, recording count per
+    step. area_region_id mirrors the real pipeline's geo-location mode so the
+    location step's count matches what the search actually did (polygon, not name)."""
     steps: list[dict] = []
 
     async with pool.acquire() as conn:
@@ -413,7 +417,8 @@ async def _collect_hard_filter_steps(
         applied.append(c)
         labels = _criterion_labels(c) or [c.type.value if hasattr(c, "type") else type(c).__name__]
         count = len(await apply_hard_filters(
-            pool, applied, bounds=bounds, filters=filters
+            pool, applied, bounds=bounds, filters=filters,
+            area_region_id=area_region_id,
         ))
         steps.append({
             "step": ", ".join(labels),
@@ -440,6 +445,21 @@ async def search(
 
     filter_steps: list[dict] = []
 
+    # Phase 1.5: Geo-location resolution — if the searched place maps to a regions
+    # row WITH a polygon, membership is decided geometrically (ST_Covers) and all
+    # name-based place matching/trimming for that place is skipped.
+    search_region = await resolve_search_region(pool, parsed_query.criteria)
+    area_region_id = (
+        search_region["region_id"]
+        if search_region and search_region["has_geom"] else None
+    )
+    if search_region:
+        logger.info(
+            f"Phase 1.5: Region '{search_region['region_name']}' "
+            f"(id {search_region['region_id']}, "
+            f"{'polygon filter' if area_region_id else 'no polygon — name matching'})"
+        )
+
     # Phase 2: Hard filters (incl. bounds + filters)
     logger.info(
         f"Phase 2: Hard filters (PostgreSQL)"
@@ -448,11 +468,34 @@ async def search(
     )
     if debug:
         filter_steps.extend(
-            await _collect_hard_filter_steps(pool, parsed_query.criteria, bounds, filters)
+            await _collect_hard_filter_steps(
+                pool, parsed_query.criteria, bounds, filters,
+                area_region_id=area_region_id,
+            )
         )
     property_ids = await apply_hard_filters(
-        pool, parsed_query.criteria, bounds=bounds, filters=filters
+        pool, parsed_query.criteria, bounds=bounds, filters=filters,
+        area_region_id=area_region_id,
     )
+    if debug and area_region_id:
+        filter_steps.append({
+            "step": f"polygon: region {search_region['region_name']}",
+            "count": len(property_ids),
+            "dropped": 0,
+        })
+    if area_region_id is None:
+        # Name-matching mode only: subdivision plat names embed nearby-city names
+        # ("MELBOURNE HEIGHTS" sits in Malabar), so drop district-only matches whose
+        # own city contradicts the strong matches. Pointless (and wrong) under a
+        # polygon: geometry already decided membership.
+        before_district_trim = len(property_ids)
+        property_ids = await drop_district_name_outliers(pool, parsed_query.criteria, property_ids)
+        if debug and len(property_ids) != before_district_trim:
+            filter_steps.append({
+                "step": "district_name_outliers",
+                "count": len(property_ids),
+                "dropped": before_district_trim - len(property_ids),
+            })
     after_hard_filter_count = len(property_ids)
 
     # Phase 3: Proximity (one at a time so each step is recorded for debug)
@@ -622,14 +665,17 @@ async def search(
     # A place name searched without a state can match same-named places in several
     # states at once ("Rockledge" -> FL + GA pins on one map). Keep only the state
     # with the most matches; no-ops for feature-only or state-qualified queries.
-    before_majority = len(property_ids)
-    property_ids = await keep_majority_location(pool, parsed_query.criteria, property_ids)
-    if debug and len(property_ids) != before_majority:
-        filter_steps.append({
-            "step": "majority_location",
-            "count": len(property_ids),
-            "dropped": before_majority - len(property_ids),
-        })
+    if area_region_id is None:
+        # Name-matching mode only — under a polygon the results are one place by
+        # construction and majority trimming has nothing legitimate to remove.
+        before_majority = len(property_ids)
+        property_ids = await keep_majority_location(pool, parsed_query.criteria, property_ids)
+        if debug and len(property_ids) != before_majority:
+            filter_steps.append({
+                "step": "majority_location",
+                "count": len(property_ids),
+                "dropped": before_majority - len(property_ids),
+            })
 
     results = await _load_results(pool, property_ids)
 
@@ -644,10 +690,22 @@ async def search(
 
     logger.info(f"Pipeline complete: {stats}")
 
-    # Canonical region for the searched area ("Downtown" repeats 137x, so clients key
-    # on region_id). Unresolved -> id None; name falls back to the parsed place name
-    # (no state code — none is verified) so the client keeps its map label.
-    region = await resolve_region(pool, parsed_query.criteria, property_ids)
+    # Region info is returned ONLY when its polygon actually filtered the results —
+    # regionId is a promise that the pins are that region's geometry. Name-matching
+    # fallbacks (no polygon data, subdivision/neighborhood searches) return
+    # region_id None; region_name then carries just the parsed place name as a label.
+    region = search_region if area_region_id is not None else None
+
+    # The polygon the results were filtered by (GeoJSON), so the client can draw
+    # EXACTLY the boundary that decided membership — pins can never disagree.
+    region_boundary = None
+    if area_region_id is not None:
+        async with pool.acquire() as conn:
+            gj = await conn.fetchval(
+                "SELECT ST_AsGeoJSON(geom) FROM regions WHERE regionid = $1",
+                area_region_id,
+            )
+        region_boundary = json.loads(gj) if gj else None
 
     return {
         "results": results,
@@ -657,4 +715,5 @@ async def search(
         "region_id": region["region_id"] if region else None,
         "region_name": region["region_name"] if region
                        else extract_search_area(parsed_query.criteria),
+        "region_boundary": region_boundary,
     }
