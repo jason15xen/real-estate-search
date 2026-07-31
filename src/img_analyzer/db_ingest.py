@@ -245,6 +245,9 @@ def _extract_property_fields(item: dict) -> dict:
 
     return {
         "guid": item.get("Id", ""),
+        # Zillow's stable property id — the only cross-batch identity the feed has.
+        # Present in only some exporter versions; None when absent.
+        "zpid": _to_int_or_none(record.get("zpid")),
         "name": address.get("streetAddress", "Unknown Property"),
         "street": address.get("streetAddress", ""),
         "district": address.get("subdivision", ""),
@@ -356,6 +359,7 @@ async def update_property_scalars(
             lot_size_sqft=$18, stories=$19,
             has_pool=$20, has_waterfront=$21, description=$22, financing=$23,
             county=$24, locality=$25, neighborhood=$26,
+            zpid=COALESCE($27, zpid),
             updated_at=NOW()
         WHERE id = $1
     """,
@@ -371,6 +375,7 @@ async def update_property_scalars(
         fields["has_pool"], fields["has_waterfront"], fields["description"],
         fields["financing"],
         fields["county"], fields["locality"], fields["neighborhood"],
+        fields["zpid"],
     )
     # Re-derive has_covered_pool (room features may have changed).
     await _refresh_has_covered_pool(conn, existing_id)
@@ -400,6 +405,7 @@ async def update_property_metadata(
             lot_size_sqft=$22, stories=$23,
             has_pool=$24, has_waterfront=$25, description=$26, financing=$27,
             county=$28, locality=$29, neighborhood=$30,
+            zpid=COALESCE($31, zpid),
             updated_at=NOW()
         WHERE id = $1
     """,
@@ -416,6 +422,7 @@ async def update_property_metadata(
         fields["has_pool"], fields["has_waterfront"], fields["description"],
         fields["financing"],
         fields["county"], fields["locality"], fields["neighborhood"],
+        fields["zpid"],
     )
     # Re-derive has_covered_pool (room features may have changed).
     await _refresh_has_covered_pool(conn, existing_id)

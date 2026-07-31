@@ -15,6 +15,10 @@ CREATE EXTENSION IF NOT EXISTS vector;   -- pgvector: feature-embedding similari
 CREATE TABLE properties (
     id              SERIAL PRIMARY KEY,
     guid            TEXT NOT NULL UNIQUE, -- original UUID from source data
+    -- Zillow's stable property id (cross-batch identity). NULL when the exporter
+    -- version omitted it; unique where present so a batch replay cannot re-insert
+    -- the same listing under a fresh guid.
+    zpid            BIGINT,
 
     -- Address
     name            TEXT NOT NULL,
@@ -179,6 +183,8 @@ CREATE INDEX idx_feature_embeddings_hnsw
 -- ============================================================
 
 -- Property filters (Phase 2: Hard Filters)
+-- Partial unique: zpid is the cross-batch identity, but most legacy records lack it.
+CREATE UNIQUE INDEX idx_properties_zpid ON properties(zpid) WHERE zpid IS NOT NULL;
 CREATE INDEX idx_properties_bedroom_count ON properties(bedroom_count);
 CREATE INDEX idx_properties_bathroom_count ON properties(bathroom_count);
 CREATE INDEX idx_properties_price ON properties(price_usd);
@@ -253,7 +259,12 @@ CREATE TABLE IF NOT EXISTS regions (
     regiontype  TEXT NOT NULL,        -- '0' city, '1' neighborhood, '2' ZIP, '3' county, '4' state
     regionname  TEXT NOT NULL,        -- place name (for type '2': the ZIP code itself)
     statecode   TEXT NOT NULL,        -- 2-letter state
-    city        TEXT NOT NULL         -- parent city for types '1'/'2'; = statecode for '0'/'3'; '' for '4'
+    city        TEXT NOT NULL,        -- parent city for types '1'/'2'; = statecode for '0'/'3'; '' for '4'
+    -- Region boundary for geo-location search: when present, "homes in <name>"
+    -- filters by ST_Covers(geom, property.geom) instead of place-name matching.
+    -- Loaded from src/data/region/script.sql (RegionBoundaries JSON) by the import.
+    geom        GEOGRAPHY(MultiPolygon, 4326)
 );
 CREATE INDEX IF NOT EXISTS idx_regions_type_name ON regions (regiontype, lower(regionname));
 CREATE INDEX IF NOT EXISTS idx_regions_statecode ON regions (statecode);
+CREATE INDEX IF NOT EXISTS idx_regions_geom ON regions USING GIST(geom);

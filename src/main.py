@@ -413,15 +413,19 @@ class PropertyResult(BaseModel):
 class SearchResponse(BaseModel):
     query: str
     zillowProperties: list[PropertyResult]
-    # Place the user searched INSIDE (for a map boundary/label); None when the query
-    # names no place or is relational ("near X" / "between X and Y"). When regionId
-    # is set this is the catalog's canonical "<RegionName>, <StateCode>" (e.g.
-    # "Rockledge, FL"); otherwise the bare place name as parsed from the query.
+    # Place the user searched INSIDE (map label); None when the query names no place
+    # or is relational ("near X" / "between X and Y"). When regionId is set this is
+    # the catalog's canonical "<RegionName>, <StateCode>"; otherwise just the place
+    # name as parsed from the query.
     regionName: str | None = None
-    # Unique regions.regionid for regionName — names repeat across the country
-    # ("Downtown" x137), so clients should key on this. None when no place was
-    # named or the name couldn't be resolved to exactly one region.
+    # Set ONLY when this region's polygon geometrically filtered the results —
+    # regionId is a promise that the pins are that region's geometry. Null on every
+    # name-matching fallback (no polygon data, subdivision/neighborhood searches,
+    # ambiguous names), even if the place is known.
     regionId: int | None = None
+    # GeoJSON MultiPolygon of the boundary that FILTERED these results. Present
+    # exactly when regionId is: draw it and every pin is inside by construction.
+    regionBoundary: dict | None = None
     debug: DebugInfo | None = None
 
 
@@ -469,6 +473,7 @@ async def search_properties(request: SearchRequest):
             zillowProperties=results,
             regionName=result.get("region_name"),
             regionId=result.get("region_id"),
+            regionBoundary=result.get("region_boundary"),
             debug=debug_info,
         )
     except HTTPException:

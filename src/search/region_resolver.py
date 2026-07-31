@@ -1,12 +1,11 @@
 """Resolve the place a query searched INSIDE to a row of the regions table.
 
-/search returns the searched area as regionName ("Rockledge, FL") + regionId, because
-names alone are not unique — "Downtown" appears 137 times in the catalog — so the
-client keys on the id. Resolution matches the name against regions rows
-of the types implied by WHICH LocationCriterion field the name came from (see
-_FIELD_REGION_TYPES), narrows duplicates with the criterion's own state/city context,
-and as a last resort with the states/cities of the properties the search actually
-matched. Still ambiguous -> no id (never a guess).
+Geo-location contract: /search returns regionId + canonical regionName + the
+boundary ONLY when that region's polygon actually filtered the results
+(resolve_search_region succeeded and the region has geometry). Every fallback —
+no polygon data, subdivision/neighborhood searches, ambiguous names — returns
+regionId null, with the parsed place name as a bare label. regionId is a promise
+that the pins are that region's geometry; never a guess.
 """
 
 import logging
@@ -51,8 +50,8 @@ def search_area_target(criteria) -> tuple[str, str, LocationCriterion] | None:
 
 
 def extract_search_area(criteria) -> str | None:
-    """The PARSED area name — the fallback display name when no regions row resolves
-    (the canonical name then comes from resolve_region instead)."""
+    """The PARSED area name — the display label when no region polygon filtered the
+    search (the canonical name then comes from resolve_search_region instead)."""
     target = search_area_target(criteria)
     if target is None:
         return None
@@ -61,28 +60,80 @@ def extract_search_area(criteria) -> str | None:
     return expand_state(value) if field == "state" else value
 
 
-async def resolve_region(
-    pool: asyncpg.Pool, criteria, property_ids: list[int]
-) -> dict | None:
-    """{"region_id": regions.regionid, "region_name": "<RegionName>, <StateCode>"}
-    for the searched area (e.g. {"region_id": 811179, "region_name": "Aquarian
-    Acres, KS"}), or None (no area, unknown name, or ambiguous after narrowing).
-    property_ids are the search's matched properties: their states/cities break
-    ties between same-named candidates and veto candidates that contradict every
-    result. Never raises: region info is enrichment, so any failure (e.g. regions
-    table not yet imported) degrades to None instead of failing the whole /search."""
+async def resolve_search_region(pool: asyncpg.Pool, criteria) -> dict | None:
+    """PRE-FILTER region resolution for geo-location search: map the searched place
+    name to one regions row BEFORE any properties are matched, so its polygon can
+    replace name matching entirely. Returns
+    {"region_id", "region_name", "has_geom"} or None.
+
+    No matched results exist yet, so candidates narrow by the query's own
+    state/parent-city context, then by which candidate's POLYGON actually contains
+    catalog properties ("Rockledge" with no state: the FL polygon holds 300+ homes,
+    the GA one zero). Ambiguous, unknown, or polygon-less -> None, and the caller
+    falls back to name matching with regionId null. Never raises."""
     try:
-        row = await _resolve_region(pool, criteria, property_ids)
+        target = search_area_target(criteria)
+        if target is None:
+            return None
+        field, value, crit = target
+        state_code = abbrev_state(crit.state).upper() if crit.state and crit.state.strip() else None
+        parent_city = crit.city if field in ("neighborhood", "district", "locality") else None
+
+        async with pool.acquire() as conn:
+            for region_type in _FIELD_REGION_TYPES[field]:
+                names = [value]
+                if field == "state":
+                    names = [expand_state(value)]
+                elif field == "county" and not value.lower().endswith("county"):
+                    names.append(f"{value} County")
+
+                candidates = await conn.fetch(
+                    """
+                    SELECT regionid, regionname, statecode,
+                           (geom IS NOT NULL) AS has_geom
+                    FROM regions
+                    WHERE regiontype = $1
+                      AND lower(regionname) = ANY($2)
+                      AND ($3::text IS NULL OR statecode = $3)
+                      AND ($4::text IS NULL OR lower(city) = lower($4))
+                    """,
+                    region_type,
+                    [n.lower() for n in names],
+                    state_code,
+                    parent_city if region_type == "1" else None,
+                )
+                if not candidates:
+                    continue
+                if len(candidates) == 1:
+                    chosen = candidates[0]
+                else:
+                    # Tie-break by polygon population: which candidate's boundary
+                    # actually contains catalog homes.
+                    populated = []
+                    for c in (c for c in candidates if c["has_geom"]):
+                        n = await conn.fetchval(
+                            "SELECT count(*) FROM properties p, regions r "
+                            "WHERE r.regionid = $1 AND ST_Covers(r.geom, p.geom)",
+                            c["regionid"],
+                        )
+                        if n:
+                            populated.append((n, c))
+                    if len(populated) != 1:
+                        return None  # ambiguous -> legacy path decides
+                    chosen = populated[0][1]
+                if not chosen["has_geom"]:
+                    # Without a polygon this resolution skipped the result-evidence
+                    # checks the legacy path performs — defer to it entirely.
+                    return None
+                return {
+                    "region_id": chosen["regionid"],
+                    "region_name": f"{chosen['regionname']}, {chosen['statecode']}",
+                    "has_geom": True,
+                }
+        return None
     except Exception:
-        logger.exception("Region resolution failed — returning no region")
+        logger.exception("Pre-filter region resolution failed")
         return None
-    if row is None:
-        return None
-    return {
-        "region_id": row["regionid"],
-        # Canonical catalog spelling, not the user's — "rockledge" -> "Rockledge, FL".
-        "region_name": f"{row['regionname']}, {row['statecode']}",
-    }
 
 
 async def keep_majority_location(
@@ -127,83 +178,3 @@ async def keep_majority_location(
         return property_ids
 
 
-async def _resolve_region(
-    pool: asyncpg.Pool, criteria, property_ids: list[int]
-) -> asyncpg.Record | None:
-    target = search_area_target(criteria)
-    if target is None:
-        return None
-    field, value, crit = target
-
-    # upper(): regions.statecode is 'FL'; the LLM may emit 'fl' and abbrev_state
-    # passes 2-letter values through unchanged.
-    state_code = abbrev_state(crit.state).upper() if crit.state and crit.state.strip() else None
-    # Parent city narrows neighborhoods ("Downtown" -> the one in the queried city).
-    # Only valid against type-'1' rows: for other types regions.city is NOT a city
-    # (it's the state code, or '' for states), so it would falsely exclude them.
-    parent_city = crit.city if field in ("neighborhood", "district", "locality") else None
-
-    async with pool.acquire() as conn:
-        # Where the matched properties actually are — used both to break ties between
-        # same-named candidates and to reject a lone candidate that contradicts every
-        # result (a single match is not proof it's the RIGHT place: "Rockledge" filed
-        # as a neighborhood matches only the one in Jenkintown PA, while all the
-        # result pins are in FL). Empty result set = no evidence either way.
-        prop_states: set[str] = set()
-        prop_cities: set[str] = set()
-        if property_ids:
-            rows = await conn.fetch(
-                "SELECT DISTINCT state, city FROM properties WHERE id = ANY($1)",
-                property_ids,
-            )
-            prop_states = {abbrev_state(r["state"]).upper() for r in rows}
-            prop_cities = {r["city"].strip().lower() for r in rows if r["city"]}
-
-        for region_type in _FIELD_REGION_TYPES[field]:
-            names = [value]
-            if field == "state":
-                # Type-4 rows: regionname is the full state name, statecode the code.
-                names = [expand_state(value)]
-            elif field == "county" and not value.lower().endswith("county"):
-                names.append(f"{value} County")  # criterion may carry "Brevard" bare
-
-            candidates = await conn.fetch(
-                """
-                SELECT regionid, regionname, statecode, city
-                FROM regions
-                WHERE regiontype = $1
-                  AND lower(regionname) = ANY($2)
-                  AND ($3::text IS NULL OR statecode = $3)
-                  AND ($4::text IS NULL OR lower(city) = lower($4))
-                """,
-                region_type,
-                [n.lower() for n in names],
-                state_code,
-                parent_city if region_type == "1" else None,
-            )
-            if not candidates:
-                continue
-
-            narrowed = (
-                [c for c in candidates if c["statecode"].upper() in prop_states]
-                if prop_states else list(candidates)
-            )
-            if len(narrowed) > 1 and prop_cities:
-                # Duplicates within one state (e.g. two 'Downtown' neighborhoods):
-                # keep those whose parent city matches a result's city, if any do.
-                by_city = [c for c in narrowed if c["city"].strip().lower() in prop_cities]
-                narrowed = by_city or narrowed
-            if len(narrowed) == 1:
-                return narrowed[0]
-            if not narrowed:
-                # Every candidate at this level is in a state none of the results
-                # are in — same-named places elsewhere ("Silver Lake" towns in
-                # IN/KS/MN/OH while the pins are in FL). Fall through to the next
-                # region type rather than mislabel or give up early.
-                continue
-            logger.info(
-                f"Region '{value}' ({field}) ambiguous: {len(candidates)} candidates, "
-                f"{len(narrowed)} after property narrowing — returning no regionid"
-            )
-            return None
-    return None

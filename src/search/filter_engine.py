@@ -1,10 +1,12 @@
 """Deterministic filter engine: PostgreSQL indexed queries for room counts, price, area, location."""
 
 import logging
+import re
 
 import asyncpg
 
 from src.data.us_states import country_variants, state_variants
+from src.search.region_resolver import search_area_target
 from src.models.search import (
     AreaCriterion,
     Criterion,
@@ -16,11 +18,20 @@ from src.models.search import (
 
 logger = logging.getLogger(__name__)
 
-
-def _like_contains(value: str) -> str:
-    """Build a case-insensitive 'contains' ILIKE pattern, escaping LIKE metacharacters (\\, %, _) in user input."""
-    escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    return f"%{escaped}%"
+def _word_match_pattern(value: str) -> str:
+    """Case-insensitive WHOLE-WORD regex for a place name: 'viera' must match
+    'Bridgewater at Viera' but NOT 'Riviera' (plain %contains% matched both —
+    'viera' is a substring of 'Riviera'). Regex metacharacters in user input are
+    escaped; whitespace runs are normalized; \\m/\\M (PostgreSQL word boundaries)
+    are added only next to word characters so values like 'St.' still match."""
+    cleaned = value.strip()
+    escaped = re.sub(r"([^A-Za-z0-9\s])", r"\\\1", cleaned)
+    escaped = re.sub(r"\s+", r"\\s+", escaped)
+    if re.match(r"[A-Za-z0-9]", cleaned):
+        escaped = r"\m" + escaped
+    if re.search(r"[A-Za-z0-9]$", cleaned):
+        escaped = escaped + r"\M"
+    return escaped
 
 
 async def apply_hard_filters(
@@ -28,17 +39,41 @@ async def apply_hard_filters(
     criteria: list[Criterion],
     bounds: dict | None = None,
     filters: dict | None = None,
+    area_region_id: int | None = None,
 ) -> list[int]:
-    """Return property IDs passing ALL criteria; bounds is an optional bbox, filters are per-field overrides that suppress matching LLM sub-conditions."""
+    """Return property IDs passing ALL criteria; bounds is an optional bbox, filters
+    are per-field overrides that suppress matching LLM sub-conditions.
+
+    area_region_id: geo-location mode — the searched place resolved to this regions
+    row (which has a polygon), so membership is decided by ST_Covers against that
+    polygon and the target criterion's PLACE-NAME condition is skipped (its other
+    fields — state, street... — still apply). Name matching remains for every other
+    criterion and as the fallback when no region polygon exists."""
     hard_criteria = [
         c for c in criteria
         if isinstance(c, (RoomCountCriterion, PriceCriterion, AreaCriterion,
                           LocationCriterion, PropertyCriterion))
     ]
 
+    # Which criterion+field the polygon replaces (the same target the region was
+    # resolved from) — computed once so exactly one name condition is suppressed.
+    polygon_target: tuple[int, str] | None = None
+    if area_region_id is not None:
+        t = search_area_target(criteria)
+        if t is not None:
+            field, _, crit = t
+            polygon_target = (id(crit), field)
+
     conditions = []
     params = []
     param_idx = 1
+
+    if polygon_target is not None:
+        conditions.append(
+            f"ST_Covers((SELECT geom FROM regions WHERE regionid = ${param_idx}), geom)"
+        )
+        params.append(area_region_id)
+        param_idx += 1
 
     if bounds:
         try:
@@ -172,34 +207,51 @@ async def apply_hard_filters(
                 param_idx += 1
 
         elif isinstance(criterion, LocationCriterion):
-            # Place names use fuzzy (contains) matching across place columns (which often disagree); state/country stay exact.
-            if criterion.city:
+            # Place-name matching semantics (STRICT municipal):
+            #  - city/locality columns: whole-FIELD equality — 'melbourne' must not
+            #    return Melbourne Beach / West Melbourne / Melbourne Village homes;
+            #    those are different municipalities whose names merely embed the word.
+            #  - neighborhood/district/county columns: whole-WORD match — 'viera'
+            #    should find neighborhood 'Viera East' and district 'Bridgewater at
+            #    Viera' (but not 'Riviera Isles': word, not substring).
+            # State/country stay exact via variants.
+            # In geo-location mode the polygon condition replaces the TARGET
+            # field's name condition (and only that one).
+            def _by_polygon(field_name: str) -> bool:
+                return polygon_target == (id(criterion), field_name)
+
+            if criterion.city and not _by_polygon("city"):
                 conditions.append(
-                    f"(city ILIKE ${param_idx} OR locality ILIKE ${param_idx} "
-                    f"OR neighborhood ILIKE ${param_idx} OR district ILIKE ${param_idx} "
-                    f"OR county ILIKE ${param_idx})"
+                    f"(lower(trim(city)) = lower(${param_idx}) "
+                    f"OR lower(trim(coalesce(locality, ''))) = lower(${param_idx}) "
+                    f"OR neighborhood ~* ${param_idx + 1} OR district ~* ${param_idx + 1} "
+                    f"OR county ~* ${param_idx + 1})"
                 )
-                params.append(_like_contains(criterion.city))
+                params.append(criterion.city.strip())
+                params.append(_word_match_pattern(criterion.city))
+                param_idx += 2
+            if criterion.locality and not _by_polygon("locality"):
+                conditions.append(
+                    f"(lower(trim(coalesce(locality, ''))) = lower(${param_idx}) "
+                    f"OR lower(trim(city)) = lower(${param_idx}))"
+                )
+                params.append(criterion.locality.strip())
                 param_idx += 1
-            if criterion.locality:
-                conditions.append(f"(locality ILIKE ${param_idx} OR city ILIKE ${param_idx})")
-                params.append(_like_contains(criterion.locality))
+            if criterion.neighborhood and not _by_polygon("neighborhood"):
+                conditions.append(f"neighborhood ~* ${param_idx}")
+                params.append(_word_match_pattern(criterion.neighborhood))
                 param_idx += 1
-            if criterion.neighborhood:
-                conditions.append(f"neighborhood ILIKE ${param_idx}")
-                params.append(_like_contains(criterion.neighborhood))
-                param_idx += 1
-            if criterion.county:
-                conditions.append(f"county ILIKE ${param_idx}")
-                params.append(_like_contains(criterion.county))
+            if criterion.county and not _by_polygon("county"):
+                conditions.append(f"county ~* ${param_idx}")
+                params.append(_word_match_pattern(criterion.county))
                 param_idx += 1
             if criterion.street:
-                conditions.append(f"street ILIKE ${param_idx}")
-                params.append(_like_contains(criterion.street))
+                conditions.append(f"street ~* ${param_idx}")
+                params.append(_word_match_pattern(criterion.street))
                 param_idx += 1
-            if criterion.district:
-                conditions.append(f"district ILIKE ${param_idx}")
-                params.append(_like_contains(criterion.district))
+            if criterion.district and not _by_polygon("district"):
+                conditions.append(f"district ~* ${param_idx}")
+                params.append(_word_match_pattern(criterion.district))
                 param_idx += 1
             # State/country are matched against ALL accepted forms: users type
             # "Florida" while records store "FL" (an exact compare returned 0 results).
@@ -278,3 +330,85 @@ def _room_type_to_column(room_type: str) -> str | None:
         "garage": "garage_count",
     }
     return mapping.get(room_type.lower())
+
+
+async def drop_district_name_outliers(
+    pool: asyncpg.Pool, criteria: list[Criterion], property_ids: list[int]
+) -> list[int]:
+    """Drop properties whose ONLY match for a searched place name is the district
+    (subdivision plat) column AND whose own city/locality differs from every strong
+    match's. A plat name proves NAMING, not location — 'MELBOURNE HEIGHTS SEC C'
+    sits in Malabar, and Palm Bay's plats are named 'Port Malabar Unit NN' — while
+    city/locality/neighborhood/county are location facts.
+
+    The rule: when strong matches exist, a district-only match survives only if its
+    own city or locality appears among the strong matches' cities/localities
+    ('Bridgewater at Viera' homes share mailing city Melbourne with the direct Viera
+    matches; 'Port Malabar' homes are Palm Bay's, not Malabar's). With NO strong
+    matches at all, district hits stand alone unchecked — that is a pure subdivision
+    search ('homes in Bridgewater') and the only evidence there is. Never raises;
+    failures keep all ids."""
+    place_names = [
+        c.city.strip() for c in criteria
+        if isinstance(c, LocationCriterion) and c.city and c.city.strip()
+    ]
+    if not place_names or not property_ids:
+        return property_ids
+
+    try:
+        dropped: set[int] = set()
+        async with pool.acquire() as conn:
+            for name in place_names:
+                # Mirrors apply_hard_filters' strict semantics: city/locality by
+                # whole-field equality, neighborhood/county by whole-word match.
+                rows = await conn.fetch(
+                    """
+                    WITH m AS (
+                        SELECT id,
+                               lower(trim(city)) AS own_city,
+                               lower(trim(coalesce(locality, ''))) AS own_locality,
+                               lower(trim(city)) = lower($2) AS city_eq,
+                               lower(trim(coalesce(locality, ''))) = lower($2) AS locality_eq,
+                               (lower(trim(city)) = lower($2)
+                                OR lower(trim(coalesce(locality, ''))) = lower($2)
+                                OR coalesce(neighborhood, '') ~* $3
+                                OR coalesce(county, '') ~* $3) AS strong,
+                               coalesce(district, '') ~* $3 AS via_district
+                        FROM properties
+                        WHERE id = ANY($1)
+                    ),
+                    -- Anchor places = mailing cities of city-equality matches; only
+                    -- when the name is not a mailing city at all (Viera) do
+                    -- locality-equality matches anchor instead. Never both: homes
+                    -- whose Photon locality fuzzily names the searched city would
+                    -- donate THEIR cities and re-admit sibling-town plat homes.
+                    allowed AS (
+                        SELECT DISTINCT own_city AS place FROM m WHERE city_eq
+                        UNION ALL
+                        SELECT DISTINCT own_city FROM m
+                        WHERE locality_eq AND NOT EXISTS (SELECT 1 FROM m WHERE city_eq)
+                    )
+                    SELECT m.id
+                    FROM m
+                    WHERE m.via_district AND NOT m.strong
+                      AND EXISTS (SELECT 1 FROM allowed)
+                      AND m.own_city NOT IN (SELECT place FROM allowed)
+                      AND (m.own_locality = ''
+                           OR m.own_locality NOT IN (SELECT place FROM allowed))
+                    """,
+                    property_ids,
+                    name,
+                    _word_match_pattern(name),
+                )
+                if rows:
+                    dropped.update(r["id"] for r in rows)
+                    logger.info(
+                        f"District-name outliers for '{name}': dropped {len(rows)} "
+                        f"properties whose city/locality matches no strong result"
+                    )
+        if not dropped:
+            return property_ids
+        return [pid for pid in property_ids if pid not in dropped]
+    except Exception:
+        logger.exception("District outlier trim failed — keeping all results")
+        return property_ids
