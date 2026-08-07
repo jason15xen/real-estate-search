@@ -501,6 +501,44 @@ class SearchResponse(BaseModel):
     debug: DebugInfo | None = None
 
 
+def _describe_filters(f: dict) -> str:
+    """Human-readable clauses for the applied UI filters, appended to the response's
+    query field so it describes the EFFECTIVE search ("homes in viera, max price
+    $500,000, 3+ bedrooms"). Deterministic string building — no LLM involved."""
+    parts: list[str] = []
+    pmin, pmax = f.get("price_min"), f.get("price_max")
+    if pmin is not None and pmax is not None:
+        parts.append(f"price ${pmin:,}-${pmax:,}")
+    elif pmin is not None:
+        parts.append(f"min price ${pmin:,}")
+    elif pmax is not None:
+        parts.append(f"max price ${pmax:,}")
+    if f.get("beds_min") is not None:
+        parts.append(f"{f['beds_min']}+ bedrooms")
+    if f.get("baths_min") is not None:
+        parts.append(f"{f['baths_min']}+ bathrooms")
+    smin, smax = f.get("sqft_min"), f.get("sqft_max")
+    if smin is not None and smax is not None:
+        parts.append(f"{smin:,}-{smax:,} sqft")
+    elif smin is not None:
+        parts.append(f"min {smin:,} sqft")
+    elif smax is not None:
+        parts.append(f"max {smax:,} sqft")
+    yfrom, yto = f.get("year_from"), f.get("year_to")
+    if yfrom is not None and yto is not None:
+        parts.append(f"built {yfrom}-{yto}")
+    elif yfrom is not None:
+        parts.append(f"built after {yfrom}")
+    elif yto is not None:
+        parts.append(f"built before {yto}")
+    if f.get("property_types"):
+        pretty = [t.replace("_", " ").title() for t in f["property_types"]]
+        parts.append("type: " + ", ".join(pretty))
+    if f.get("financing"):
+        parts.append("financing: " + ", ".join(f["financing"]))
+    return ", ".join(parts)
+
+
 @app.post("/search", response_model=SearchResponse)
 async def search_properties(request: SearchRequest):
     try:
@@ -543,8 +581,17 @@ async def search_properties(request: SearchRequest):
             )
 
         total = result["total_count"]
+        # Response query = the EFFECTIVE search: the typed query plus any applied
+        # UI filters, as one readable line. The ORIGINAL query alone is what the
+        # LLM parsed (filters are separate conditions, not re-parsed text).
+        effective_query = request.query
+        if filters_dict:
+            clauses = _describe_filters(filters_dict)
+            if clauses:
+                effective_query = f"{request.query}, {clauses}"
+
         return SearchResponse(
-            query=request.query,
+            query=effective_query,
             briefproperties=results,
             pins=result["pins"],
             totalCount=total,
