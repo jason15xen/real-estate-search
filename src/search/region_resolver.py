@@ -26,11 +26,42 @@ logger = logging.getLogger(__name__)
 _FIELD_REGION_TYPES: dict[str, tuple[str, ...]] = {
     "neighborhood": ("1",),
     "district": ("1",),
-    "locality": ("0", "1"),
-    "city": ("0", "1"),
+    # '3' at the end: users say bare "brevard" for the county, which the parser
+    # files under city; the only type-0 'Brevard' is a town in NC, so without the
+    # county fall-through the obvious local meaning would never resolve.
+    "locality": ("0", "1", "3"),
+    "city": ("0", "1", "3"),
     "county": ("3",),
     "state": ("4",),
 }
+
+
+# Polygon membership is static between ingests, but ST_Covers over the whole
+# catalog costs ~0.5s for a county-sized boundary — and it was recomputed on EVERY
+# request. Cache the matched property ids per region (TTL: newly ingested homes
+# appear in polygon searches within 5 minutes; same trade as the parse cache).
+_REGION_IDS_CACHE: dict[int, tuple[float, list[int]]] = {}
+_REGION_IDS_TTL_SEC = 300
+_REGION_IDS_MAX = 64
+
+
+async def region_property_ids(pool: asyncpg.Pool, region_id: int) -> list[int]:
+    """All property ids inside the region's polygon (cached)."""
+    import time
+    hit = _REGION_IDS_CACHE.get(region_id)
+    if hit and time.monotonic() - hit[0] < _REGION_IDS_TTL_SEC:
+        return hit[1]
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT p.id FROM properties p, regions r "
+            "WHERE r.regionid = $1 AND ST_Covers(r.geom, p.geom)",
+            region_id,
+        )
+    ids = [r["id"] for r in rows]
+    if len(_REGION_IDS_CACHE) >= _REGION_IDS_MAX:
+        _REGION_IDS_CACHE.pop(min(_REGION_IDS_CACHE, key=lambda k: _REGION_IDS_CACHE[k][0]))
+    _REGION_IDS_CACHE[region_id] = (time.monotonic(), ids)
+    return ids
 
 
 def search_area_target(criteria) -> tuple[str, str, LocationCriterion] | None:
@@ -84,8 +115,8 @@ async def resolve_search_region(pool: asyncpg.Pool, criteria) -> dict | None:
                 names = [value]
                 if field == "state":
                     names = [expand_state(value)]
-                elif field == "county" and not value.lower().endswith("county"):
-                    names.append(f"{value} County")
+                elif region_type == "3" and not value.lower().endswith("county"):
+                    names.append(f"{value} County")  # bare "Brevard" -> the county row
 
                 candidates = await conn.fetch(
                     """
@@ -108,23 +139,23 @@ async def resolve_search_region(pool: asyncpg.Pool, criteria) -> dict | None:
                     chosen = candidates[0]
                 else:
                     # Tie-break by polygon population: which candidate's boundary
-                    # actually contains catalog homes.
+                    # actually contains catalog homes (cached membership).
                     populated = []
                     for c in (c for c in candidates if c["has_geom"]):
-                        n = await conn.fetchval(
-                            "SELECT count(*) FROM properties p, regions r "
-                            "WHERE r.regionid = $1 AND ST_Covers(r.geom, p.geom)",
-                            c["regionid"],
-                        )
+                        n = len(await region_property_ids(pool, c["regionid"]))
                         if n:
                             populated.append((n, c))
-                    if len(populated) != 1:
-                        return None  # ambiguous -> legacy path decides
+                    if len(populated) > 1:
+                        return None  # genuinely ambiguous -> no polygon mode
+                    if not populated:
+                        continue  # nothing usable at this level, try the next type
                     chosen = populated[0][1]
                 if not chosen["has_geom"]:
-                    # Without a polygon this resolution skipped the result-evidence
-                    # checks the legacy path performs — defer to it entirely.
-                    return None
+                    # A polygon-less match can't power geo filtering; try the next
+                    # type first (bare "brevard" hits the polygon-less NC town at
+                    # type '0' but Brevard County's polygon at '3') before falling
+                    # back to name matching.
+                    continue
                 return {
                     "region_id": chosen["regionid"],
                     "region_name": f"{chosen['regionname']}, {chosen['statecode']}",
