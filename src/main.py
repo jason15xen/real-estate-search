@@ -340,10 +340,18 @@ class Filters(BaseModel):
         return out
 
 
+class ClientLocation(BaseModel):
+    """User's own position from the browser geolocation API (sent only when the
+    user granted the permission prompt). Scopes location-less queries to their city."""
+    lat: float
+    lng: float
+
+
 class SearchRequest(BaseModel):
     query: str
     bounds: Bounds | None = None
     filters: Filters | None = None
+    clientLocation: ClientLocation | None = None
     debug: bool = False
 
     @field_validator("query")
@@ -426,11 +434,25 @@ class SearchResponse(BaseModel):
     # GeoJSON MultiPolygon of the boundary that FILTERED these results. Present
     # exactly when regionId is: draw it and every pin is inside by construction.
     regionBoundary: dict | None = None
+    # True when the query named no place and the search area came from the user's
+    # location (browser coordinates, IP, or the Brevard default) — lets the UI say
+    # "showing homes near you".
+    detectedLocation: bool = False
     debug: DebugInfo | None = None
 
 
+def _client_ip(http_request: Request) -> str | None:
+    """Real client IP: first X-Forwarded-For hop when behind a proxy/LB, else the
+    socket peer. The header is client-forgeable — acceptable here, it only picks a
+    default search area."""
+    fwd = http_request.headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return http_request.client.host if http_request.client else None
+
+
 @app.post("/search", response_model=SearchResponse)
-async def search_properties(request: SearchRequest):
+async def search_properties(request: SearchRequest, http_request: Request):
     try:
         pool = await get_pool()
         bounds_dict = request.bounds.model_dump() if request.bounds else None
@@ -446,6 +468,10 @@ async def search_properties(request: SearchRequest):
             bounds=bounds_dict,
             filters=filters_dict,
             debug=request.debug,
+            client_location=(
+                request.clientLocation.model_dump() if request.clientLocation else None
+            ),
+            client_ip=_client_ip(http_request),
         )
 
         # A query that parses to ZERO criteria (gibberish) with no bounds/filters would
@@ -474,6 +500,7 @@ async def search_properties(request: SearchRequest):
             regionName=result.get("region_name"),
             regionId=result.get("region_id"),
             regionBoundary=result.get("region_boundary"),
+            detectedLocation=result.get("location_detected", False),
             debug=debug_info,
         )
     except HTTPException:

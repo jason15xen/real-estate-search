@@ -39,6 +39,17 @@ class Settings(BaseSettings):
     photon_enrich: bool = True
     photon_url: str = "https://photon.komoot.io"
 
+    # IP geolocation (DB-IP City Lite .mmdb, refreshed monthly by
+    # `python -m src.data.update_geoip`) — tier-2 fallback that scopes location-less
+    # queries to the user's city when the browser sent no coordinates. File absent
+    # -> lookups fall through to the default area below. Attribution required:
+    # "IP geolocation by DB-IP.com" (CC-BY 4.0).
+    geoip_db_path: str = "src/data/geoip/dbip-city-lite.mmdb"
+    # Search area when nothing detectable: non-US users, private/undetectable IPs,
+    # or browser coordinates outside region-polygon coverage.
+    default_search_county: str = "Brevard County"
+    default_search_state: str = "FL"
+
     # PostgreSQL
     postgres_host: str = "localhost"
     postgres_port: int = 5432

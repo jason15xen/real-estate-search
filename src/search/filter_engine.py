@@ -149,10 +149,12 @@ async def apply_hard_filters(
     for criterion in hard_criteria:
         if isinstance(criterion, RoomCountCriterion):
             col = _room_type_to_column(criterion.room_type)
-            bounds = ((criterion.exact_count, "="),
-                      (criterion.min_count, ">="),
-                      (criterion.max_count, "<="))
-            if col is None and any(b is not None for b, _ in bounds):
+            # NB: not named `bounds` — that would shadow the bbox parameter and make
+            # the summary log below claim bounds=yes on every room-count query.
+            count_bounds = ((criterion.exact_count, "="),
+                            (criterion.min_count, ">="),
+                            (criterion.max_count, "<="))
+            if col is None and any(b is not None for b, _ in count_bounds):
                 # Room type without a denormalized column (Pool, Exterior, Office…):
                 # count via the rooms table instead of silently dropping the criterion
                 # (which made "2 pools" match the whole catalog).
@@ -163,7 +165,7 @@ async def apply_hard_filters(
                 )
                 params.append(criterion.room_type)
                 param_idx += 1
-                for bound, op in bounds:
+                for bound, op in count_bounds:
                     if bound is not None:
                         conditions.append(f"{count_sub} {op} ${param_idx}")
                         params.append(bound)
