@@ -568,6 +568,27 @@ async def search(
 
     filter_steps: list[dict] = []
 
+    # Phase 1.6 (overlapped): feature-phrase resolution depends only on the parsed
+    # criteria, and its cold path (embedding + LLM #2 filter, ~5s for novel phrases)
+    # dominated feature queries — start it NOW so it runs concurrently with region
+    # resolution and all SQL filtering below; Phase 4 awaits the result.
+    feature_criteria_all = [
+        c for c in parsed_query.criteria if isinstance(c, FeatureCriterion)
+    ]
+    want_pool, want_covered, no_uncovered, feature_criteria = _extract_pool_filters(
+        feature_criteria_all
+    )
+    feature_task: asyncio.Task | None = None
+    if feature_criteria and settings.search_use_embedding_retrieval:
+        feature_task = asyncio.create_task(
+            resolve_feature_phrases(pool, [fc.feature for fc in feature_criteria])
+        )
+        # If the pipeline raises before Phase 4 awaits this task, mark its eventual
+        # exception as retrieved so asyncio doesn't log an orphaned-task warning.
+        feature_task.add_done_callback(
+            lambda t: t.exception() if not t.cancelled() else None
+        )
+
     # Phase 1.5: Geo-location resolution — if the searched place maps to a regions
     # row WITH a polygon, membership is decided geometrically (ST_Covers) and all
     # name-based place matching/trimming for that place is skipped.
@@ -688,13 +709,7 @@ async def search(
             property_ids = await _match_color_rooms(pool, property_ids, color_room_criteria)
     after_color_room_count = len(property_ids)
 
-    # Phase 4: Feature matching (alternatives from registry)
-    feature_criteria = [
-        c for c in parsed_query.criteria if isinstance(c, FeatureCriterion)
-    ]
-
     # Phase 3.7: Pool — answered by structured columns (has_pool / 'Pool' room, has_covered_pool), not fuzzy 'pool' tags.
-    want_pool, want_covered, no_uncovered, feature_criteria = _extract_pool_filters(feature_criteria)
     if no_uncovered and property_ids:
         before = len(property_ids)
         property_ids = await _filter_by_no_uncovered_pool(pool, property_ids)
@@ -727,12 +742,16 @@ async def search(
             })
 
     alternatives: dict[str, list[str]] = {}
+    if feature_task is not None and not (feature_criteria and property_ids):
+        # Filters emptied the pool (or only pool-phrases remained) — the overlapped
+        # resolution is no longer needed; don't wait up to seconds for its answer.
+        feature_task.cancel()
     if feature_criteria and property_ids:
         logger.info("Phase 4: Feature matching (PostgreSQL)")
-        if settings.search_use_embedding_retrieval:
-            # Embedding retrieval + LLM #2 relevance filter maps each raw phrase -> curated DB feature list.
-            phrases = [fc.feature for fc in feature_criteria]
-            alternatives = await resolve_feature_phrases(pool, phrases)
+        if feature_task is not None:
+            # Resolution ran CONCURRENTLY with region resolution + SQL filtering
+            # (started right after parse) — by now it's finished or nearly so.
+            alternatives = await feature_task
             # Union each phrase's embedding list with deterministic word-subset alternatives for completeness/consistency.
             for fc in feature_criteria:
                 ws = registry.get_feature_alternatives(fc.feature)
@@ -807,8 +826,9 @@ async def search(
     total_count = len(property_ids)
     page_ids = property_ids[(page - 1) * page_size : page * page_size]
 
-    pins = await _load_pins(pool, property_ids)
-    results = await _load_results(pool, page_ids)
+    pins, results = await asyncio.gather(
+        _load_pins(pool, property_ids), _load_results(pool, page_ids)
+    )
 
     stats = {
         "after_hard_filters": after_hard_filter_count,
