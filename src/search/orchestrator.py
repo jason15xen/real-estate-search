@@ -277,36 +277,154 @@ async def _match_color_rooms(
     return list(result_ids)
 
 
-async def _load_results(pool: asyncpg.Pool, property_ids: list[int]) -> list[dict]:
-    """Load the matched properties for /search: id + map coordinates + price, in one
-    SELECT, ordered by id so the result list is stable across identical requests.
-    Coordinates come back as null for the rare 'undisclosed address' listings whose feed
-    record carries no latitude/longitude (stored as 0,0 because the column is NOT NULL);
-    returning 0,0 would drop a map pin in the Atlantic."""
+async def _load_pins(pool: asyncpg.Pool, property_ids: list[int]) -> list[dict]:
+    """Lightweight map pins for ALL matched properties (the card list is paginated,
+    the map is not): id + coords + price only. 0,0-placeholder coords -> null."""
     if not property_ids:
         return []
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT guid,
-                   ST_Y(geom::geometry) AS lat,
-                   ST_X(geom::geometry) AS lon,
-                   price_usd
-            FROM properties
-            WHERE id = ANY($1)
-            ORDER BY id
+            SELECT guid, ST_Y(geom::geometry) AS lat, ST_X(geom::geometry) AS lon, price_usd
+            FROM properties WHERE id = ANY($1) ORDER BY id
             """,
             property_ids,
         )
+    return [
+        {
+            "propertyId": r["guid"],
+            "latitude": r["lat"] if not (r["lat"] == 0 and r["lon"] == 0) else None,
+            "longitude": r["lon"] if not (r["lat"] == 0 and r["lon"] == 0) else None,
+            "price": r["price_usd"],
+        }
+        for r in rows
+    ]
+
+
+def _room_key(room_type: str | None) -> str:
+    """'Living Room' -> 'livingRoom'; unclassified images bucket under 'other'."""
+    if not room_type or room_type == "Unknown":
+        return "other"
+    words = room_type.split()
+    return words[0].lower() + "".join(w.capitalize() for w in words[1:])
+
+
+def _photos_by_room(photos_json: str | None, room_type_by_url: dict[str, str]) -> dict[str, list[str]]:
+    """originalPhotos JSON -> {roomType: [url, ...]}, grouped by the vision-derived
+    room type of each image (looked up by the photo's canonical highest-width url —
+    the id room_instances stores). Urls are the SMALLEST-width jpegs (search results
+    are cards/thumbnails; full-size urls live on the property detail endpoint)."""
+    if not photos_json:
+        return {}
+    try:
+        photos = json.loads(photos_json)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+    out: dict[str, list[str]] = {}
+    for photo in photos or []:
+        if not isinstance(photo, dict):
+            continue
+        jpegs = ((photo.get("mixedSources") or {}).get("jpeg") or [])
+        candidates = [s for s in jpegs if isinstance(s, dict) and s.get("url")]
+        if not candidates:
+            continue
+        smallest = min(candidates, key=lambda s: s.get("width") or 10**9)
+        canonical = max(candidates, key=lambda s: s.get("width") or 0)["url"]
+        key = _room_key(room_type_by_url.get(canonical))
+        out.setdefault(key, []).append(smallest["url"])
+    return out
+
+
+def _blank_to_none(value: str | None) -> str | None:
+    return value.strip() if value and value.strip() else None
+
+
+async def _load_results(pool: asyncpg.Pool, property_ids: list[int]) -> list[dict]:
+    """Load the matched properties for /search as briefproperty dicts, in one SELECT
+    (properties + the raw feed record for fields never promoted to columns:
+    currency, homeStatus, daysOnZillow, photos), ordered by id so the result list is
+    stable across identical requests. Coordinates come back as null for the rare
+    'undisclosed address' listings whose feed record carries no latitude/longitude
+    (stored as 0,0 because the column is NOT NULL); returning 0,0 would drop a map
+    pin in the Atlantic."""
+    if not property_ids:
+        return []
+    async with pool.acquire() as conn:
+        # Room type per photo (for photo captions), keyed by the canonical url the
+        # ingest stores. One query for the whole page.
+        room_rows = await conn.fetch(
+            """
+            SELECT property_id, photo_url, room_type
+            FROM room_instances
+            WHERE property_id = ANY($1) AND photo_url IS NOT NULL
+            """,
+            property_ids,
+        )
+        rows = await conn.fetch(
+            """
+            SELECT p.id AS internal_id,
+                   p.guid,
+                   ST_Y(p.geom::geometry) AS lat,
+                   ST_X(p.geom::geometry) AS lon,
+                   p.price_usd, p.bedroom_count, p.bathroom_count, p.area_sqft,
+                   p.street, p.city, p.state, p.postal_code,
+                   p.neighborhood, p.locality, p.district,
+                   p.home_type, p.year_built, p.county, p.lot_size_sqft,
+                   r.data->>'currency'     AS currency,
+                   r.data->>'homeStatus'   AS home_status,
+                   r.data->>'daysOnZillow' AS days_on_market,
+                   r.data->>'originalPhotos' AS photos_json
+            FROM properties p
+            LEFT JOIN raw_properties r ON r.id = p.guid
+            WHERE p.id = ANY($1)
+            ORDER BY p.id
+            """,
+            property_ids,
+        )
+    room_types: dict[int, dict[str, str]] = {}
+    for rr in room_rows:
+        room_types.setdefault(rr["property_id"], {})[rr["photo_url"]] = rr["room_type"]
+
     results = []
     for r in rows:
         lat, lon = r["lat"], r["lon"]
         placeable = not (lat == 0 and lon == 0)
+        try:
+            days = int(r["days_on_market"]) if r["days_on_market"] else None
+        except ValueError:
+            days = None
         results.append({
-            "id": r["guid"],
-            "Latitude": lat if placeable else None,
-            "Longitude": lon if placeable else None,
-            "Price": r["price_usd"],
+            "propertyId": r["guid"],
+            "price": r["price_usd"],
+            "currency": r["currency"] or "USD",
+            "latitude": lat if placeable else None,
+            "longitude": lon if placeable else None,
+            "bedrooms": r["bedroom_count"],
+            "bathrooms": r["bathroom_count"],
+            # 0 is the ingest's "unknown" sentinel (land lots, undisclosed) — null it
+            # rather than showing "0 sqft", matching lotAreaValue's treatment.
+            "livingArea": r["area_sqft"] or None,
+            "address": {
+                "streetAddress": _blank_to_none(r["street"]),
+                "city": _blank_to_none(r["city"]),
+                "state": _blank_to_none(r["state"]),
+                "zipcode": _blank_to_none(r["postal_code"]),
+                "neighborhood": _blank_to_none(r["neighborhood"]),
+                # community = the OSM place (locality): the level Zillow's mailing
+                # address can't express (Viera, Suntree...).
+                "community": _blank_to_none(r["locality"]),
+                "subdivision": _blank_to_none(r["district"]),
+            },
+            "homeStatus": r["home_status"],
+            "homeType": r["home_type"],
+            "propertyphotos": _photos_by_room(
+                r["photos_json"], room_types.get(r["internal_id"], {})
+            ),
+            # Frozen at scrape time — does NOT tick daily after ingest.
+            "daysOnmarket": days,
+            "yearBuilt": r["year_built"],
+            "county": _blank_to_none(r["county"]),
+            "lotAreaValue": float(r["lot_size_sqft"]) if r["lot_size_sqft"] else None,
         })
     return results
 
@@ -436,8 +554,13 @@ async def search(
     bounds: dict | None = None,
     filters: dict | None = None,
     debug: bool = False,
+    page: int = 1,
+    page_size: int = 50,
 ) -> dict:
-    """Run the full search pipeline; bounds restricts to a bbox, filters override LLM hard-filter sub-fields, debug adds a per-step count breakdown."""
+    """Run the full search pipeline; bounds restricts to a bbox, filters override LLM
+    hard-filter sub-fields, debug adds a per-step count breakdown. The heavy
+    briefproperty payload is paginated (page/page_size); `pins` always covers ALL
+    matches so the map never loses markers."""
     # Phase 1: Parse
     logger.info(f"Phase 1: Parsing query: '{query}'")
     parsed_query = await parse_query(query)
@@ -677,18 +800,26 @@ async def search(
                 "dropped": before_majority - len(property_ids),
             })
 
-    results = await _load_results(pool, property_ids)
+    # Pagination: sort ids once (set operations above lose order) so pages are
+    # deterministic and disjoint, slice BEFORE the heavy raw-JSON/photos join —
+    # page 2+ skips that cost entirely. Pins stay un-paginated for the map.
+    property_ids = sorted(property_ids)
+    total_count = len(property_ids)
+    page_ids = property_ids[(page - 1) * page_size : page * page_size]
+
+    pins = await _load_pins(pool, property_ids)
+    results = await _load_results(pool, page_ids)
 
     stats = {
         "after_hard_filters": after_hard_filter_count,
         "after_proximity_filters": after_proximity_count,
         "after_color_room_match": after_color_room_count,
         "after_feature_match": after_feature_count,
-        "after_majority_location": len(property_ids),
-        "final_results": len(results),
+        "after_majority_location": total_count,
+        "final_results": total_count,
     }
 
-    logger.info(f"Pipeline complete: {stats}")
+    logger.info(f"Pipeline complete: {stats} (page {page}, {len(results)} items)")
 
     # Region info is returned ONLY when its polygon actually filtered the results —
     # regionId is a promise that the pins are that region's geometry. Name-matching
@@ -696,24 +827,33 @@ async def search(
     # region_id None; region_name then carries just the parsed place name as a label.
     region = search_region if area_region_id is not None else None
 
-    # The polygon the results were filtered by (GeoJSON), so the client can draw
-    # EXACTLY the boundary that decided membership — pins can never disagree.
-    region_boundary = None
+    # The polygon the results were filtered by, as rings of {Lat, Lng} points (the
+    # frontend's native boundary format), so the client can draw EXACTLY the
+    # boundary that decided membership — pins can never disagree.
+    polygons = None
     if area_region_id is not None:
         async with pool.acquire() as conn:
             gj = await conn.fetchval(
                 "SELECT ST_AsGeoJSON(geom) FROM regions WHERE regionid = $1",
                 area_region_id,
             )
-        region_boundary = json.loads(gj) if gj else None
+        if gj:
+            multi = json.loads(gj)["coordinates"]  # [polygon][ring][[lng, lat], ...]
+            polygons = [
+                [{"Lat": lat, "Lng": lng} for lng, lat in ring]
+                for poly in multi
+                for ring in poly
+            ]
 
     return {
         "results": results,
+        "pins": pins,
+        "total_count": total_count,
         "parsed_query": parsed_query,
         "stats": stats,
         "filter_steps": filter_steps if debug else None,
         "region_id": region["region_id"] if region else None,
         "region_name": region["region_name"] if region
                        else extract_search_area(parsed_query.criteria),
-        "region_boundary": region_boundary,
+        "polygons": polygons,
     }

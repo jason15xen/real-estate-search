@@ -26,8 +26,11 @@ logger = logging.getLogger(__name__)
 _FIELD_REGION_TYPES: dict[str, tuple[str, ...]] = {
     "neighborhood": ("1",),
     "district": ("1",),
-    "locality": ("0", "1"),
-    "city": ("0", "1"),
+    # '3' at the end: users say bare "brevard" for the county, which the parser
+    # files under city; the only type-0 'Brevard' is a town in NC, so without the
+    # county fall-through the obvious local meaning would never resolve.
+    "locality": ("0", "1", "3"),
+    "city": ("0", "1", "3"),
     "county": ("3",),
     "state": ("4",),
 }
@@ -84,8 +87,8 @@ async def resolve_search_region(pool: asyncpg.Pool, criteria) -> dict | None:
                 names = [value]
                 if field == "state":
                     names = [expand_state(value)]
-                elif field == "county" and not value.lower().endswith("county"):
-                    names.append(f"{value} County")
+                elif region_type == "3" and not value.lower().endswith("county"):
+                    names.append(f"{value} County")  # bare "Brevard" -> the county row
 
                 candidates = await conn.fetch(
                     """
@@ -118,13 +121,17 @@ async def resolve_search_region(pool: asyncpg.Pool, criteria) -> dict | None:
                         )
                         if n:
                             populated.append((n, c))
-                    if len(populated) != 1:
-                        return None  # ambiguous -> legacy path decides
+                    if len(populated) > 1:
+                        return None  # genuinely ambiguous -> no polygon mode
+                    if not populated:
+                        continue  # nothing usable at this level, try the next type
                     chosen = populated[0][1]
                 if not chosen["has_geom"]:
-                    # Without a polygon this resolution skipped the result-evidence
-                    # checks the legacy path performs — defer to it entirely.
-                    return None
+                    # A polygon-less match can't power geo filtering; try the next
+                    # type first (bare "brevard" hits the polygon-less NC town at
+                    # type '0' but Brevard County's polygon at '3') before falling
+                    # back to name matching.
+                    continue
                 return {
                     "region_id": chosen["regionid"],
                     "region_name": f"{chosen['regionname']}, {chosen['statecode']}",
