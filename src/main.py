@@ -419,6 +419,13 @@ async def search_photos_endpoint(request: PhotoSearchRequest):
         raise HTTPException(status_code=500, detail="Photo search failed due to an internal error.")
 
 
+class PhotoGroup(BaseModel):
+    """A property's images of one room type, e.g. all its Bathroom photos."""
+    roomType: str                      # native name: "Bathroom", "Living Room", "Pool";
+    #                                    "Other" for images the vision pass couldn't classify
+    urls: list[str] = []               # smallest-resolution jpegs, listing order
+
+
 class PropertyAddress(BaseModel):
     streetAddress: str | None = None
     city: str | None = None            # USPS mailing city
@@ -444,11 +451,8 @@ class BriefProperty(BaseModel):
     address: PropertyAddress
     homeStatus: str | None = None
     homeType: str | None = None
-    # Image urls grouped by the vision-derived room type of each image, e.g.
-    # {"exterior": [...], "kitchen": [...], "livingRoom": [...], "other": [...]}.
-    # Urls are the smallest-resolution jpegs (cards/thumbnails); unclassified
-    # images bucket under "other".
-    propertyphotos: dict[str, list[str]] = {}
+    # Images grouped by room type: [{roomType: "Bathroom", urls: [...]}, ...].
+    propertyphotos: list[PhotoGroup] = []
     # Frozen at scrape time (Zillow's daysOnZillow) — does NOT tick daily after ingest.
     daysOnmarket: int | None = None
     yearBuilt: int | None = None

@@ -301,26 +301,20 @@ async def _load_pins(pool: asyncpg.Pool, property_ids: list[int]) -> list[dict]:
     ]
 
 
-def _room_key(room_type: str | None) -> str:
-    """'Living Room' -> 'livingRoom'; unclassified images bucket under 'other'."""
-    if not room_type or room_type == "Unknown":
-        return "other"
-    words = room_type.split()
-    return words[0].lower() + "".join(w.capitalize() for w in words[1:])
-
-
-def _photos_by_room(photos_json: str | None, room_type_by_url: dict[str, str]) -> dict[str, list[str]]:
-    """originalPhotos JSON -> {roomType: [url, ...]}, grouped by the vision-derived
-    room type of each image (looked up by the photo's canonical highest-width url —
-    the id room_instances stores). Urls are the SMALLEST-width jpegs (search results
-    are cards/thumbnails; full-size urls live on the property detail endpoint)."""
+def _photo_groups(photos_json: str | None, room_type_by_url: dict[str, str]) -> list[dict]:
+    """originalPhotos JSON -> [{"roomType": "Bathroom", "urls": [...]}, ...], grouped
+    by the vision-derived room type of each image (looked up by the photo's canonical
+    highest-width url — the id room_instances stores). roomType is the native name
+    ("Living Room", "Pool"); unclassified images group under "Other". Groups appear
+    in first-photo order; urls are the SMALLEST-width jpegs (search results are
+    cards/thumbnails; full-size urls live on the property detail endpoint)."""
     if not photos_json:
-        return {}
+        return []
     try:
         photos = json.loads(photos_json)
     except (json.JSONDecodeError, TypeError):
-        return {}
-    out: dict[str, list[str]] = {}
+        return []
+    groups: dict[str, list[str]] = {}
     for photo in photos or []:
         if not isinstance(photo, dict):
             continue
@@ -330,9 +324,11 @@ def _photos_by_room(photos_json: str | None, room_type_by_url: dict[str, str]) -
             continue
         smallest = min(candidates, key=lambda s: s.get("width") or 10**9)
         canonical = max(candidates, key=lambda s: s.get("width") or 0)["url"]
-        key = _room_key(room_type_by_url.get(canonical))
-        out.setdefault(key, []).append(smallest["url"])
-    return out
+        room_type = room_type_by_url.get(canonical)
+        if not room_type or room_type == "Unknown":
+            room_type = "Other"
+        groups.setdefault(room_type, []).append(smallest["url"])
+    return [{"roomType": rt, "urls": urls} for rt, urls in groups.items()]
 
 
 def _blank_to_none(value: str | None) -> str | None:
@@ -417,7 +413,7 @@ async def _load_results(pool: asyncpg.Pool, property_ids: list[int]) -> list[dic
             },
             "homeStatus": r["home_status"],
             "homeType": r["home_type"],
-            "propertyphotos": _photos_by_room(
+            "propertyphotos": _photo_groups(
                 r["photos_json"], room_types.get(r["internal_id"], {})
             ),
             # Frozen at scrape time — does NOT tick daily after ingest.
