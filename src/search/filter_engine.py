@@ -175,15 +175,19 @@ async def apply_hard_filters(
                     "bedroom": "beds_min",
                     "bathroom": "baths_min",
                 }.get(criterion.room_type.lower())
-                if criterion.exact_count is not None:
+                # A UI room filter REPLACES the parsed criterion entirely — exact
+                # count included ("4 bedrooms" typed + filter 3 must search >=3,
+                # not ==4 AND >=3).
+                overridden = room_min_field in covered
+                if criterion.exact_count is not None and not overridden:
                     conditions.append(f"{col} = ${param_idx}")
                     params.append(criterion.exact_count)
                     param_idx += 1
-                if criterion.min_count is not None and room_min_field not in covered:
+                if criterion.min_count is not None and not overridden:
                     conditions.append(f"{col} >= ${param_idx}")
                     params.append(criterion.min_count)
                     param_idx += 1
-                if criterion.max_count is not None:
+                if criterion.max_count is not None and not overridden:
                     conditions.append(f"{col} <= ${param_idx}")
                     params.append(criterion.max_count)
                     param_idx += 1

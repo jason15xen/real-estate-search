@@ -4,6 +4,7 @@ import asyncio
 import gzip
 import json
 import logging
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -530,6 +531,34 @@ def _client_ip(http_request: Request) -> str | None:
     return http_request.client.host if http_request.client else None
 
 
+def _merge_query_filters(query: str, f: dict) -> str:
+    """The EFFECTIVE search as one readable line. Filters that CONFLICT with a
+    number in the typed text REPLACE it in place ("4 bedrooms in rockledge" +
+    filter 3 -> "3+ bedrooms in rockledge" — matching the pipeline, where a UI
+    room filter overrides the parsed criterion); everything else is appended as
+    clauses. Deterministic; no LLM."""
+    out = query
+    consumed: set[str] = set()
+    if f.get("beds_min") is not None:
+        new, n = re.subn(
+            r"\b\d+\s*\+?\s*(?:bed(?:room)?s?|br)\b",
+            f"{f['beds_min']}+ bedrooms", out, flags=re.IGNORECASE,
+        )
+        if n:
+            out = new
+            consumed.add("beds_min")
+    if f.get("baths_min") is not None:
+        new, n = re.subn(
+            r"\b\d+(?:\.\d+)?\s*\+?\s*(?:bath(?:room)?s?|ba)\b",
+            f"{f['baths_min']}+ bathrooms", out, flags=re.IGNORECASE,
+        )
+        if n:
+            out = new
+            consumed.add("baths_min")
+    clauses = _describe_filters({k: v for k, v in f.items() if k not in consumed})
+    return f"{out}, {clauses}" if clauses else out
+
+
 def _describe_filters(f: dict) -> str:
     """Human-readable clauses for the applied UI filters, appended to the response's
     query field so it describes the EFFECTIVE search ("homes in viera, max price
@@ -614,14 +643,13 @@ async def search_properties(request: SearchRequest, http_request: Request):
             )
 
         total = result["total_count"]
-        # updated_query = the EFFECTIVE search (typed query + applied UI filters) as
-        # one readable line; query stays the verbatim user input. The ORIGINAL query
-        # alone is what the LLM parsed (filters are separate conditions).
-        updated_query = request.query
-        if filters_dict:
-            clauses = _describe_filters(filters_dict)
-            if clauses:
-                updated_query = f"{request.query}, {clauses}"
+        # updated_query = the EFFECTIVE search; query stays the verbatim user input.
+        # Conflicting numbers in the typed text are replaced by the filter values
+        # (mirroring the pipeline's filter-overrides-criterion behavior).
+        updated_query = (
+            _merge_query_filters(request.query, filters_dict)
+            if filters_dict else request.query
+        )
 
         return SearchResponse(
             query=request.query,
