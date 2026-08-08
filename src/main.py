@@ -522,16 +522,6 @@ class SearchResponse(BaseModel):
     debug: DebugInfo | None = None
 
 
-def _client_ip(http_request: Request) -> str | None:
-    """Real client IP: first X-Forwarded-For hop when behind a proxy/LB, else the
-    socket peer. The header is client-forgeable — acceptable here, it only picks a
-    default search area."""
-    fwd = http_request.headers.get("x-forwarded-for")
-    if fwd:
-        return fwd.split(",")[0].strip()
-    return http_request.client.host if http_request.client else None
-
-
 def _merge_query_filters(query: str, f: dict) -> str:
     """The EFFECTIVE search as one readable line. Filters that CONFLICT with a
     number in the typed text REPLACE it in place ("4 bedrooms in rockledge" +
@@ -599,7 +589,7 @@ def _describe_filters(f: dict) -> str:
 
 
 @app.post("/search", response_model=SearchResponse)
-async def search_properties(request: SearchRequest, http_request: Request):
+async def search_properties(request: SearchRequest):
     try:
         pool = await get_pool()
         bounds_dict = request.bounds.model_dump() if request.bounds else None
@@ -620,7 +610,6 @@ async def search_properties(request: SearchRequest, http_request: Request):
             client_location=(
                 request.clientLocation.model_dump() if request.clientLocation else None
             ),
-            client_ip=_client_ip(http_request),
         )
 
         # A query that parses to ZERO criteria (gibberish) with no bounds/filters would
@@ -645,11 +634,15 @@ async def search_properties(request: SearchRequest, http_request: Request):
 
         total = result["total_count"]
         # updated_query = the EFFECTIVE search; query stays the verbatim user input.
-        # Conflicting numbers in the typed text are replaced by the filter values
-        # (mirroring the pipeline's filter-overrides-criterion behavior).
+        # A detected search area (browser location or the Brevard County default)
+        # is appended as "in <area>"; conflicting numbers in the typed text are
+        # replaced by filter values (mirroring the pipeline's override behavior).
+        base_query = request.query
+        if result.get("location_detected") and result.get("region_name"):
+            base_query = f"{request.query} in {result['region_name']}"
         updated_query = (
-            _merge_query_filters(request.query, filters_dict)
-            if filters_dict else request.query
+            _merge_query_filters(base_query, filters_dict)
+            if filters_dict else base_query
         )
 
         return SearchResponse(

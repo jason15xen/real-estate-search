@@ -8,7 +8,7 @@ import asyncpg
 
 from config.settings import settings
 from src.data.feature_registry import registry
-from src.data.geolocate import locate_by_ip, locate_by_point
+from src.data.geolocate import locate_by_point
 from src.models.search import (
     AreaCriterion,
     AreaRelationCriterion,
@@ -568,23 +568,22 @@ async def search(
     page: int = 1,
     page_size: int = 50,
     client_location: dict | None = None,
-    client_ip: str | None = None,
 ) -> dict:
     """Run the full search pipeline; bounds restricts to a bbox, filters override LLM
     hard-filter sub-fields, debug adds a per-step count breakdown. The heavy
     briefproperty payload is paginated (page/page_size); `pins` always covers ALL
     matches so the map never loses markers. client_location ({lat, lng} from the
-    browser geolocation API) and client_ip feed the detected-location default for
-    queries that name no place."""
+    browser geolocation API) feeds the detected-location default for queries that
+    name no place."""
     # Phase 1: Parse
     logger.info(f"Phase 1: Parsing query: '{query}'")
     parsed_query = await parse_query(query)
     logger.info(f"Parsed {len(parsed_query.criteria)} criteria: {parsed_query.understood_intent}")
 
     # Phase 1.4: Detected-location default. A query that names NO place searches the
-    # user's own area: browser coordinates -> containing region polygon (tier 1);
-    # else the client IP -> DB-IP city (tier 2); else the configured default area
-    # (tier 3, Brevard County). Skipped when the user named a place — including
+    # user's own area: browser coordinates -> containing region polygon; otherwise
+    # (no permission, no coordinates, or a point outside coverage) the configured
+    # default area (Brevard County). Skipped when the user named a place — including
     # relational "near X"/"between X and Y" (AreaRelationCriterion), where injecting
     # the user's city would wrongly intersect the corridor — or sent map bounds
     # (the map IS the location), or the parse produced nothing at all (gibberish
@@ -600,8 +599,6 @@ async def search(
             detected = await locate_by_point(
                 pool, client_location.get("lat"), client_location.get("lng")
             )
-        elif client_ip:
-            detected = locate_by_ip(client_ip)
         if detected is None:
             detected = {
                 "county": settings.default_search_county,

@@ -6,4 +6,3 @@ openai>=1.60.0
 asyncpg>=0.30.0
 python-dotenv>=1.0.0
 python-multipart>=0.0.9
-geoip2>=4.8.0
