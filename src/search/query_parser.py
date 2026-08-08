@@ -365,7 +365,34 @@ def _safe_miles(value, default: float | None = 3.0):
     return n if n > 0 else default
 
 
+# Parse cache: page navigation re-runs the whole pipeline, and the LLM parse is its
+# only slow/expensive stage — cache it so page 2+ (and repeats of popular queries)
+# parse once. Keyed by normalized query text; bounded (LRU-ish) so memory stays flat
+# under many distinct users; TTL keeps prompt/model changes from serving stale
+# criteria forever. Values are deep-copied OUT because the orchestrator mutates
+# ParsedQuery (reconstructed_queries, injected criteria).
+_PARSE_CACHE: dict[str, tuple[float, ParsedQuery]] = {}
+_PARSE_CACHE_TTL_SEC = 300
+_PARSE_CACHE_MAX = 500
+
+
 async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
+    import time
+    key = query.strip().lower()
+    hit = _PARSE_CACHE.get(key)
+    if hit and time.monotonic() - hit[0] < _PARSE_CACHE_TTL_SEC:
+        logger.info("Parse cache hit — skipping LLM call")
+        return hit[1].model_copy(deep=True)
+
+    result = await _parse_query_uncached(query, max_retries)
+    if len(_PARSE_CACHE) >= _PARSE_CACHE_MAX:
+        # Evict the oldest entry; O(n) over a small bounded dict is fine.
+        _PARSE_CACHE.pop(min(_PARSE_CACHE, key=lambda k: _PARSE_CACHE[k][0]))
+    _PARSE_CACHE[key] = (time.monotonic(), result)
+    return result.model_copy(deep=True)
+
+
+async def _parse_query_uncached(query: str, max_retries: int = 2) -> ParsedQuery:
     client = get_query_client()
     system_prompt = _build_system_prompt(settings.search_use_embedding_retrieval)
 

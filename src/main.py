@@ -352,7 +352,25 @@ class SearchRequest(BaseModel):
     bounds: Bounds | None = None
     filters: Filters | None = None
     clientLocation: ClientLocation | None = None
+    # Pagination of briefproperties (pins are never paginated). Defaults keep
+    # existing callers working: page 1 of 50.
+    page: int = 1
+    pageSize: int = 50
     debug: bool = False
+
+    @field_validator("page")
+    @classmethod
+    def _page_positive(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError("page must be >= 1")
+        return v
+
+    @field_validator("pageSize")
+    @classmethod
+    def _page_size_range(cls, v: int) -> int:
+        if not 1 <= v <= 200:
+            raise ValueError("pageSize must be between 1 and 200")
+        return v
 
     @field_validator("query")
     @classmethod
@@ -409,18 +427,71 @@ async def search_photos_endpoint(request: PhotoSearchRequest):
         raise HTTPException(status_code=500, detail="Photo search failed due to an internal error.")
 
 
-class PropertyResult(BaseModel):
-    """One matched property: identity + what a map pin needs (coords, price)."""
-    id: str
+class PhotoGroup(BaseModel):
+    """A property's images of one room type, e.g. all its Bathroom photos."""
+    roomType: str                      # native name: "Bathroom", "Living Room", "Pool";
+    #                                    "Other" for images the vision pass couldn't classify
+    urls: list[str] = []               # smallest-resolution jpegs, listing order
+
+
+class PropertyAddress(BaseModel):
+    streetAddress: str | None = None
+    city: str | None = None            # USPS mailing city
+    state: str | None = None
+    zipcode: str | None = None
+    neighborhood: str | None = None    # Zillow neighborhood page (e.g. "Viera East")
+    community: str | None = None       # OSM place/locality (e.g. "Viera") — the level
+    #                                    the mailing address can't express
+    subdivision: str | None = None     # plat name (e.g. "Bridgewater at Viera")
+
+
+class BriefProperty(BaseModel):
+    """One matched property: pin data + the card fields the result list renders."""
+    propertyId: str
+    price: float | None = None
+    currency: str | None = None
     # null when the listing has no coordinates (undisclosed address) — never a fake 0,0.
-    Latitude: float | None = None
-    Longitude: float | None = None
-    Price: int | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    bedrooms: int | None = None
+    bathrooms: int | None = None
+    livingArea: int | None = None
+    address: PropertyAddress
+    homeStatus: str | None = None
+    homeType: str | None = None
+    # Images grouped by room type: [{roomType: "Bathroom", urls: [...]}, ...].
+    propertyphotos: list[PhotoGroup] = []
+    # Frozen at scrape time (Zillow's daysOnZillow) — does NOT tick daily after ingest.
+    daysOnmarket: int | None = None
+    yearBuilt: int | None = None
+    county: str | None = None
+    lotAreaValue: float | None = None  # square feet (acreage converted at ingest)
+
+
+class LatLng(BaseModel):
+    Lat: float
+    Lng: float
+
+
+class MapPin(BaseModel):
+    """Every matched property's map marker — never paginated, so the map stays
+    complete while the heavy briefproperties list pages."""
+    propertyId: str
+    latitude: float | None = None
+    longitude: float | None = None
+    price: float | None = None
 
 
 class SearchResponse(BaseModel):
     query: str
-    zillowProperties: list[PropertyResult]
+    # The current page of full result cards (see page/pageSize/totalCount).
+    briefproperties: list[BriefProperty]
+    # ALL matches, lightweight — for the map.
+    pins: list[MapPin]
+    totalCount: int
+    page: int
+    pageSize: int
+    totalPages: int
     # Place the user searched INSIDE (map label); None when the query names no place
     # or is relational ("near X" / "between X and Y"). When regionId is set this is
     # the catalog's canonical "<RegionName>, <StateCode>"; otherwise just the place
@@ -431,9 +502,10 @@ class SearchResponse(BaseModel):
     # name-matching fallback (no polygon data, subdivision/neighborhood searches,
     # ambiguous names), even if the place is known.
     regionId: int | None = None
-    # GeoJSON MultiPolygon of the boundary that FILTERED these results. Present
-    # exactly when regionId is: draw it and every pin is inside by construction.
-    regionBoundary: dict | None = None
+    # The boundary that FILTERED these results, as rings of {Lat, Lng} points.
+    # Present exactly when regionId is: draw it and every pin is inside by
+    # construction.
+    polygons: list[list[LatLng]] | None = None
     # True when the query named no place and the search area came from the user's
     # location (browser coordinates, IP, or the Brevard default) — lets the UI say
     # "showing homes near you".
@@ -449,6 +521,44 @@ def _client_ip(http_request: Request) -> str | None:
     if fwd:
         return fwd.split(",")[0].strip()
     return http_request.client.host if http_request.client else None
+
+
+def _describe_filters(f: dict) -> str:
+    """Human-readable clauses for the applied UI filters, appended to the response's
+    query field so it describes the EFFECTIVE search ("homes in viera, max price
+    $500,000, 3+ bedrooms"). Deterministic string building — no LLM involved."""
+    parts: list[str] = []
+    pmin, pmax = f.get("price_min"), f.get("price_max")
+    if pmin is not None and pmax is not None:
+        parts.append(f"price ${pmin:,}-${pmax:,}")
+    elif pmin is not None:
+        parts.append(f"min price ${pmin:,}")
+    elif pmax is not None:
+        parts.append(f"max price ${pmax:,}")
+    if f.get("beds_min") is not None:
+        parts.append(f"{f['beds_min']}+ bedrooms")
+    if f.get("baths_min") is not None:
+        parts.append(f"{f['baths_min']}+ bathrooms")
+    smin, smax = f.get("sqft_min"), f.get("sqft_max")
+    if smin is not None and smax is not None:
+        parts.append(f"{smin:,}-{smax:,} sqft")
+    elif smin is not None:
+        parts.append(f"min {smin:,} sqft")
+    elif smax is not None:
+        parts.append(f"max {smax:,} sqft")
+    yfrom, yto = f.get("year_from"), f.get("year_to")
+    if yfrom is not None and yto is not None:
+        parts.append(f"built {yfrom}-{yto}")
+    elif yfrom is not None:
+        parts.append(f"built after {yfrom}")
+    elif yto is not None:
+        parts.append(f"built before {yto}")
+    if f.get("property_types"):
+        pretty = [t.replace("_", " ").title() for t in f["property_types"]]
+        parts.append("type: " + ", ".join(pretty))
+    if f.get("financing"):
+        parts.append("financing: " + ", ".join(f["financing"]))
+    return ", ".join(parts)
 
 
 @app.post("/search", response_model=SearchResponse)
@@ -468,6 +578,8 @@ async def search_properties(request: SearchRequest, http_request: Request):
             bounds=bounds_dict,
             filters=filters_dict,
             debug=request.debug,
+            page=request.page,
+            page_size=request.pageSize,
             client_location=(
                 request.clientLocation.model_dump() if request.clientLocation else None
             ),
@@ -494,12 +606,27 @@ async def search_properties(request: SearchRequest, http_request: Request):
                 bounds_applied=bounds_dict is not None,
             )
 
+        total = result["total_count"]
+        # Response query = the EFFECTIVE search: the typed query plus any applied
+        # UI filters, as one readable line. The ORIGINAL query alone is what the
+        # LLM parsed (filters are separate conditions, not re-parsed text).
+        effective_query = request.query
+        if filters_dict:
+            clauses = _describe_filters(filters_dict)
+            if clauses:
+                effective_query = f"{request.query}, {clauses}"
+
         return SearchResponse(
-            query=request.query,
-            zillowProperties=results,
+            query=effective_query,
+            briefproperties=results,
+            pins=result["pins"],
+            totalCount=total,
+            page=request.page,
+            pageSize=request.pageSize,
+            totalPages=(total + request.pageSize - 1) // request.pageSize,
             regionName=result.get("region_name"),
             regionId=result.get("region_id"),
-            regionBoundary=result.get("region_boundary"),
+            polygons=result.get("polygons"),
             detectedLocation=result.get("location_detected", False),
             debug=debug_info,
         )
