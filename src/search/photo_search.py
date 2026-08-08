@@ -1,15 +1,11 @@
-"""Photo filtering within a given set of properties (gallery endpoint):
-a FIXED query vocabulary maps directly to room types — no LLM involved, so requests
-are instant, free, and deterministic.
+"""Detailed property photos: ALL images of the given properties, grouped by the
+vision-derived room type — the same {roomType, urls} structure /search returns in
+briefproperties.propertyphotos, including the synthetic "Main" highlight group
+(first image of each room type).
 
-Supported queries (normalized case/whitespace-insensitively):
-    show pools             -> Pool
-    show kitchens          -> Kitchen
-    show primary-room      -> Bedroom
-    show front-exteriors   -> Exterior
-    show living-rooms      -> Living Room
-    show primary-bathrooms -> Bathroom
-    show backyards         -> Garage, Unknown
+Difference from the search listing: urls here are the FULL-RESOLUTION jpegs —
+this is the detail/lightbox endpoint; the search list serves smallest-res
+thumbnails. No LLM involved — instant and free.
 """
 
 from __future__ import annotations
@@ -18,61 +14,50 @@ import logging
 
 import asyncpg
 
+from src.search.orchestrator import _photo_groups
+
 logger = logging.getLogger(__name__)
 
-QUERY_ROOM_MAP: dict[str, list[str]] = {
-    "show pools": ["Pool"],
-    "show kitchens": ["Kitchen"],
-    "show primary-room": ["Bedroom"],
-    "show front-exteriors": ["Exterior"],
-    "show living-rooms": ["Living Room"],
-    "show primary-bathrooms": ["Bathroom"],
-    "show backyards": ["Garage", "Unknown"],
-}
 
-
-class UnsupportedPhotoQueryError(Exception):
-    """The query is not one of the fixed supported filters."""
-
-    def __init__(self, query: str):
-        supported = ", ".join(sorted(QUERY_ROOM_MAP))
-        super().__init__(f"Unsupported query {query!r}. Supported queries: {supported}")
-
-
-async def search_photos(
-    pool: asyncpg.Pool, query: str, property_guids: list[str]
+async def detailed_photos(
+    pool: asyncpg.Pool, property_guids: list[str]
 ) -> list[dict]:
-    """Return [{"id": guid, "imageUrl": [urls]}] for properties (among the given ones)
-    that have photos of the query's room types; properties without matches are omitted,
-    input order is preserved."""
-    key = " ".join(query.strip().lower().split())
-    room_types = QUERY_ROOM_MAP.get(key)
-    if room_types is None:
-        raise UnsupportedPhotoQueryError(query)
-
+    """[{"id": guid, "propertyphotos": [{"roomType", "urls"}, ...]}, ...] for the
+    requested properties, input order preserved (input duplicates collapsed);
+    unknown guids are omitted."""
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT p.guid, ri.photo_url
-            FROM room_instances ri
-            JOIN properties p ON p.id = ri.property_id
+            SELECT p.id AS pid, p.guid, r.data->>'originalPhotos' AS photos_json
+            FROM properties p
+            LEFT JOIN raw_properties r ON r.id = p.guid
             WHERE p.guid = ANY($1)
-              AND ri.photo_url IS NOT NULL
-              AND ri.room_type = ANY($2)
-            ORDER BY p.guid, ri.room_type, ri.instance_index
             """,
             property_guids,
-            room_types,
+        )
+        room_rows = await conn.fetch(
+            """
+            SELECT property_id, photo_url, room_type
+            FROM room_instances
+            WHERE property_id = ANY($1) AND photo_url IS NOT NULL
+            """,
+            [r["pid"] for r in rows],
         )
 
-    by_guid: dict[str, list[str]] = {}
-    for r in rows:
-        urls = by_guid.setdefault(r["guid"], [])
-        if r["photo_url"] not in urls:  # dedupe defensively
-            urls.append(r["photo_url"])
-    # Preserve the caller's property order; omit properties with no matches.
-    return [
-        {"id": g, "imageUrl": by_guid[g]}
-        for g in dict.fromkeys(property_guids)  # order-preserving dedupe of input
-        if g in by_guid
-    ]
+    room_map: dict[int, dict[str, str]] = {}
+    for rr in room_rows:
+        room_map.setdefault(rr["property_id"], {})[rr["photo_url"]] = rr["room_type"]
+
+    by_guid = {r["guid"]: r for r in rows}
+    out = []
+    for guid in dict.fromkeys(property_guids):  # order-preserving input dedupe
+        r = by_guid.get(guid)
+        if r is None:
+            continue  # unknown guid — omitted
+        out.append({
+            "id": guid,
+            "propertyphotos": _photo_groups(
+                r["photos_json"], room_map.get(r["pid"], {}), full_size=True
+            ),
+        })
+    return out

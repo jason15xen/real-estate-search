@@ -22,7 +22,7 @@ from src.img_analyzer.router import router as img_analyzer_router
 from src.img_analyzer.test_router import router as vision_test_router
 from src.models.search import ParsedQuery
 from src.search.orchestrator import search
-from src.search.photo_search import UnsupportedPhotoQueryError, search_photos
+from src.search.photo_search import detailed_photos
 from src.search.query_parser import QueryParseError
 
 logging.basicConfig(
@@ -389,16 +389,16 @@ class DebugInfo(BaseModel):
     bounds_applied: bool
 
 
-class PhotoSearchRequest(BaseModel):
-    query: str
-    propertyIds: list[str]  # property GUIDs
+class PhotoGroup(BaseModel):
+    """A property's images of one room type, e.g. all its Bathroom photos."""
+    roomType: str                      # native name: "Bathroom", "Living Room", "Pool";
+    #                                    "Main" = highlight strip (first of each type);
+    #                                    "Other" for images the vision pass couldn't classify
+    urls: list[str] = []               # /search: smallest-res; /search/photos: full-res
 
-    @field_validator("query")
-    @classmethod
-    def _photo_query_not_blank(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("query must not be empty")
-        return v.strip()
+
+class PhotoSearchRequest(BaseModel):
+    propertyIds: list[str]  # property GUIDs
 
     @field_validator("propertyIds")
     @classmethod
@@ -410,29 +410,30 @@ class PhotoSearchRequest(BaseModel):
         return v
 
 
-@app.post("/search/photos")
+class PropertyDetailedPhotos(BaseModel):
+    id: str                                    # property GUID
+    propertyphotos: list[PhotoGroup] = []      # same structure as /search, full-res urls
+
+
+class PhotoSearchResponse(BaseModel):
+    propertydetailedphotos: list[PropertyDetailedPhotos]
+
+
+@app.post("/search/photos", response_model=PhotoSearchResponse)
 async def search_photos_endpoint(request: PhotoSearchRequest):
-    """Photo filtering within given properties using a FIXED query vocabulary
-    (see photo_search.QUERY_ROOM_MAP): returns matching photo URLs per property;
-    properties without matches are omitted. No LLM involved — instant and free."""
+    """ALL photos of the given properties, grouped by room type (incl. the "Main"
+    highlight group), at FULL resolution — the detail/lightbox companion to
+    /search's thumbnail propertyphotos. Unknown guids are omitted; input order is
+    preserved. No LLM involved — instant and free."""
     try:
         pool = await get_pool()
-        results = await search_photos(pool, request.query, request.propertyIds)
-        return {"results": results}
+        results = await detailed_photos(pool, request.propertyIds)
+        return PhotoSearchResponse(propertydetailedphotos=results)
     except HTTPException:
         raise
-    except UnsupportedPhotoQueryError as e:
-        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
-        logger.exception(f"Photo search failed for query '{request.query}': {e}")
+        logger.exception(f"Photo detail failed for {len(request.propertyIds)} ids: {e}")
         raise HTTPException(status_code=500, detail="Photo search failed due to an internal error.")
-
-
-class PhotoGroup(BaseModel):
-    """A property's images of one room type, e.g. all its Bathroom photos."""
-    roomType: str                      # native name: "Bathroom", "Living Room", "Pool";
-    #                                    "Other" for images the vision pass couldn't classify
-    urls: list[str] = []               # smallest-resolution jpegs, listing order
 
 
 class PropertyAddress(BaseModel):

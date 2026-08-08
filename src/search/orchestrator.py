@@ -302,7 +302,11 @@ async def _load_pins(pool: asyncpg.Pool, property_ids: list[int]) -> list[dict]:
     ]
 
 
-def _photo_groups(photos_json: str | None, room_type_by_url: dict[str, str]) -> list[dict]:
+def _photo_groups(
+    photos_json: str | None,
+    room_type_by_url: dict[str, str],
+    full_size: bool = False,
+) -> list[dict]:
     """originalPhotos JSON -> [{"roomType": "Bathroom", "urls": [...]}, ...], grouped
     by the vision-derived room type of each image (looked up by the photo's canonical
     highest-width url — the id room_instances stores). roomType is the native name
@@ -333,7 +337,9 @@ def _photo_groups(photos_json: str | None, room_type_by_url: dict[str, str]) -> 
             # synthetic highlight group below (impossible with the current vision
             # prompt, but cheap insurance against a duplicate group).
             room_type = "Other"
-        groups.setdefault(room_type, []).append(smallest["url"])
+        # full_size (detail/lightbox endpoint) serves the canonical highest-width
+        # url; search results serve the smallest (cards/thumbnails).
+        groups.setdefault(room_type, []).append(canonical if full_size else smallest["url"])
     if not groups:
         return []
     main = {"roomType": "Main", "urls": [urls[0] for urls in groups.values()]}
