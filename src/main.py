@@ -483,7 +483,14 @@ class MapPin(BaseModel):
 
 
 class SearchResponse(BaseModel):
+    # VERBATIM echo of what the user typed — never modified, safe for the frontend
+    # to hold/resend. Filter descriptions live in updated_query instead: merging
+    # them into query caused a feedback loop (frontend resent the merged string,
+    # clauses accumulated and even polluted LLM parsing).
     query: str
+    # The EFFECTIVE search as one readable line: the typed query plus the applied
+    # UI filters ("in brevard, 3+ bedrooms"). Display-only — never send it back.
+    updated_query: str
     # The current page of full result cards (see page/pageSize/totalCount).
     briefproperties: list[BriefProperty]
     # ALL matches, lightweight — for the map.
@@ -607,17 +614,18 @@ async def search_properties(request: SearchRequest, http_request: Request):
             )
 
         total = result["total_count"]
-        # Response query = the EFFECTIVE search: the typed query plus any applied
-        # UI filters, as one readable line. The ORIGINAL query alone is what the
-        # LLM parsed (filters are separate conditions, not re-parsed text).
-        effective_query = request.query
+        # updated_query = the EFFECTIVE search (typed query + applied UI filters) as
+        # one readable line; query stays the verbatim user input. The ORIGINAL query
+        # alone is what the LLM parsed (filters are separate conditions).
+        updated_query = request.query
         if filters_dict:
             clauses = _describe_filters(filters_dict)
             if clauses:
-                effective_query = f"{request.query}, {clauses}"
+                updated_query = f"{request.query}, {clauses}"
 
         return SearchResponse(
-            query=effective_query,
+            query=request.query,
+            updated_query=updated_query,
             briefproperties=results,
             pins=result["pins"],
             totalCount=total,
