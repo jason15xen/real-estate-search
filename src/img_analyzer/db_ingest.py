@@ -299,12 +299,29 @@ _COVERED_POOL_TAGS = [
 
 
 async def _refresh_has_covered_pool(conn, prop_id: int) -> None:
-    """Recompute properties.has_covered_pool from current room instances: TRUE iff any covered-pool tag is present; idempotent."""
+    """Recompute properties.has_covered_pool from current room instances: TRUE iff
+    a covered-pool tag is present AND the property has independent pool evidence
+    (listing metadata has_pool, or a Pool-classified photo of its own); idempotent.
+
+    The corroboration guard exists because vision tags leak from NEIGHBORING
+    homes: aerial/drone shots and over-the-fence backyard photos get tagged
+    "screened pool enclosure" for a pool that isn't the subject property's. A
+    lone enclosure tag with no other pool signal anywhere in the listing is that
+    failure signature, not a pool."""
     await conn.execute(
         """
-        UPDATE properties p SET has_covered_pool = EXISTS (
-            SELECT 1 FROM room_instances ri
-            WHERE ri.property_id = p.id AND ri.features && $2::text[]
+        UPDATE properties p SET has_covered_pool = (
+            EXISTS (
+                SELECT 1 FROM room_instances ri
+                WHERE ri.property_id = p.id AND ri.features && $2::text[]
+            )
+            AND (
+                p.has_pool
+                OR EXISTS (
+                    SELECT 1 FROM room_instances ri
+                    WHERE ri.property_id = p.id AND ri.room_type = 'Pool'
+                )
+            )
         )
         WHERE p.id = $1
         """,

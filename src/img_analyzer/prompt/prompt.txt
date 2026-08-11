@@ -32,6 +32,7 @@
                 4. A covered patio / lanai / cabana / pergola NEXT TO the pool does NOT make the pool covered → judge the water surface itself, not adjacent structures.
                 5. If you cannot see enough of the pool to tell (only a corner, obscured, or the overhead is out of frame), add only "pool" and DO NOT guess "covered pool"/"uncovered pool".
                 6. Do this ONLY for a real swimming pool belonging to THIS property — never for a pond, lake, river, canal, or other water, and never for a neighbor's pool.
+                7. AERIAL / DRONE / WIDE SHOTS: when the photo shows MULTIPLE homes (aerial, drone, streetscape, or a view across a fence into another yard), pools and pool enclosures you see usually belong to NEIGHBORING parcels. Only tag pool keywords if the pool is unambiguously on the subject property's own lot (e.g. the single centered home the listing focuses on, physically attached to that home's patio/lanai). If you cannot tell WHICH home is the subject, or the pool sits on a different lot than the home in focus, DO NOT tag "pool", "covered pool", "screened pool enclosure", or ANY pool keyword at all.
               (You may still add other descriptive pool keywords too, e.g. "in-ground pool", "infinity pool", "screened pool enclosure".)
 
             Before stating the "RoomType" conclusion, reason step-by-step from the observed visual cues and design traits that support your selection.
