@@ -568,17 +568,38 @@ async def search(
     page: int = 1,
     page_size: int = 50,
     client_location: dict | None = None,
+    ignore_region: bool = False,
 ) -> dict:
     """Run the full search pipeline; bounds restricts to a bbox, filters override LLM
     hard-filter sub-fields, debug adds a per-step count breakdown. The heavy
     briefproperty payload is paginated (page/page_size); `pins` always covers ALL
     matches so the map never loses markers. client_location ({lat, lng} from the
     browser geolocation API) feeds the detected-location default for queries that
-    name no place."""
+    name no place. ignore_region (the frontend's "remove boundaries" button) drops
+    the region part of the query entirely: place criteria are stripped after
+    parsing and location detection is suppressed, so the search is scoped only by
+    the map bounds (when sent) — the response then carries no region at all."""
     # Phase 1: Parse
     logger.info(f"Phase 1: Parsing query: '{query}'")
     parsed_query = await parse_query(query)
     logger.info(f"Parsed {len(parsed_query.criteria)} criteria: {parsed_query.understood_intent}")
+
+    # Phase 1.2: "Remove boundaries" — strip the region part BEFORE any location
+    # machinery runs. With no LocationCriterion left, region resolution, region
+    # filtering, place name-matching, and majority-state trimming all no-op
+    # downstream by construction (works identically under polygon or region-id
+    # search), and the guard below keeps detected-location injection off too.
+    if ignore_region:
+        before = len(parsed_query.criteria)
+        parsed_query.criteria = [
+            c for c in parsed_query.criteria
+            if not isinstance(c, LocationCriterion)
+        ]
+        if before != len(parsed_query.criteria):
+            logger.info(
+                f"Phase 1.2: ignore_region — dropped "
+                f"{before - len(parsed_query.criteria)} location criterion(s)"
+            )
 
     # Phase 1.4: Detected-location default. A query that names NO place searches the
     # user's own area: browser coordinates -> containing region polygon; otherwise
@@ -593,7 +614,8 @@ async def search(
         isinstance(c, (LocationCriterion, AreaRelationCriterion))
         for c in parsed_query.criteria
     )
-    if not has_location and parsed_query.criteria and bounds is None:
+    if (not ignore_region and not has_location
+            and parsed_query.criteria and bounds is None):
         detected = None
         if client_location is not None:
             detected = await locate_by_point(

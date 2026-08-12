@@ -353,6 +353,11 @@ class SearchRequest(BaseModel):
     bounds: Bounds | None = None
     filters: Filters | None = None
     clientLocation: ClientLocation | None = None
+    # "Remove boundaries" button: True = ignore the region part of the query
+    # entirely (no region filtering, no location detection) and scope only by
+    # `bounds` when sent — the map replaces the region. Response then has
+    # regionId/regionName/polygons null and detectedLocation false.
+    ignore_region: bool = False
     # Pagination of briefproperties (pins are never paginated). Defaults keep
     # existing callers working: page 1 of 50.
     page: int = 1
@@ -610,11 +615,16 @@ async def search_properties(request: SearchRequest):
             client_location=(
                 request.clientLocation.model_dump() if request.clientLocation else None
             ),
+            ignore_region=request.ignore_region,
         )
 
         # A query that parses to ZERO criteria (gibberish) with no bounds/filters would
         # otherwise "match" the entire catalog — reject it instead of dumping the DB.
-        if (not result["parsed_query"].criteria
+        # Exception: ignore_region — a location-only query legitimately strips down to
+        # zero criteria there ("remove boundaries" on "homes in rockledge" = browse
+        # everything, scoped by the map when the frontend sends bounds).
+        if (not request.ignore_region
+                and not result["parsed_query"].criteria
                 and bounds_dict is None and filters_dict is None):
             raise HTTPException(
                 status_code=422,
