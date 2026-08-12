@@ -322,6 +322,61 @@ async def _refresh_has_covered_pool(conn, prop_id: int) -> None:
     )
 
 
+async def assign_region_ids(conn, prop_id: int) -> None:
+    """Assign the four *_region_id columns for ONE property — the per-property
+    version of src/data/backfill_region_ids.py, same precedence per level:
+    smallest covering polygon -> Zillow's raw region id -> (ZIP only) postal_code
+    text match -> NULL. Idempotent; call after any write that may move the point
+    or change the raw record."""
+    await conn.execute(
+        """
+        UPDATE properties p SET
+          city_region_id = COALESCE(
+            (SELECT g.regionid FROM regions g
+             WHERE g.regiontype = '0' AND g.geom IS NOT NULL AND ST_Covers(g.geom, p.geom)
+             ORDER BY ST_Area(g.geom), g.regionid LIMIT 1),
+            (SELECT (r.data->>'cityId')::bigint FROM raw_properties r
+             WHERE r.id = p.guid AND (r.data->>'cityId') ~ '^[0-9]+$'
+               AND EXISTS (SELECT 1 FROM regions g2
+                           WHERE g2.regionid = (r.data->>'cityId')::bigint AND g2.regiontype = '0'))
+          ),
+          county_region_id = COALESCE(
+            (SELECT g.regionid FROM regions g
+             WHERE g.regiontype = '3' AND g.geom IS NOT NULL AND ST_Covers(g.geom, p.geom)
+             ORDER BY ST_Area(g.geom), g.regionid LIMIT 1),
+            (SELECT (r.data->>'countyId')::bigint FROM raw_properties r
+             WHERE r.id = p.guid AND (r.data->>'countyId') ~ '^[0-9]+$'
+               AND EXISTS (SELECT 1 FROM regions g2
+                           WHERE g2.regionid = (r.data->>'countyId')::bigint AND g2.regiontype = '3'))
+          ),
+          zipcode_region_id = COALESCE(
+            (SELECT g.regionid FROM regions g
+             WHERE g.regiontype = '2' AND g.geom IS NOT NULL AND ST_Covers(g.geom, p.geom)
+             ORDER BY ST_Area(g.geom), g.regionid LIMIT 1),
+            (SELECT (r.data->>'zipcodeId')::bigint FROM raw_properties r
+             WHERE r.id = p.guid AND (r.data->>'zipcodeId') ~ '^[0-9]+$'
+               AND EXISTS (SELECT 1 FROM regions g2
+                           WHERE g2.regionid = (r.data->>'zipcodeId')::bigint AND g2.regiontype = '2')),
+            (SELECT g.regionid FROM regions g
+             WHERE g.regiontype = '2' AND g.regionname = p.postal_code
+             ORDER BY g.regionid LIMIT 1)
+          ),
+          neighborhood_region_id = COALESCE(
+            (SELECT g.regionid FROM regions g
+             WHERE g.regiontype = '1' AND g.geom IS NOT NULL AND ST_Covers(g.geom, p.geom)
+             ORDER BY ST_Area(g.geom), g.regionid LIMIT 1),
+            (SELECT (r.data->'parentRegion'->>'regionId')::bigint FROM raw_properties r
+             WHERE r.id = p.guid AND (r.data->'parentRegion'->>'regionId') ~ '^[0-9]+$'
+               AND EXISTS (SELECT 1 FROM regions g2
+                           WHERE g2.regionid = (r.data->'parentRegion'->>'regionId')::bigint
+                             AND g2.regiontype = '1'))
+          )
+        WHERE p.id = $1
+        """,
+        prop_id,
+    )
+
+
 async def _insert_children(conn, prop_id: int, rooms_from_photos: dict, schools: list[dict]) -> None:
     """Insert rooms, room_instances, and property_schools for a property."""
     for room_type, instances in rooms_from_photos.items():
@@ -389,6 +444,8 @@ async def update_property_scalars(
     )
     # Re-derive has_covered_pool (room features may have changed).
     await _refresh_has_covered_pool(conn, existing_id)
+    # Re-assign region ids (coordinates or the raw record may have moved).
+    await assign_region_ids(conn, existing_id)
 
 
 async def update_property_metadata(
@@ -436,6 +493,8 @@ async def update_property_metadata(
     )
     # Re-derive has_covered_pool (room features may have changed).
     await _refresh_has_covered_pool(conn, existing_id)
+    # Re-assign region ids (coordinates or the raw record may have moved).
+    await assign_region_ids(conn, existing_id)
 
 
 async def update_property_with_children(

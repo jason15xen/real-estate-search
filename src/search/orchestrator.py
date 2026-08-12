@@ -499,10 +499,12 @@ async def _collect_hard_filter_steps(
     bounds: dict | None,
     filters: dict | None = None,
     area_region_id: int | None = None,
+    area_region_type: str | None = None,
 ) -> list[dict]:
     """Debug-only: apply bounds/filters/criteria one at a time, recording count per
-    step. area_region_id mirrors the real pipeline's geo-location mode so the
-    location step's count matches what the search actually did (polygon, not name)."""
+    step. area_region_id (+area_region_type in region-ID mode) mirrors the real
+    pipeline's geo-location mode so the location step's count matches what the
+    search actually did (region ids / polygon, not name)."""
     steps: list[dict] = []
 
     async with pool.acquire() as conn:
@@ -547,7 +549,7 @@ async def _collect_hard_filter_steps(
         labels = _criterion_labels(c) or [c.type.value if hasattr(c, "type") else type(c).__name__]
         count = len(await apply_hard_filters(
             pool, applied, bounds=bounds, filters=filters,
-            area_region_id=area_region_id,
+            area_region_id=area_region_id, area_region_type=area_region_type,
         ))
         steps.append({
             "step": ", ".join(labels),
@@ -657,15 +659,21 @@ async def search(
     # row WITH a polygon, membership is decided geometrically (ST_Covers) and all
     # name-based place matching/trimming for that place is skipped.
     search_region = await resolve_search_region(pool, parsed_query.criteria)
+    id_mode = bool(search_region and search_region.get("id_mode"))
     area_region_id = (
         search_region["region_id"]
-        if search_region and search_region["has_geom"] else None
+        if search_region and (id_mode or search_region["has_geom"]) else None
+    )
+    area_region_type = (
+        search_region["region_type"] if search_region and id_mode else None
     )
     if search_region:
+        mode = ("region-id filter" if id_mode
+                else "polygon filter" if area_region_id
+                else "no polygon — name matching")
         logger.info(
             f"Phase 1.5: Region '{search_region['region_name']}' "
-            f"(id {search_region['region_id']}, "
-            f"{'polygon filter' if area_region_id else 'no polygon — name matching'})"
+            f"(id {search_region['region_id']}, {mode})"
         )
 
     # Phase 2: Hard filters (incl. bounds + filters)
@@ -678,16 +686,16 @@ async def search(
         filter_steps.extend(
             await _collect_hard_filter_steps(
                 pool, parsed_query.criteria, bounds, filters,
-                area_region_id=area_region_id,
+                area_region_id=area_region_id, area_region_type=area_region_type,
             )
         )
     property_ids = await apply_hard_filters(
         pool, parsed_query.criteria, bounds=bounds, filters=filters,
-        area_region_id=area_region_id,
+        area_region_id=area_region_id, area_region_type=area_region_type,
     )
     if debug and area_region_id:
         filter_steps.append({
-            "step": f"polygon: region {search_region['region_name']}",
+            "step": f"{'region-id' if id_mode else 'polygon'}: region {search_region['region_name']}",
             "count": len(property_ids),
             "dropped": 0,
         })
@@ -905,10 +913,13 @@ async def search(
 
     logger.info(f"Pipeline complete: {stats} (page {page}, {len(results)} items)")
 
-    # Region info is returned ONLY when its polygon actually filtered the results —
-    # regionId is a promise that the pins are that region's geometry. Name-matching
-    # fallbacks (no polygon data, subdivision/neighborhood searches) return
-    # region_id None; region_name then carries just the parsed place name as a label.
+    # Region info is returned ONLY when the region actually filtered the results —
+    # by stored region ids (ID mode) or by its polygon (legacy mode). Name-matching
+    # fallbacks (unresolvable places, subdivision searches) return region_id None;
+    # region_name then carries just the parsed place name as a label. NB in ID mode
+    # the polygon (when present) is a drawing aid, not a membership guarantee: a
+    # Zillow-assigned home can sit outside an incomplete boundary (Viera east of
+    # I-95).
     region = search_region if area_region_id is not None else None
 
     # The polygon the results were filtered by, as rings of {Lat, Lng} points (the
