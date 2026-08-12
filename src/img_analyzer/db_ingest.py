@@ -221,15 +221,6 @@ def _extract_neighborhood(record: dict) -> str | None:
     return " ".join(p.capitalize() for p in parts) or None
 
 
-def _extract_locality(record: dict) -> str | None:
-    """OSM/Photon place name from the PhotonPropertyFullAddress reverse-geocode in the record; None when absent."""
-    ph = record.get("PhotonPropertyFullAddress") or {}
-    feats = ph.get("features") or []
-    if feats and isinstance(feats[0], dict):
-        return (feats[0].get("properties") or {}).get("city") or None
-    return None
-
-
 def _extract_property_fields(item: dict) -> dict:
     """Extract DB-relevant scalar fields from a Zillow item, keyed like properties columns."""
     record = item.get("ZillowPropertyRecord", {}) or {}
@@ -256,7 +247,9 @@ def _extract_property_fields(item: dict) -> dict:
         "postal_code": address.get("zipcode", ""),
         "country": "US",
         "county": str(record.get("county") or "").strip() or None,
-        "locality": _extract_locality(record),
+        # Locality was only ever populated from Photon reverse geocoding, which is
+        # removed — the Zillow feed has no readable locality source.
+        "locality": None,
         "neighborhood": _extract_neighborhood(record),
         "latitude": _to_float(record.get("latitude")),
         "longitude": _to_float(record.get("longitude")),

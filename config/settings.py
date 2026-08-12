@@ -34,11 +34,6 @@ class Settings(BaseSettings):
     # (the token saving). Groups failing match-validation retry at 5 images, then 1.
     vision_group_max_images: int = 20
 
-    # Photon reverse geocoding (photon.komoot.io) — ingest-time fallback that fills
-    # missing county/locality from coordinates; no-op when the feed provides them.
-    photon_enrich: bool = True
-    photon_url: str = "https://photon.komoot.io"
-
     # Search area for location-less queries: browser coordinates -> containing
     # region polygon; otherwise this default.
     default_search_county: str = "Brevard County"
