@@ -12,10 +12,20 @@ import logging
 
 import asyncpg
 
+from config.settings import settings
 from src.data.us_states import abbrev_state, expand_state
 from src.models.search import LocationCriterion
 
 logger = logging.getLogger(__name__)
+
+# regiontype -> the properties column holding that level's assigned region id
+# (see src/data/backfill_region_ids.py for how assignment works).
+REGION_ID_COLUMNS: dict[str, str] = {
+    "0": "city_region_id",
+    "3": "county_region_id",
+    "2": "zipcode_region_id",
+    "1": "neighborhood_region_id",
+}
 
 # regions.regiontype values a given LocationCriterion field can map to, tried in
 # order. city/locality fall through '0' -> '1' because the parser deliberately
@@ -43,6 +53,31 @@ _FIELD_REGION_TYPES: dict[str, tuple[str, ...]] = {
 _REGION_IDS_CACHE: dict[int, tuple[float, list[int]]] = {}
 _REGION_IDS_TTL_SEC = 300
 _REGION_IDS_MAX = 64
+
+
+async def _region_id_count(pool: asyncpg.Pool, region_type: str, region_id: int) -> int:
+    """How many properties carry region_id in the column for region_type; 0 when
+    the type has no column. Indexed count — cheap enough to skip caching."""
+    col = REGION_ID_COLUMNS.get(region_type)
+    if col is None:
+        return 0
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            f"SELECT count(*) FROM properties WHERE {col} = $1", region_id
+        )
+
+
+async def _candidate_population(
+    pool: asyncpg.Pool, region_type: str, candidate
+) -> int:
+    """Tie-break weight for same-named regions: how many catalog homes the
+    candidate actually holds — by stored region ids in ID mode, by polygon
+    membership otherwise (polygon-less candidates weigh 0 there)."""
+    if settings.search_use_region_ids:
+        return await _region_id_count(pool, region_type, candidate["regionid"])
+    if not candidate["has_geom"]:
+        return 0
+    return len(await region_property_ids(pool, candidate["regionid"]))
 
 
 async def region_property_ids(pool: asyncpg.Pool, region_id: int) -> list[int]:
@@ -138,18 +173,30 @@ async def resolve_search_region(pool: asyncpg.Pool, criteria) -> dict | None:
                 if len(candidates) == 1:
                     chosen = candidates[0]
                 else:
-                    # Tie-break by polygon population: which candidate's boundary
-                    # actually contains catalog homes (cached membership).
+                    # Tie-break by population: which same-named candidate actually
+                    # holds catalog homes (stored ids in ID mode, polygon otherwise).
                     populated = []
-                    for c in (c for c in candidates if c["has_geom"]):
-                        n = len(await region_property_ids(pool, c["regionid"]))
+                    for c in candidates:
+                        n = await _candidate_population(pool, region_type, c)
                         if n:
                             populated.append((n, c))
                     if len(populated) > 1:
-                        return None  # genuinely ambiguous -> no polygon mode
+                        return None  # genuinely ambiguous -> no geo mode
                     if not populated:
                         continue  # nothing usable at this level, try the next type
                     chosen = populated[0][1]
+                if settings.search_use_region_ids:
+                    # ID mode: membership was precomputed at ingest — filter by the
+                    # stored column. Works with or without a polygon (Viera East).
+                    n = await _region_id_count(pool, region_type, chosen["regionid"])
+                    if n:
+                        return {
+                            "region_id": chosen["regionid"],
+                            "region_name": f"{chosen['regionname']}, {chosen['statecode']}",
+                            "has_geom": chosen["has_geom"],
+                            "region_type": region_type,
+                            "id_mode": True,
+                        }
                 if not chosen["has_geom"]:
                     # A polygon-less match can't power geo filtering; try the next
                     # type first (bare "brevard" hits the polygon-less NC town at
@@ -160,6 +207,8 @@ async def resolve_search_region(pool: asyncpg.Pool, criteria) -> dict | None:
                     "region_id": chosen["regionid"],
                     "region_name": f"{chosen['regionname']}, {chosen['statecode']}",
                     "has_geom": True,
+                    "region_type": region_type,
+                    "id_mode": False,
                 }
         return None
     except Exception:

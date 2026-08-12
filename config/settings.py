@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     # (the token saving). Groups failing match-validation retry at 5 images, then 1.
     vision_group_max_images: int = 20
 
+    # Region-ID search: True -> the searched place filters by the properties'
+    # stored *_region_id columns (assigned at ingest; backfill:
+    # python -m src.data.backfill_region_ids). False -> legacy polygon
+    # membership (ST_Covers per query). Flag enables instant rollback, and
+    # guards deployments whose DB lacks the region-id columns.
+    search_use_region_ids: bool = False
+
     # Search area for location-less queries: browser coordinates -> containing
     # region polygon; otherwise this default.
     default_search_county: str = "Brevard County"

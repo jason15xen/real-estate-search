@@ -20,6 +20,7 @@ from src.img_analyzer.db_ingest import (
     _extract_schools,
     _get_room_counts,
     _insert_children,
+    assign_region_ids,
     refresh_property_room_counts,
     update_property_scalars,
     update_property_with_children,
@@ -380,6 +381,7 @@ async def _insert_primary_full(conn, item: dict) -> None:
         fields["zpid"],
     )
     await _insert_children(conn, prop_id, rooms_from_photos, _extract_schools(item))
+    await assign_region_ids(conn, prop_id)
 
 
 async def _process_one_row(pool: asyncpg.Pool, row: asyncpg.Record) -> bool:

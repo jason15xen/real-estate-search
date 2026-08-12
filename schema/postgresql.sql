@@ -62,6 +62,15 @@ CREATE TABLE properties (
     description     TEXT,                -- property description for text search fallback
     financing       TEXT[] NOT NULL DEFAULT '{}',  -- normalized from Zillow listingTerms
 
+    -- Region identity (regions.regionid), assigned at ingest: polygon containment
+    -- (smallest-wins) where boundaries exist, else Zillow's raw region IDs, else
+    -- postal_code text match (ZIP level only). NULL = unassigned; search falls
+    -- back to name matching. Backfill: python -m src.data.backfill_region_ids
+    city_region_id         BIGINT,      -- regiontype '0'
+    county_region_id       BIGINT,      -- regiontype '3'
+    zipcode_region_id      BIGINT,      -- regiontype '2'
+    neighborhood_region_id BIGINT,      -- regiontype '1'
+
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -185,6 +194,12 @@ CREATE INDEX idx_feature_embeddings_hnsw
 -- Property filters (Phase 2: Hard Filters)
 -- Partial unique: zpid is the cross-batch identity, but most legacy records lack it.
 CREATE UNIQUE INDEX idx_properties_zpid ON properties(zpid) WHERE zpid IS NOT NULL;
+
+-- Region-ID search: one partial index per level (NULL = unassigned, never queried).
+CREATE INDEX idx_properties_city_region ON properties(city_region_id) WHERE city_region_id IS NOT NULL;
+CREATE INDEX idx_properties_county_region ON properties(county_region_id) WHERE county_region_id IS NOT NULL;
+CREATE INDEX idx_properties_zipcode_region ON properties(zipcode_region_id) WHERE zipcode_region_id IS NOT NULL;
+CREATE INDEX idx_properties_neighborhood_region ON properties(neighborhood_region_id) WHERE neighborhood_region_id IS NOT NULL;
 CREATE INDEX idx_properties_bedroom_count ON properties(bedroom_count);
 CREATE INDEX idx_properties_bathroom_count ON properties(bathroom_count);
 CREATE INDEX idx_properties_price ON properties(price_usd);

@@ -6,7 +6,7 @@ import re
 import asyncpg
 
 from src.data.us_states import country_variants, state_variants
-from src.search.region_resolver import region_property_ids, search_area_target
+from src.search.region_resolver import REGION_ID_COLUMNS, region_property_ids, search_area_target
 from src.models.search import (
     AreaCriterion,
     Criterion,
@@ -40,15 +40,17 @@ async def apply_hard_filters(
     bounds: dict | None = None,
     filters: dict | None = None,
     area_region_id: int | None = None,
+    area_region_type: str | None = None,
 ) -> list[int]:
     """Return property IDs passing ALL criteria; bounds is an optional bbox, filters
     are per-field overrides that suppress matching LLM sub-conditions.
 
     area_region_id: geo-location mode — the searched place resolved to this regions
-    row (which has a polygon), so membership is decided by ST_Covers against that
-    polygon and the target criterion's PLACE-NAME condition is skipped (its other
-    fields — state, street... — still apply). Name matching remains for every other
-    criterion and as the fallback when no region polygon exists."""
+    row, so membership replaces the target criterion's PLACE-NAME condition (its
+    other fields — state, street... — still apply). With area_region_type set
+    (region-ID search), membership is the stored <level>_region_id column; without
+    it, legacy polygon membership via ST_Covers. Name matching remains for every
+    other criterion and as the fallback when no region resolves."""
     hard_criteria = [
         c for c in criteria
         if isinstance(c, (RoomCountCriterion, PriceCriterion, AreaCriterion,
@@ -69,10 +71,18 @@ async def apply_hard_filters(
     param_idx = 1
 
     if polygon_target is not None:
-        # Membership via the cached precomputed id set — ST_Covers over the catalog
-        # cost ~0.5s per request for county-sized polygons (see region_property_ids).
-        conditions.append(f"id = ANY(${param_idx}::int[])")
-        params.append(await region_property_ids(pool, area_region_id))
+        if area_region_type is not None:
+            # Region-ID mode: membership precomputed at ingest — one indexed
+            # integer equality, no geometry and no cache.
+            col = REGION_ID_COLUMNS[area_region_type]
+            conditions.append(f"{col} = ${param_idx}")
+            params.append(area_region_id)
+        else:
+            # Polygon mode: membership via the cached precomputed id set —
+            # ST_Covers over the catalog cost ~0.5s per request for county-sized
+            # polygons (see region_property_ids).
+            conditions.append(f"id = ANY(${param_idx}::int[])")
+            params.append(await region_property_ids(pool, area_region_id))
         param_idx += 1
 
     if bounds:
