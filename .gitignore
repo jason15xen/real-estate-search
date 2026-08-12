@@ -6,3 +6,4 @@ __pycache__/
 .venv/
 log/
 test_batch_*.json
+real_estate_data/*
