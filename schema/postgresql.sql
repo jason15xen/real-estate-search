@@ -62,10 +62,11 @@ CREATE TABLE properties (
     description     TEXT,                -- property description for text search fallback
     financing       TEXT[] NOT NULL DEFAULT '{}',  -- normalized from Zillow listingTerms
 
-    -- Region identity (regions.regionid), assigned at ingest: polygon containment
-    -- (smallest-wins) where boundaries exist, else Zillow's raw region IDs, else
-    -- postal_code text match (ZIP level only). NULL = unassigned; search falls
-    -- back to name matching. Backfill: python -m src.data.backfill_region_ids
+    -- Region identity (regions.regionid), assigned at ingest: Zillow's raw region
+    -- IDs (cityId/countyId/zipcodeId/parentRegion — the feed is the source of
+    -- truth), else polygon containment (smallest-wins), else postal_code text
+    -- match (ZIP level only). NULL = unassigned; search falls back to name
+    -- matching. Backfill: python -m src.data.backfill_region_ids
     city_region_id         BIGINT,      -- regiontype '0'
     county_region_id       BIGINT,      -- regiontype '3'
     zipcode_region_id      BIGINT,      -- regiontype '2'

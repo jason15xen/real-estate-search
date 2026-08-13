@@ -500,6 +500,7 @@ async def _collect_hard_filter_steps(
     filters: dict | None = None,
     area_region_id: int | None = None,
     area_region_type: str | None = None,
+    drawn_polygon: list[tuple[float, float]] | None = None,
 ) -> list[dict]:
     """Debug-only: apply bounds/filters/criteria one at a time, recording count per
     step. area_region_id (+area_region_type in region-ID mode) mirrors the real
@@ -515,8 +516,18 @@ async def _collect_hard_filter_steps(
     partial_filters: dict = {}
     prev = int(total)
 
+    if drawn_polygon:
+        count = len(await apply_hard_filters(pool, applied, drawn_polygon=drawn_polygon))
+        steps.append({
+            "step": f"drawn polygon ({len(drawn_polygon)} points)",
+            "count": count,
+            "dropped": prev - count,
+        })
+        prev = count
+
     if bounds:
-        count = len(await apply_hard_filters(pool, applied, bounds=bounds))
+        count = len(await apply_hard_filters(pool, applied, bounds=bounds,
+                                             drawn_polygon=drawn_polygon))
         steps.append({
             "step": "bounds",
             "count": count,
@@ -531,7 +542,8 @@ async def _collect_hard_filter_steps(
                 continue
             partial_filters[key] = value
             count = len(await apply_hard_filters(
-                pool, applied, bounds=bounds, filters=partial_filters
+                pool, applied, bounds=bounds, filters=partial_filters,
+                drawn_polygon=drawn_polygon,
             ))
             steps.append({
                 "step": f"filter: {label_tpl.format(v=value)}",
@@ -550,6 +562,7 @@ async def _collect_hard_filter_steps(
         count = len(await apply_hard_filters(
             pool, applied, bounds=bounds, filters=filters,
             area_region_id=area_region_id, area_region_type=area_region_type,
+            drawn_polygon=drawn_polygon,
         ))
         steps.append({
             "step": ", ".join(labels),
@@ -571,6 +584,7 @@ async def search(
     page_size: int = 50,
     client_location: dict | None = None,
     ignore_region: bool = False,
+    drawn_polygon: list[tuple[float, float]] | None = None,
 ) -> dict:
     """Run the full search pipeline; bounds restricts to a bbox, filters override LLM
     hard-filter sub-fields, debug adds a per-step count breakdown. The heavy
@@ -580,7 +594,10 @@ async def search(
     name no place. ignore_region (the frontend's "remove boundaries" button) drops
     the region part of the query entirely: place criteria are stripped after
     parsing and location detection is suppressed, so the search is scoped only by
-    the map bounds (when sent) — the response then carries no region at all."""
+    the map bounds (when sent) — the response then carries no region at all.
+    drawn_polygon ([(lat, lng), ...] from the map's draw tool) restricts results
+    to homes inside that ring — the only polygon-based filtering; like bounds it
+    suppresses detected-location injection."""
     # Phase 1: Parse
     logger.info(f"Phase 1: Parsing query: '{query}'")
     parsed_query = await parse_query(query)
@@ -617,7 +634,8 @@ async def search(
         for c in parsed_query.criteria
     )
     if (not ignore_region and not has_location
-            and parsed_query.criteria and bounds is None):
+            and parsed_query.criteria and bounds is None
+            and drawn_polygon is None):
         detected = None
         if client_location is not None:
             detected = await locate_by_point(
@@ -687,11 +705,13 @@ async def search(
             await _collect_hard_filter_steps(
                 pool, parsed_query.criteria, bounds, filters,
                 area_region_id=area_region_id, area_region_type=area_region_type,
+                drawn_polygon=drawn_polygon,
             )
         )
     property_ids = await apply_hard_filters(
         pool, parsed_query.criteria, bounds=bounds, filters=filters,
         area_region_id=area_region_id, area_region_type=area_region_type,
+        drawn_polygon=drawn_polygon,
     )
     if debug and area_region_id:
         filter_steps.append({

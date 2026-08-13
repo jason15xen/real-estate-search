@@ -41,6 +41,7 @@ async def apply_hard_filters(
     filters: dict | None = None,
     area_region_id: int | None = None,
     area_region_type: str | None = None,
+    drawn_polygon: list[tuple[float, float]] | None = None,
 ) -> list[int]:
     """Return property IDs passing ALL criteria; bounds is an optional bbox, filters
     are per-field overrides that suppress matching LLM sub-conditions.
@@ -83,6 +84,20 @@ async def apply_hard_filters(
             # polygons (see region_property_ids).
             conditions.append(f"id = ANY(${param_idx}::int[])")
             params.append(await region_property_ids(pool, area_region_id))
+        param_idx += 1
+
+    if drawn_polygon:
+        # Hand-drawn map polygon — the only polygon-based filtering in the system
+        # (named regions filter by region id). Ring is closed automatically;
+        # ST_MakeValid absorbs self-intersections from freehand drawing.
+        ring = list(drawn_polygon)
+        if ring[0] != ring[-1]:
+            ring.append(ring[0])
+        wkt = "POLYGON((" + ", ".join(f"{lng} {lat}" for lat, lng in ring) + "))"
+        conditions.append(
+            f"ST_Covers(ST_MakeValid(ST_SetSRID(ST_GeomFromText(${param_idx}), 4326))::geography, geom)"
+        )
+        params.append(wkt)
         param_idx += 1
 
     if bounds:

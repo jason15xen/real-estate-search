@@ -285,6 +285,11 @@ async def log_request_response(request: Request, call_next):
     return new_response
 
 
+class LatLng(BaseModel):
+    Lat: float
+    Lng: float
+
+
 class Bounds(BaseModel):
     north: float
     south: float
@@ -358,6 +363,12 @@ class SearchRequest(BaseModel):
     # `bounds` when sent — the map replaces the region. Response then has
     # regionId/regionName/polygons null and detectedLocation false.
     ignore_region: bool = False
+    # Hand-drawn map polygon (the "draw" tool): results are restricted to homes
+    # INSIDE this ring, same {Lat, Lng} format the response's `polygons` uses.
+    # This is the ONLY polygon-based filtering in the system — named regions
+    # filter by region id. Combines with the query/filters like `bounds` does,
+    # and like bounds it suppresses detected-location injection.
+    drawnPolygon: list[LatLng] | None = None
     # Pagination of briefproperties (pins are never paginated). Defaults keep
     # existing callers working: page 1 of 50.
     page: int = 1
@@ -376,6 +387,20 @@ class SearchRequest(BaseModel):
     def _page_size_range(cls, v: int) -> int:
         if not 1 <= v <= 200:
             raise ValueError("pageSize must be between 1 and 200")
+        return v
+
+    @field_validator("drawnPolygon")
+    @classmethod
+    def _polygon_ring(cls, v: list[LatLng] | None) -> list[LatLng] | None:
+        if v is None:
+            return v
+        if len(v) < 3:
+            raise ValueError("drawnPolygon needs at least 3 points")
+        if len(v) > 1000:
+            raise ValueError("drawnPolygon supports at most 1000 points")
+        for p in v:
+            if not (-90 <= p.Lat <= 90 and -180 <= p.Lng <= 180):
+                raise ValueError("drawnPolygon contains an out-of-range coordinate")
         return v
 
     @field_validator("query")
@@ -473,11 +498,6 @@ class BriefProperty(BaseModel):
     yearBuilt: int | None = None
     county: str | None = None
     lotAreaValue: float | None = None  # square feet (acreage converted at ingest)
-
-
-class LatLng(BaseModel):
-    Lat: float
-    Lng: float
 
 
 class MapPin(BaseModel):
@@ -616,14 +636,20 @@ async def search_properties(request: SearchRequest):
                 request.clientLocation.model_dump() if request.clientLocation else None
             ),
             ignore_region=request.ignore_region,
+            drawn_polygon=(
+                [(p.Lat, p.Lng) for p in request.drawnPolygon]
+                if request.drawnPolygon else None
+            ),
         )
 
         # A query that parses to ZERO criteria (gibberish) with no bounds/filters would
         # otherwise "match" the entire catalog — reject it instead of dumping the DB.
-        # Exception: ignore_region — a location-only query legitimately strips down to
+        # Exceptions: ignore_region — a location-only query legitimately strips down to
         # zero criteria there ("remove boundaries" on "homes in rockledge" = browse
-        # everything, scoped by the map when the frontend sends bounds).
+        # everything, scoped by the map when the frontend sends bounds) — and a
+        # drawn polygon, which IS the search area.
         if (not request.ignore_region
+                and request.drawnPolygon is None
                 and not result["parsed_query"].criteria
                 and bounds_dict is None and filters_dict is None):
             raise HTTPException(

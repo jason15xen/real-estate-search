@@ -144,6 +144,12 @@ async def resolve_search_region(pool: asyncpg.Pool, criteria) -> dict | None:
         field, value, crit = target
         state_code = abbrev_state(crit.state).upper() if crit.state and crit.state.strip() else None
         parent_city = crit.city if field in ("neighborhood", "district", "locality") else None
+        # Parser variance: the LLM sometimes duplicates the place into BOTH city and
+        # neighborhood ("viera west" -> city="Viera West", neighborhood="Viera West").
+        # That's not a real parent constraint — requiring a city of the same name
+        # would wrongly kill resolution (Viera West's parent city is Melbourne).
+        if parent_city and parent_city.strip().lower() == value.strip().lower():
+            parent_city = None
 
         async with pool.acquire() as conn:
             for region_type in _FIELD_REGION_TYPES[field]:
@@ -188,6 +194,10 @@ async def resolve_search_region(pool: asyncpg.Pool, criteria) -> dict | None:
                 if settings.search_use_region_ids:
                     # ID mode: membership was precomputed at ingest — filter by the
                     # stored column. Works with or without a polygon (Viera East).
+                    # NO region-polygon fallback here: region polygons are drawing
+                    # data only (the map's hand-drawn polygon is the sole
+                    # polygon-based filter); a region no property carries falls
+                    # through to the next type, then to name matching.
                     n = await _region_id_count(pool, region_type, chosen["regionid"])
                     if n:
                         return {
@@ -197,6 +207,7 @@ async def resolve_search_region(pool: asyncpg.Pool, criteria) -> dict | None:
                             "region_type": region_type,
                             "id_mode": True,
                         }
+                    continue
                 if not chosen["has_geom"]:
                     # A polygon-less match can't power geo filtering; try the next
                     # type first (bare "brevard" hits the polygon-less NC town at
