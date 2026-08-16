@@ -340,6 +340,15 @@ async def assign_region_ids(conn, prop_id: int) -> None:
           city_region_id = COALESCE(
             (SELECT (r.data->>'cityId')::bigint FROM raw_properties r
              WHERE r.id = p.guid AND (r.data->>'cityId') ~ '^[0-9]+$'),
+            -- Feed without cityId: the MAILING CITY name decides, exactly as
+            -- Zillow would assign it — BEFORE polygons, so nested community
+            -- polygons (Viera inside Rockledge/Melbourne) cannot split the
+            -- city identity between raw-tier and polygon-tier records.
+            (SELECT g2.regionid FROM regions g2, raw_properties r2
+             WHERE r2.id = p.guid AND g2.regiontype = '0'
+               AND lower(g2.regionname) = lower(trim(r2.data->'address'->>'city'))
+               AND g2.statecode = upper(trim(r2.data->'address'->>'state'))
+             ORDER BY g2.regionid LIMIT 1),
             (SELECT g.regionid FROM regions g
              WHERE g.regiontype = '0' AND g.geom IS NOT NULL AND ST_Covers(g.geom, p.geom)
              ORDER BY ST_Area(g.geom), g.regionid LIMIT 1)
