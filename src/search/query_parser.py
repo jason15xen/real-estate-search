@@ -133,6 +133,7 @@ the user said.
    (Note: "near Viera" / "neighborhoods NEAR Viera" is NOT this — that is the
    spatial area_relation #9, not location.)
    All string|null. Use "<city> in <STATE>" only when the user names a state.
+{known_regions_block}
 
 6. proximity — Distance to a named landmark OR a common PLACE TYPE (point of interest).
    Fields: landmark_name (string), max_distance_miles (float; if the user gives no \
@@ -315,12 +316,60 @@ _EMBEDDING_FEATURE_VALUE_RULE = """\
 list). A downstream embedding step resolves them to real database features."""
 
 
-def _build_system_prompt(use_embedding_retrieval: bool) -> str:
+# Known catalog regions injected into the parse prompt: canonical place names by
+# level, so the LLM normalizes spelling ("veira" -> "Viera") and files each place
+# in the RIGHT field (Viera West -> neighborhood, not city). Cached — region
+# assignments only change on ingest.
+_REGIONS_BLOCK_CACHE: dict = {}
+_REGIONS_BLOCK_TTL_SEC = 600
+
+
+async def _known_regions_block() -> str:
+    import time
+    hit = _REGIONS_BLOCK_CACHE.get("block")
+    if hit and time.monotonic() - hit[0] < _REGIONS_BLOCK_TTL_SEC:
+        return hit[1]
+    try:
+        from src.data.database import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT g.regiontype, g.regionname FROM regions g
+                WHERE g.regionid IN (
+                    SELECT city_region_id FROM properties WHERE city_region_id IS NOT NULL
+                    UNION SELECT county_region_id FROM properties WHERE county_region_id IS NOT NULL
+                    UNION SELECT neighborhood_region_id FROM properties WHERE neighborhood_region_id IS NOT NULL
+                ) AND g.regiontype IN ('0', '1', '3')
+                ORDER BY g.regiontype, g.regionname
+            """)
+        by_type: dict[str, list[str]] = {"0": [], "1": [], "3": []}
+        for r in rows:
+            by_type[r["regiontype"]].append(r["regionname"])
+        block = (
+            "   KNOWN CATALOG REGIONS — the catalog covers exactly these places. When\n"
+            "   the query names one of them (any casing, spacing, or misspelling), use\n"
+            "   the EXACT canonical name from this list and put it in the field of its\n"
+            "   level. For a NEIGHBORHOOD from the list, set neighborhood to it and\n"
+            "   leave city null. Places not listed are still extracted as usual.\n"
+            f"   Cities: {', '.join(by_type['0'])}\n"
+            f"   Neighborhoods: {', '.join(by_type['1'])}\n"
+            f"   Counties: {', '.join(by_type['3'])}\n"
+        )
+    except Exception as e:  # noqa: BLE001 — parsing must work without the block
+        logger.warning(f"Known-regions block unavailable: {e}")
+        block = ""
+    if len(_REGIONS_BLOCK_CACHE) < 4:
+        _REGIONS_BLOCK_CACHE["block"] = (time.monotonic(), block)
+    return block
+
+
+def _build_system_prompt(use_embedding_retrieval: bool, known_regions_block: str = "") -> str:
     room_types = registry.get_room_types_list()
     if use_embedding_retrieval:
         return SYSTEM_PROMPT_TEMPLATE.format(
             room_types=", ".join(room_types),
             known_features_block="",
+            known_regions_block=known_regions_block,
             feature_naming_rule=_EMBEDDING_FEATURE_NAMING_RULE,
             feature_value_rule=_EMBEDDING_FEATURE_VALUE_RULE,
         )
@@ -334,6 +383,7 @@ def _build_system_prompt(use_embedding_retrieval: bool) -> str:
     return SYSTEM_PROMPT_TEMPLATE.format(
         room_types=", ".join(room_types),
         known_features_block=known_features_block,
+        known_regions_block=known_regions_block,
         feature_naming_rule=_LEGACY_FEATURE_NAMING_RULE,
         feature_value_rule=_LEGACY_FEATURE_VALUE_RULE,
     )
@@ -394,7 +444,9 @@ async def parse_query(query: str, max_retries: int = 2) -> ParsedQuery:
 
 async def _parse_query_uncached(query: str, max_retries: int = 2) -> ParsedQuery:
     client = get_query_client()
-    system_prompt = _build_system_prompt(settings.search_use_embedding_retrieval)
+    system_prompt = _build_system_prompt(
+        settings.search_use_embedding_retrieval, await _known_regions_block()
+    )
 
     raw_text = None
     parsed = None
