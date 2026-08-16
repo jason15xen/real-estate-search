@@ -421,9 +421,17 @@ async def update_property_scalars(
     existing_id: int,
     item: dict,
 ) -> None:
-    """Update non-photo-derived columns: scalars plus Bedroom/Bathroom counts from Zillow."""
+    """Update non-photo-derived columns: scalars plus Bedroom/Bathroom counts from Zillow.
+
+    Bedroom/Bathroom use _get_room_counts' image fallback: a feed value of 0
+    (common for listings with sparse metadata) must not zero out a count the
+    photos already established — every metadata refresh used to do exactly
+    that, silently re-breaking bedroom filters for those listings."""
     record = item.get("ZillowPropertyRecord", {}) or {}
     fields = _extract_property_fields(item)
+    room_counts = _get_room_counts(
+        record, await query_room_instance_counts(conn, existing_id)
+    )
     await conn.execute("""
         UPDATE properties SET
             name=$2, street=$3, district=$4, city=$5, state=$6,
@@ -444,8 +452,8 @@ async def update_property_scalars(
         fields["state"], fields["postal_code"], fields["country"],
         fields["longitude"], fields["latitude"],
         fields["area_sqft"], fields["price_usd"],
-        _to_int(record.get("bedrooms")),
-        _to_int(record.get("bathrooms")),
+        room_counts.get("Bedroom", 0),
+        room_counts.get("Bathroom", 0),
         fields["home_type"], fields["rent_estimate"], fields["year_built"],
         fields["lot_size_sqft"], fields["stories"],
         fields["has_pool"], fields["has_waterfront"], fields["description"],
