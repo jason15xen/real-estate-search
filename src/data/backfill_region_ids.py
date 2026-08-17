@@ -87,6 +87,21 @@ _ZIP_TEXT_SQL = """
     WHERE p.zipcode_region_id IS NULL AND p.postal_code = sub.regionname
 """
 
+# Feed without cityId: the MAILING CITY name decides, exactly as Zillow would
+# assign it — BEFORE polygons, so nested community polygons (Viera inside
+# Rockledge/Melbourne) cannot split the city identity between raw-tier and
+# polygon-tier records.
+_CITY_NAME_SQL = """
+    UPDATE properties p SET city_region_id = sub.regionid
+    FROM raw_properties r2,
+    LATERAL (SELECT g2.regionid FROM regions g2
+             WHERE g2.regiontype = '0'
+               AND lower(g2.regionname) = lower(trim(r2.data->'address'->>'city'))
+               AND g2.statecode = upper(trim(r2.data->'address'->>'state'))
+             ORDER BY g2.regionid LIMIT 1) sub
+    WHERE r2.id = p.guid AND p.city_region_id IS NULL
+"""
+
 _LEVELS = [
     ("city_region_id", "0"),
     ("county_region_id", "3"),
@@ -104,6 +119,8 @@ async def backfill(conn) -> dict[str, int]:
         )
         for col, rtype in _LEVELS:
             await conn.execute(_ZILLOW_SQL[col])
+            if col == "city_region_id":
+                await conn.execute(_CITY_NAME_SQL)
             await conn.execute(_POLYGON_SQL.format(col=col), rtype)
         await conn.execute(_ZIP_TEXT_SQL)
     row = await conn.fetchrow(

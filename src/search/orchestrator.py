@@ -678,9 +678,11 @@ async def search(
     # name-based place matching/trimming for that place is skipped.
     search_region = await resolve_search_region(pool, parsed_query.criteria)
     id_mode = bool(search_region and search_region.get("id_mode"))
+    display_only = bool(search_region and search_region.get("display_only"))
     area_region_id = (
         search_region["region_id"]
-        if search_region and (id_mode or search_region["has_geom"]) else None
+        if search_region and not display_only
+        and (id_mode or search_region["has_geom"]) else None
     )
     area_region_type = (
         search_region["region_type"] if search_region and id_mode else None
@@ -688,6 +690,7 @@ async def search(
     if search_region:
         mode = ("region-id filter" if id_mode
                 else "polygon filter" if area_region_id
+                else "display-only region — name matching" if display_only
                 else "no polygon — name matching")
         logger.info(
             f"Phase 1.5: Region '{search_region['region_name']}' "
@@ -933,24 +936,24 @@ async def search(
 
     logger.info(f"Pipeline complete: {stats} (page {page}, {len(results)} items)")
 
-    # Region info is returned ONLY when the region actually filtered the results —
-    # by stored region ids (ID mode) or by its polygon (legacy mode). Name-matching
-    # fallbacks (unresolvable places, subdivision searches) return region_id None;
-    # region_name then carries just the parsed place name as a label. NB in ID mode
-    # the polygon (when present) is a drawing aid, not a membership guarantee: a
-    # Zillow-assigned home can sit outside an incomplete boundary (Viera east of
-    # I-95).
-    region = search_region if area_region_id is not None else None
+    # Region info is returned when the region filtered the results (id/polygon
+    # mode) OR when the searched name resolved to a known region row that merely
+    # can't filter (display-only: no property carries its id — Viera). In every
+    # case the polygon is a drawing aid, not a membership guarantee; only
+    # unresolvable places (subdivisions, unknown names) return region_id None
+    # with the parsed place name as a bare label.
+    region = search_region if (area_region_id is not None
+                               or (search_region and search_region.get("display_only"))) else None
 
     # The polygon the results were filtered by, as rings of {Lat, Lng} points (the
     # frontend's native boundary format), so the client can draw EXACTLY the
     # boundary that decided membership — pins can never disagree.
     polygons = None
-    if area_region_id is not None:
+    if region is not None:
         async with pool.acquire() as conn:
             gj = await conn.fetchval(
                 "SELECT ST_AsGeoJSON(geom) FROM regions WHERE regionid = $1",
-                area_region_id,
+                region["region_id"],
             )
         if gj:
             multi = json.loads(gj)["coordinates"]  # [polygon][ring][[lng, lat], ...]

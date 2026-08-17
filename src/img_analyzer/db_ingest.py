@@ -340,6 +340,15 @@ async def assign_region_ids(conn, prop_id: int) -> None:
           city_region_id = COALESCE(
             (SELECT (r.data->>'cityId')::bigint FROM raw_properties r
              WHERE r.id = p.guid AND (r.data->>'cityId') ~ '^[0-9]+$'),
+            -- Feed without cityId: the MAILING CITY name decides, exactly as
+            -- Zillow would assign it — BEFORE polygons, so nested community
+            -- polygons (Viera inside Rockledge/Melbourne) cannot split the
+            -- city identity between raw-tier and polygon-tier records.
+            (SELECT g2.regionid FROM regions g2, raw_properties r2
+             WHERE r2.id = p.guid AND g2.regiontype = '0'
+               AND lower(g2.regionname) = lower(trim(r2.data->'address'->>'city'))
+               AND g2.statecode = upper(trim(r2.data->'address'->>'state'))
+             ORDER BY g2.regionid LIMIT 1),
             (SELECT g.regionid FROM regions g
              WHERE g.regiontype = '0' AND g.geom IS NOT NULL AND ST_Covers(g.geom, p.geom)
              ORDER BY ST_Area(g.geom), g.regionid LIMIT 1)
@@ -412,9 +421,17 @@ async def update_property_scalars(
     existing_id: int,
     item: dict,
 ) -> None:
-    """Update non-photo-derived columns: scalars plus Bedroom/Bathroom counts from Zillow."""
+    """Update non-photo-derived columns: scalars plus Bedroom/Bathroom counts from Zillow.
+
+    Bedroom/Bathroom use _get_room_counts' image fallback: a feed value of 0
+    (common for listings with sparse metadata) must not zero out a count the
+    photos already established — every metadata refresh used to do exactly
+    that, silently re-breaking bedroom filters for those listings."""
     record = item.get("ZillowPropertyRecord", {}) or {}
     fields = _extract_property_fields(item)
+    room_counts = _get_room_counts(
+        record, await query_room_instance_counts(conn, existing_id)
+    )
     await conn.execute("""
         UPDATE properties SET
             name=$2, street=$3, district=$4, city=$5, state=$6,
@@ -435,8 +452,8 @@ async def update_property_scalars(
         fields["state"], fields["postal_code"], fields["country"],
         fields["longitude"], fields["latitude"],
         fields["area_sqft"], fields["price_usd"],
-        _to_int(record.get("bedrooms")),
-        _to_int(record.get("bathrooms")),
+        room_counts.get("Bedroom", 0),
+        room_counts.get("Bathroom", 0),
         fields["home_type"], fields["rent_estimate"], fields["year_built"],
         fields["lot_size_sqft"], fields["stories"],
         fields["has_pool"], fields["has_waterfront"], fields["description"],

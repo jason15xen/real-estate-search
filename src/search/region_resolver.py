@@ -151,6 +151,10 @@ async def resolve_search_region(pool: asyncpg.Pool, criteria) -> dict | None:
         if parent_city and parent_city.strip().lower() == value.strip().lower():
             parent_city = None
 
+        # A region the NAME resolved to but that cannot filter (no property
+        # carries its id): returned as display-only so /search can still show
+        # regionId + boundary while the results come from name matching (Viera).
+        display_fallback: dict | None = None
         async with pool.acquire() as conn:
             for region_type in _FIELD_REGION_TYPES[field]:
                 names = [value]
@@ -207,6 +211,15 @@ async def resolve_search_region(pool: asyncpg.Pool, criteria) -> dict | None:
                             "region_type": region_type,
                             "id_mode": True,
                         }
+                    if display_fallback is None and region_type != "4":
+                        display_fallback = {
+                            "region_id": chosen["regionid"],
+                            "region_name": f"{chosen['regionname']}, {chosen['statecode']}",
+                            "has_geom": chosen["has_geom"],
+                            "region_type": region_type,
+                            "id_mode": False,
+                            "display_only": True,
+                        }
                     continue
                 if not chosen["has_geom"]:
                     # A polygon-less match can't power geo filtering; try the next
@@ -221,7 +234,7 @@ async def resolve_search_region(pool: asyncpg.Pool, criteria) -> dict | None:
                     "region_type": region_type,
                     "id_mode": False,
                 }
-        return None
+        return display_fallback
     except Exception:
         logger.exception("Pre-filter region resolution failed")
         return None
