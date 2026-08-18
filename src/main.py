@@ -547,6 +547,46 @@ class SearchResponse(BaseModel):
     debug: DebugInfo | None = None
 
 
+def _strip_locations(query: str, places: list[str]) -> str:
+    """Remove parsed place names (and their 'in/at/near' connector) from the query
+    text — used by ignore_region so the search bar stops showing places the
+    search no longer uses. Longest place first so "Viera East" wins over "Viera";
+    then whitespace/comma cleanup. May legitimately return "" (place-only query
+    -> empty search bar)."""
+    import difflib
+    out = query
+    for place in sorted({p for p in places if p}, key=len, reverse=True):
+        before = out
+        esc = re.escape(place).replace(r"\ ", r"\s+")
+        out = re.sub(rf"\b(?:in|at|near|of)\s+{esc}\b\s*,?", " ", out, flags=re.IGNORECASE)
+        out = re.sub(rf"\b{esc}\b\s*,?", " ", out, flags=re.IGNORECASE)
+        if out == before:
+            # The parser normalizes misspellings ("veira" -> "Viera"), so the
+            # canonical value may not appear verbatim in the typed text. Fuzzy
+            # fallback: remove the connector phrase whose words nearly match.
+            n_words = max(len(place.split()), 1)
+            for m in re.finditer(r"\b(?:in|at|near|of)\s+([\w'][\w'\s]*)",
+                                 before, flags=re.IGNORECASE):
+                cand = " ".join(m.group(1).split()[:n_words])
+                if difflib.SequenceMatcher(
+                        None, cand.lower(), place.lower()).ratio() >= 0.75:
+                    cand_esc = re.escape(cand).replace(r"\ ", r"\s+")
+                    out = re.sub(rf"\b(?:in|at|near|of)\s+{cand_esc}\b\s*,?",
+                                 " ", before, count=1, flags=re.IGNORECASE)
+                    break
+            else:
+                # Place-only query typed with a misspelling ("veira" alone).
+                if difflib.SequenceMatcher(
+                        None, before.strip().lower(), place.lower()).ratio() >= 0.75:
+                    out = ""
+    out = re.sub(r"\s+,", ",", out)          # "homes , pool" -> "homes, pool"
+    out = re.sub(r",\s*,", ",", out)         # collapse doubled commas
+    out = re.sub(r"\s{2,}", " ", out).strip(" ,")
+    # Dangling conjunction after removing a place: "homes or" -> "homes"
+    out = re.sub(r"(?:^|\s)(?:or|and)$", "", out, flags=re.IGNORECASE).strip(" ,")
+    return out
+
+
 def _merge_query_filters(query: str, f: dict) -> str:
     """The EFFECTIVE search as one readable line. Filters that CONFLICT with a
     number in the typed text REPLACE it in place ("4 bedrooms in rockledge" +
@@ -572,7 +612,10 @@ def _merge_query_filters(query: str, f: dict) -> str:
             out = new
             consumed.add("baths_min")
     clauses = _describe_filters({k: v for k, v in f.items() if k not in consumed})
-    return f"{out}, {clauses}" if clauses else out
+    if not clauses:
+        return out
+    # Empty base (ignore_region stripped a place-only query): clauses stand alone.
+    return f"{out}, {clauses}" if out.strip() else clauses
 
 
 def _describe_filters(f: dict) -> str:
@@ -676,6 +719,11 @@ async def search_properties(request: SearchRequest):
         base_query = request.query
         if result.get("location_detected") and result.get("region_name"):
             base_query = f"{request.query} in {result['region_name']}"
+        if request.ignore_region and result.get("stripped_locations"):
+            # "Remove boundaries": the search ignored these places, so the search
+            # bar must not keep showing them. A place-only query strips to an
+            # EMPTY bar (product decision).
+            base_query = _strip_locations(base_query, result["stripped_locations"])
         updated_query = (
             _merge_query_filters(base_query, filters_dict)
             if filters_dict else base_query

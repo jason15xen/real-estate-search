@@ -608,12 +608,23 @@ async def search(
     # filtering, place name-matching, and majority-state trimming all no-op
     # downstream by construction (works identically under polygon or region-id
     # search), and the guard below keeps detected-location injection off too.
+    stripped_locations: list[str] = []
     if ignore_region:
         before = len(parsed_query.criteria)
-        parsed_query.criteria = [
-            c for c in parsed_query.criteria
-            if not isinstance(c, LocationCriterion)
-        ]
+        kept = []
+        for c in parsed_query.criteria:
+            if isinstance(c, LocationCriterion):
+                # Collect the place strings so /search can also remove them from
+                # updated_query — the search bar must not keep showing a place
+                # the search no longer uses.
+                for field in ("neighborhood", "locality", "district", "city",
+                              "county", "state", "street"):
+                    v = getattr(c, field, None)
+                    if v and str(v).strip():
+                        stripped_locations.append(str(v).strip())
+            else:
+                kept.append(c)
+        parsed_query.criteria = kept
         if before != len(parsed_query.criteria):
             logger.info(
                 f"Phase 1.2: ignore_region — dropped "
@@ -975,4 +986,5 @@ async def search(
                        else extract_search_area(parsed_query.criteria),
         "polygons": polygons,
         "location_detected": location_detected,
+        "stripped_locations": stripped_locations,
     }
