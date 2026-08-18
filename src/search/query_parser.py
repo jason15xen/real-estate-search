@@ -108,6 +108,12 @@ the user said.
 
 3. price — Price range constraint.
    Fields: min_price (int|null), max_price (int|null)
+   A BARE price with no qualifier means THAT PRICE AND BELOW — set max_price
+   only, NEVER min_price ("homes 400k" / "$300,000 homes" / "300k houses" ->
+   max_price only). Set BOTH fields ONLY for an explicit range ("300k-500k",
+   "between 300k and 500k"). Explicit qualifiers keep their meaning: "under/
+   below/up to X" -> max_price; "over/above/at least X" -> min_price. NEVER
+   set min_price = max_price.
 
 4. area — Square footage constraint.
    Fields: min_sqft (int|null), max_sqft (int|null)
@@ -513,9 +519,16 @@ async def _parse_query_uncached(query: str, max_retries: int = 2) -> ParsedQuery
                     negated=c.get("negated", False),
                 ))
             elif criterion_type == "price":
+                pmin, pmax = c.get("min_price"), c.get("max_price")
+                # Product rule: a specific price means THAT PRICE AND BELOW.
+                # The prompt says so too, but enforce it deterministically —
+                # an exact-price parse (min == max) matched almost nothing
+                # ("homes 400k" returned 3 results instead of ~900).
+                if pmin is not None and pmin == pmax:
+                    pmin = None
                 criteria.append(PriceCriterion(
-                    min_price=c.get("min_price"),
-                    max_price=c.get("max_price"),
+                    min_price=pmin,
+                    max_price=pmax,
                 ))
             elif criterion_type == "area":
                 criteria.append(AreaCriterion(
