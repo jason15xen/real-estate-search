@@ -26,6 +26,22 @@ _AUDIT_SIGNALS = [
     "cabana", "tennis court", "pickleball", "resort-style",
 ]
 
+# Unit properties (condo / unit-numbered townhome) should essentially never
+# have an unverified non-community Pool photo — the ingest verification tags
+# them at write time. Anything here survived every layer.
+_UNIT_QUERY = """
+SELECT p.guid, p.street, p.city, p.home_type, ri.features_text
+FROM room_instances ri
+JOIN properties p ON p.id = ri.property_id
+WHERE ri.room_type = 'Pool'
+  AND NOT EXISTS (SELECT 1 FROM unnest(ri.features) f WHERE f ILIKE '%community%pool%')
+  AND NOT ('private pool' = ANY(ri.features))
+  AND (p.home_type = 'CONDO'
+       OR (p.home_type IN ('TOWNHOUSE', 'MULTI_FAMILY')
+           AND p.street ~* '\\y(apt|unit)\\y|#'))
+ORDER BY p.city, p.street
+"""
+
 _QUERY = """
 SELECT p.guid, p.street, p.city, ri.features_text
 FROM room_instances ri
@@ -44,6 +60,20 @@ async def main() -> None:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(_QUERY, _AUDIT_SIGNALS)
+    async with pool.acquire() as conn:
+        unit_rows = await conn.fetch(_UNIT_QUERY)
+    if unit_rows:
+        props = {r["guid"] for r in unit_rows}
+        logger.info(
+            f"WARNING: {len(unit_rows)} unverified Pool photo(s) on {len(props)} UNIT "
+            f"properties (condo/unit-numbered) — ingest verification should have tagged these:"
+        )
+        for r in unit_rows[:20]:
+            logger.info(f"  {r['guid'][:8]} {r['street']}, {r['city']} [{r['home_type']}]")
+        if len(unit_rows) > 20:
+            logger.info(f"  ... and {len(unit_rows) - 20} more")
+    else:
+        logger.info("OK: no unverified Pool photos on unit properties.")
     if not rows:
         logger.info("OK: no amenity-signal Pool photos without the community tag.")
     else:

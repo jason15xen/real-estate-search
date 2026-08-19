@@ -1,6 +1,7 @@
 """GPT-5.1 vision photo analyzer: extracts room type, color, and features."""
 
 import asyncio
+import re
 import json
 import logging
 from pathlib import Path
@@ -249,3 +250,78 @@ def inject_features(raw_data: list[dict], results_map: dict[str, list[PhotoResul
                 photo["Features"] = pr.features
 
     return raw_data
+
+# --- Unit-property pool verification (trust-but-verify at ingest) -------------
+# Unit properties (condos, unit-numbered townhomes) almost never own pools, so a
+# Pool-classified photo WITHOUT the "community pool" tag on such a listing is
+# inherently suspicious — historically these were community pool decks the model
+# described without any giveaway tags. Each such photo gets one focused second
+# opinion before ingestion writes it; the verdict tag makes search evidence and
+# photo grouping correct from the first write.
+
+_POOL_VERIFY_PROMPT = """You are classifying a real-estate listing photo that shows a swimming pool or pool area.
+Decide WHOSE pool it is:
+- "private": the property's OWN pool in its own yard/courtyard, used only by that home's residents.
+- "community": a SHARED pool or pool area of a complex/HOA (clubhouse, amenity center, condo grounds).
+  Giveaways: rows of lounge chairs, cabanas, outdoor shower posts, amenity pavilions, lap lanes,
+  parking lots, signage, multiple pools, surrounding multi-unit buildings, marketing renders.
+- "unclear": cannot tell.
+Respond ONLY with strict JSON: {"verdict": "private"} or {"verdict": "community"} or {"verdict": "unclear"}"""
+
+
+def _is_unit_property(record: dict) -> bool:
+    """Condo, or a unit-numbered townhouse/multifamily — the scope where a
+    non-community Pool photo warrants a verification call."""
+    home_type = (record.get("homeType") or "").upper()
+    if home_type == "CONDO":
+        return True
+    if home_type in ("TOWNHOUSE", "MULTI_FAMILY"):
+        street = ((record.get("address") or {}).get("streetAddress") or "")
+        return bool(re.search(r"\b(?:apt|unit)\b|#", street, re.IGNORECASE))
+    return False
+
+
+async def verify_unit_pool_photos(record: dict, results: list[PhotoResult]) -> None:
+    """For unit properties: re-check every Pool-classified result that lacks a
+    community tag with a focused vision call, and tag it per the verdict
+    ("community pool" / "private pool"). Mutates results in place. Failures
+    leave the photo untagged (the audit will surface it) — verification must
+    never block ingestion."""
+    if not _is_unit_property(record):
+        return
+    suspects = [
+        r for r in results
+        if r.room_type == "Pool"
+        and not any("community pool" in str(f).lower() for f in r.features)
+        and not any(str(f).lower() == "private pool" for f in r.features)
+    ]
+    if not suspects:
+        return
+    client = get_async_client()
+    sem = asyncio.Semaphore(3)
+
+    async def _judge(res: PhotoResult) -> None:
+        async with sem:
+            try:
+                r = await client.chat.completions.create(
+                    model=settings.openai_model, max_completion_tokens=50,
+                    response_format={"type": "json_object"},
+                    messages=[
+                        {"role": "system", "content": _POOL_VERIFY_PROMPT},
+                        {"role": "user", "content": [
+                            {"type": "image_url",
+                             "image_url": {"url": res.photo_url, "detail": "high"}}]},
+                    ],
+                )
+                verdict = json.loads(r.choices[0].message.content or "{}").get("verdict")
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"Unit-pool verification failed for {res.photo_url}: {e}")
+                return
+            if verdict == "community":
+                res.features = list(res.features) + ["community pool"]
+                logger.info(f"Unit-pool verification: community -> {res.photo_url[-40:]}")
+            elif verdict == "private":
+                res.features = list(res.features) + ["private pool"]
+                logger.info(f"Unit-pool verification: private -> {res.photo_url[-40:]}")
+
+    await asyncio.gather(*[_judge(r) for r in suspects])

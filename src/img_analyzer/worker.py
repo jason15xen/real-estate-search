@@ -12,7 +12,12 @@ from config.settings import settings
 from src.data.database import get_pool
 from src.data.import_pois import ensure_coverage
 from src.img_analyzer import batch_vision
-from src.img_analyzer.analyzer import _pick_jpeg_url, analyze_photos, inject_features
+from src.img_analyzer.analyzer import (
+    _pick_jpeg_url,
+    analyze_photos,
+    inject_features,
+    verify_unit_pool_photos,
+)
 from src.img_analyzer.db_ingest import (
     _build_rooms_from_photos,
     _canonical_photo_url,
@@ -87,6 +92,9 @@ async def _process_unprocessed(
                 )
         if to_analyze:
             results += await analyze_photos(property_id=p.Id, photos=to_analyze)
+        # Unit properties: second-opinion check on non-community Pool photos
+        # BEFORE ingestion writes them (see verify_unit_pool_photos).
+        await verify_unit_pool_photos(data, results)
         inject_features([item], {p.Id: results})
 
     async with pool.acquire() as conn:
@@ -202,6 +210,7 @@ async def _process_partial(
             photo_results = photo_results + await analyze_photos(
                 property_id=item_id, photos=photo_models, concurrency=5
             )
+    await verify_unit_pool_photos(data, photo_results)
 
     if not photos_to_analyze and not actual_removed:
         # Empty diff (earlier attempt already applied it): metadata-only refresh.
