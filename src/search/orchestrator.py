@@ -148,7 +148,10 @@ def _extract_pool_filters(
 async def _filter_by_pool_evidence(
     pool: asyncpg.Pool, property_ids: list[int], want: bool
 ) -> list[int]:
-    """Keep (want=True) / drop (want=False) IDs with a pool by structured evidence: has_pool, has_covered_pool, or an image-derived 'Pool' room."""
+    """Keep (want=True) / drop (want=False) IDs with a pool by structured evidence:
+    has_pool, has_covered_pool, or an image-derived 'Pool' room. Community-tagged
+    Pool photos are NOT evidence — a clubhouse pool in the listing's amenity
+    shots does not make the home a pool home."""
     if not property_ids:
         return property_ids
     neg = "" if want else "NOT "
@@ -160,6 +163,7 @@ async def _filter_by_pool_evidence(
                 p.has_pool OR p.has_covered_pool OR EXISTS (
                     SELECT 1 FROM room_instances ri
                     WHERE ri.property_id = p.id AND ri.room_type = 'Pool'
+                      AND NOT EXISTS (SELECT 1 FROM unnest(ri.features) cf WHERE cf ILIKE '%community%pool%')
                 )
             )
             """,
@@ -185,7 +189,9 @@ async def _filter_by_has_covered_pool(
 async def _filter_by_no_uncovered_pool(
     pool: asyncpg.Pool, property_ids: list[int]
 ) -> list[int]:
-    """'No uncovered pool': keep properties with NO pool at all OR a covered one."""
+    """'No uncovered pool': keep properties with NO pool at all OR a covered one.
+    Community-tagged Pool photos are not the property's pool (see
+    _filter_by_pool_evidence)."""
     if not property_ids:
         return property_ids
     async with pool.acquire() as conn:
@@ -198,6 +204,7 @@ async def _filter_by_no_uncovered_pool(
                     p.has_pool OR EXISTS (
                         SELECT 1 FROM room_instances ri
                         WHERE ri.property_id = p.id AND ri.room_type = 'Pool'
+                          AND NOT EXISTS (SELECT 1 FROM unnest(ri.features) cf WHERE cf ILIKE '%community%pool%')
                     )
                 )
             )
@@ -365,7 +372,9 @@ async def _load_results(pool: asyncpg.Pool, property_ids: list[int]) -> list[dic
         # ingest stores. One query for the whole page.
         room_rows = await conn.fetch(
             """
-            SELECT property_id, photo_url, room_type
+            SELECT property_id, photo_url,
+                   CASE WHEN room_type = 'Pool' AND EXISTS (SELECT 1 FROM unnest(features) cf WHERE cf ILIKE '%community%pool%')
+                        THEN 'Community Pool' ELSE room_type END AS room_type
             FROM room_instances
             WHERE property_id = ANY($1) AND photo_url IS NOT NULL
             """,

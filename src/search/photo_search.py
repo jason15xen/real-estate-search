@@ -37,7 +37,9 @@ async def detailed_photos(
         )
         room_rows = await conn.fetch(
             """
-            SELECT property_id, photo_url, room_type
+            SELECT property_id, photo_url,
+                   CASE WHEN room_type = 'Pool' AND EXISTS (SELECT 1 FROM unnest(features) cf WHERE cf ILIKE '%community%pool%')
+                        THEN 'Community Pool' ELSE room_type END AS room_type
             FROM room_instances
             WHERE property_id = ANY($1) AND photo_url IS NOT NULL
             """,

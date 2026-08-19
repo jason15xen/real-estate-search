@@ -307,12 +307,14 @@ async def _refresh_has_covered_pool(conn, prop_id: int) -> None:
             EXISTS (
                 SELECT 1 FROM room_instances ri
                 WHERE ri.property_id = p.id AND ri.features && $2::text[]
+                  AND NOT EXISTS (SELECT 1 FROM unnest(ri.features) cf WHERE cf ILIKE '%community%pool%')
             )
             AND (
                 p.has_pool
                 OR EXISTS (
                     SELECT 1 FROM room_instances ri
                     WHERE ri.property_id = p.id AND ri.room_type = 'Pool'
+                      AND NOT EXISTS (SELECT 1 FROM unnest(ri.features) cf WHERE cf ILIKE '%community%pool%')
                 )
             )
         )
