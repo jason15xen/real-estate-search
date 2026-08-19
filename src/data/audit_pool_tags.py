@@ -32,6 +32,7 @@ FROM room_instances ri
 JOIN properties p ON p.id = ri.property_id
 WHERE ri.room_type = 'Pool'
   AND NOT EXISTS (SELECT 1 FROM unnest(ri.features) f WHERE f ILIKE '%community%pool%')
+  AND NOT ('private pool' = ANY(ri.features))  -- verified private by re-vision
   AND EXISTS (SELECT 1 FROM unnest(ri.features) f
               WHERE f ILIKE ANY(SELECT '%' || s || '%' FROM unnest($1::text[]) s))
 ORDER BY p.city, p.street
