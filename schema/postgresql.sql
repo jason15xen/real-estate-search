@@ -54,6 +54,11 @@ CREATE TABLE properties (
     lot_size_sqft   INTEGER DEFAULT 0,
     stories         INTEGER,
     has_pool        BOOLEAN NOT NULL DEFAULT FALSE,
+    -- TRUE = the metadata pool claim (resoFacts.hasPrivatePool) was rejected —
+    -- by the community-pool description sweep or manual review. The ingest
+    -- guard re-applies the rejection after every metadata refresh, so wrong
+    -- listing-agent data cannot resurrect a false pool.
+    pool_override   BOOLEAN NOT NULL DEFAULT FALSE,
     -- TRUE = the property has a COVERED pool (water roofed/screened/caged),
     -- derived from images by the ingest pipeline. "Uncovered pool" is not stored
     -- — it is derived at search time as (has a pool) AND NOT has_covered_pool.

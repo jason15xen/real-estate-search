@@ -315,6 +315,37 @@ _COVERED_POOL_TAGS = [
 ]
 
 
+async def _apply_pool_metadata_guard(conn, prop_id: int) -> None:
+    """Reject a WRONG metadata pool claim: listing agents in amenity communities
+    sometimes set resoFacts.hasPrivatePool for the COMMUNITY's pool. Demote
+    has_pool when (a) the description attributes the pool to the community and
+    nothing shows a private pool, or (b) the LLM description sweep flagged the
+    listing (pool_override). Runs after every metadata refresh, so a re-ingest
+    of the same wrong data cannot resurrect the false pool. Call BEFORE
+    _refresh_has_covered_pool — the covered flag corroborates against has_pool."""
+    await conn.execute(
+        """
+        UPDATE properties p SET has_pool = false
+        WHERE p.id = $1 AND p.has_pool AND (
+            p.pool_override
+            OR (
+                COALESCE((SELECT r.data->>'description' FROM raw_properties r
+                          WHERE r.id = p.guid), '') ILIKE '%community pool%'
+                AND COALESCE((SELECT r.data->>'description' FROM raw_properties r
+                              WHERE r.id = p.guid), '') NOT ILIKE '%private pool%'
+                AND NOT EXISTS (
+                    SELECT 1 FROM room_instances ri
+                    WHERE ri.property_id = p.id AND ri.room_type = 'Pool'
+                      AND NOT EXISTS (SELECT 1 FROM unnest(ri.features) cf
+                                      WHERE cf ILIKE '%community%pool%')
+                )
+            )
+        )
+        """,
+        prop_id,
+    )
+
+
 async def _refresh_has_covered_pool(conn, prop_id: int) -> None:
     """Recompute properties.has_covered_pool from current room instances: TRUE iff
     a covered-pool tag is present AND the property has independent pool evidence
@@ -439,6 +470,7 @@ async def _insert_children(conn, prop_id: int, rooms_from_photos: dict, schools:
             ) VALUES ($1, $2, $3, $4, $5, $6)
         """, prop_id, s["name"], s["rating"], s["grades"], s["distance"], s["link"])
     # Derive has_covered_pool from the room_instances just written.
+    await _apply_pool_metadata_guard(conn, prop_id)
     await _refresh_has_covered_pool(conn, prop_id)
 
 
@@ -488,6 +520,7 @@ async def update_property_scalars(
         fields["zpid"],
     )
     # Re-derive has_covered_pool (room features may have changed).
+    await _apply_pool_metadata_guard(conn, existing_id)
     await _refresh_has_covered_pool(conn, existing_id)
     # Re-assign region ids (coordinates or the raw record may have moved).
     await assign_region_ids(conn, existing_id)
@@ -537,6 +570,7 @@ async def update_property_metadata(
         fields["zpid"],
     )
     # Re-derive has_covered_pool (room features may have changed).
+    await _apply_pool_metadata_guard(conn, existing_id)
     await _refresh_has_covered_pool(conn, existing_id)
     # Re-assign region ids (coordinates or the raw record may have moved).
     await assign_region_ids(conn, existing_id)
