@@ -102,12 +102,36 @@ def _canonical_photo_url(photo: dict) -> str | None:
     return best.get("url") or None
 
 
+# High-precision amenity signals: when the vision model describes a Pool photo
+# with these but forgets the "community pool" tag (prompt rule 8), the ingest
+# adds it deterministically — a clubhouse pool must never count as the home's
+# private pool. Deliberately conservative: signals that also appear on genuine
+# private-pool photos (cabana, tennis court, "…community" context tags) are NOT
+# here; the prompt handles those, this guard only enforces the unambiguous ones.
+_COMMUNITY_POOL_SIGNALS = (
+    "clubhouse", "fitness center", "amenity", "onsite", "lap lanes",
+)
+
+
+def _ensure_community_pool_tag(room_type: str, features: list) -> list:
+    """Append 'community pool' to a Pool photo whose own tags carry unambiguous
+    amenity signals — trust-but-verify backstop for prompt rule 8."""
+    if room_type != "Pool" or not features:
+        return features
+    lowered = [str(f).lower() for f in features]
+    if any("community pool" in f for f in lowered):
+        return features
+    if any(sig in f for f in lowered for sig in _COMMUNITY_POOL_SIGNALS):
+        return list(features) + ["community pool"]
+    return features
+
+
 def _build_rooms_from_photos(photos: list[dict]) -> dict[str, list[dict]]:
     """Group features by RoomType → {room_type: [{"features","color","photo_url"}]}; unusable results become empty "Unknown" stubs to claim their URL."""
     rooms: dict[str, list[dict]] = defaultdict(list)
     for photo in photos:
         room_type = photo.get("RoomType", "Unknown")
-        features = photo.get("Features", [])
+        features = _ensure_community_pool_tag(room_type, photo.get("Features", []))
         color = photo.get("Color")
         if isinstance(color, str):
             color = color.strip().lower() or None

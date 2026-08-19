@@ -16,6 +16,7 @@ from src.img_analyzer.analyzer import _pick_jpeg_url, analyze_photos, inject_fea
 from src.img_analyzer.db_ingest import (
     _build_rooms_from_photos,
     _canonical_photo_url,
+    _ensure_community_pool_tag,
     _extract_property_fields,
     _extract_schools,
     _get_room_counts,
@@ -249,7 +250,11 @@ async def _process_partial(
                 if result.room_type and result.room_type != "Unknown" and result.features:
                     new_rows.setdefault(result.room_type, []).append({
                         "photo_url": url,
-                        "features": list(result.features),
+                        # Same community-pool backstop as the full-ingest path —
+                        # partial photo updates must not bypass it.
+                        "features": _ensure_community_pool_tag(
+                            result.room_type, list(result.features)
+                        ),
                         "color": result.color,
                     })
                 else:
