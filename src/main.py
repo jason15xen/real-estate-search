@@ -422,7 +422,8 @@ class DebugInfo(BaseModel):
 class PhotoGroup(BaseModel):
     """A property's images of one room type, e.g. all its Bathroom photos."""
     roomType: str                      # native name: "Bathroom", "Living Room", "Pool";
-    #                                    "Main" = highlight strip (first of each type);
+    #                                    "Main" = highlight strip (first of each type,
+    #                                    Exterior leading — Main[0] is the cover photo);
     #                                    "Other" for images the vision pass couldn't classify
     urls: list[str] = []               # /search: smallest-res; /search/photos: full-res
 

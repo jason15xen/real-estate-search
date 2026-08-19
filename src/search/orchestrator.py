@@ -307,26 +307,50 @@ async def _load_pins(pool: asyncpg.Pool, property_ids: list[int]) -> list[dict]:
     ]
 
 
+# Fixed presentation order for photo groups — every property's strip reads the
+# same way (client feedback: predictable placement; "Other" always last).
+# "Main" is prepended separately. Legacy room types from older vision prompts
+# (Laundry Room, Utility Room, ...) still live in the DB — they take the
+# unlisted rank, after the named groups but strictly before Other.
+_GROUP_ORDER = {
+    rt: i
+    for i, rt in enumerate([
+        "Exterior", "Pool", "Kitchen", "Living Room", "Dining Room",
+        "Bedroom", "Bathroom", "Garage", "Community Pool",
+    ])
+}
+_GROUP_UNLISTED_RANK = len(_GROUP_ORDER)
+_GROUP_ORDER["Other"] = _GROUP_UNLISTED_RANK + 1
+
+
 def _photo_groups(
     photos_json: str | None,
     room_type_by_url: dict[str, str],
     full_size: bool = False,
+    water_urls: set[str] | None = None,
 ) -> list[dict]:
     """originalPhotos JSON -> [{"roomType": "Bathroom", "urls": [...]}, ...], grouped
     by the vision-derived room type of each image (looked up by the photo's canonical
     highest-width url — the id room_instances stores). roomType is the native name
-    ("Living Room", "Pool"); unclassified images group under "Other". A synthetic
-    "Main" group leads the list: the FIRST image of every room type, in listing
-    order — a ready-made highlight strip. Groups appear in first-photo order; urls
-    are the SMALLEST-width jpegs (search results are cards/thumbnails; full-size
-    urls live on the property detail endpoint)."""
+    ("Living Room", "Pool"); unclassified images group under "Other". Groups appear
+    in the fixed _GROUP_ORDER (Exterior first, Other last). A synthetic "Main" group
+    leads the list — the FIRST image of every group in that same order, so
+    Main[0] == Exterior[0]: the card's cover photo is the house front (client
+    requirement); listings with no Exterior photo fall back to the listing's own
+    lead photo as cover. Within the Pool group, photos in `water_urls` (canonical
+    urls whose tags show actual pool water) sort ahead of equipment-only shots.
+    urls are the SMALLEST-width jpegs (search results are cards/thumbnails;
+    full-size urls live on the property detail endpoint)."""
     if not photos_json:
         return []
     try:
         photos = json.loads(photos_json)
     except (json.JSONDecodeError, TypeError):
         return []
-    groups: dict[str, list[str]] = {}
+    # rt -> [(serve_url, canonical_url)] — canonical kept alongside because the
+    # water-first sort keys on it while the served url may be the thumbnail.
+    groups: dict[str, list[tuple[str, str]]] = {}
+    first_serve_url: str | None = None
     for photo in photos or []:
         if not isinstance(photo, dict):
             continue
@@ -344,11 +368,30 @@ def _photo_groups(
             room_type = "Other"
         # full_size (detail/lightbox endpoint) serves the canonical highest-width
         # url; search results serve the smallest (cards/thumbnails).
-        groups.setdefault(room_type, []).append(canonical if full_size else smallest["url"])
+        serve_url = canonical if full_size else smallest["url"]
+        if first_serve_url is None:
+            first_serve_url = serve_url
+        groups.setdefault(room_type, []).append((serve_url, canonical))
     if not groups:
         return []
-    main = {"roomType": "Main", "urls": [urls[0] for urls in groups.values()]}
-    return [main] + [{"roomType": rt, "urls": urls} for rt, urls in groups.items()]
+    if water_urls and "Pool" in groups:
+        # Stable sort: water shots lead, equipment/utility shots trail, listing
+        # order preserved within each half.
+        groups["Pool"].sort(key=lambda p: p[1] not in water_urls)
+    ordered = sorted(
+        groups.items(), key=lambda kv: _GROUP_ORDER.get(kv[0], _GROUP_UNLISTED_RANK)
+    )
+    main_urls = [photos_[0][0] for _, photos_ in ordered]
+    if "Exterior" not in groups and first_serve_url is not None:
+        # No exterior photo at all (rare) — cover falls back to the listing's
+        # lead photo instead of whichever group happens to sort first.
+        if first_serve_url in main_urls:
+            main_urls.remove(first_serve_url)
+        main_urls.insert(0, first_serve_url)
+    main = {"roomType": "Main", "urls": main_urls}
+    return [main] + [
+        {"roomType": rt, "urls": [u for u, _ in photos_]} for rt, photos_ in ordered
+    ]
 
 
 def _blank_to_none(value: str | None) -> str | None:
@@ -372,7 +415,9 @@ async def _load_results(pool: asyncpg.Pool, property_ids: list[int]) -> list[dic
             """
             SELECT property_id, photo_url,
                    CASE WHEN room_type = 'Pool' AND EXISTS (SELECT 1 FROM unnest(features) cf WHERE cf ILIKE '%community%pool%')
-                        THEN 'Community Pool' ELSE room_type END AS room_type
+                        THEN 'Community Pool' ELSE room_type END AS room_type,
+                   (room_type = 'Pool'
+                    AND features && ARRAY['pool','covered pool','uncovered pool']) AS pool_water
             FROM room_instances
             WHERE property_id = ANY($1) AND photo_url IS NOT NULL
             """,
@@ -400,8 +445,11 @@ async def _load_results(pool: asyncpg.Pool, property_ids: list[int]) -> list[dic
             property_ids,
         )
     room_types: dict[int, dict[str, str]] = {}
+    water_urls: dict[int, set[str]] = {}
     for rr in room_rows:
         room_types.setdefault(rr["property_id"], {})[rr["photo_url"]] = rr["room_type"]
+        if rr["pool_water"]:
+            water_urls.setdefault(rr["property_id"], set()).add(rr["photo_url"])
 
     results = []
     for r in rows:
@@ -436,7 +484,8 @@ async def _load_results(pool: asyncpg.Pool, property_ids: list[int]) -> list[dic
             "homeStatus": r["home_status"],
             "homeType": r["home_type"],
             "propertyphotos": _photo_groups(
-                r["photos_json"], room_types.get(r["internal_id"], {})
+                r["photos_json"], room_types.get(r["internal_id"], {}),
+                water_urls=water_urls.get(r["internal_id"]),
             ),
             # Frozen at scrape time — does NOT tick daily after ingest.
             "daysOnmarket": days,
