@@ -148,10 +148,10 @@ def _extract_pool_filters(
 async def _filter_by_pool_evidence(
     pool: asyncpg.Pool, property_ids: list[int], want: bool
 ) -> list[int]:
-    """Keep (want=True) / drop (want=False) IDs with a pool by structured evidence:
-    has_pool, has_covered_pool, or an image-derived 'Pool' room. Community-tagged
-    Pool photos are NOT evidence — a clubhouse pool in the listing's amenity
-    shots does not make the home a pool home."""
+    """Keep (want=True) / drop (want=False) IDs with a pool by IMAGE evidence
+    ONLY: a private (non-community) Pool photo, or the image-derived covered
+    flag. Listing metadata (resoFacts.hasPrivatePool) is NOT trusted — agents
+    routinely set it for the community's pool; what the camera saw decides."""
     if not property_ids:
         return property_ids
     neg = "" if want else "NOT "
@@ -160,7 +160,7 @@ async def _filter_by_pool_evidence(
             f"""
             SELECT id FROM properties p
             WHERE id = ANY($1) AND {neg}(
-                p.has_pool OR p.has_covered_pool OR EXISTS (
+                p.has_covered_pool OR EXISTS (
                     SELECT 1 FROM room_instances ri
                     WHERE ri.property_id = p.id AND ri.room_type = 'Pool'
                       AND NOT EXISTS (SELECT 1 FROM unnest(ri.features) cf WHERE cf ILIKE '%community%pool%')
@@ -200,12 +200,10 @@ async def _filter_by_no_uncovered_pool(
             SELECT id FROM properties p
             WHERE id = ANY($1) AND (
                 p.has_covered_pool
-                OR NOT (
-                    p.has_pool OR EXISTS (
-                        SELECT 1 FROM room_instances ri
-                        WHERE ri.property_id = p.id AND ri.room_type = 'Pool'
-                          AND NOT EXISTS (SELECT 1 FROM unnest(ri.features) cf WHERE cf ILIKE '%community%pool%')
-                    )
+                OR NOT EXISTS (
+                    SELECT 1 FROM room_instances ri
+                    WHERE ri.property_id = p.id AND ri.room_type = 'Pool'
+                      AND NOT EXISTS (SELECT 1 FROM unnest(ri.features) cf WHERE cf ILIKE '%community%pool%')
                 )
             )
             """,
@@ -824,7 +822,7 @@ async def search(
             property_ids = await _match_color_rooms(pool, property_ids, color_room_criteria)
     after_color_room_count = len(property_ids)
 
-    # Phase 3.7: Pool — answered by structured columns (has_pool / 'Pool' room, has_covered_pool), not fuzzy 'pool' tags.
+    # Phase 3.7: Pool — answered by IMAGE-derived evidence (private 'Pool' room photos, has_covered_pool), not fuzzy 'pool' tags. Listing metadata is not trusted.
     if no_uncovered and property_ids:
         before = len(property_ids)
         property_ids = await _filter_by_no_uncovered_pool(pool, property_ids)
@@ -841,7 +839,7 @@ async def search(
         logger.info("Phase 3.7: pool_evidence = %s -> %d", want_pool, len(property_ids))
         if debug:
             filter_steps.append({
-                "step": f"has_pool(evidence) = {want_pool}",
+                "step": f"pool image-evidence = {want_pool}",
                 "count": len(property_ids),
                 "dropped": before - len(property_ids),
             })

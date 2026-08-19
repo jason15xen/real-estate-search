@@ -329,15 +329,25 @@ async def _apply_pool_metadata_guard(conn, prop_id: int) -> None:
         WHERE p.id = $1 AND p.has_pool AND (
             p.pool_override
             OR (
-                COALESCE((SELECT r.data->>'description' FROM raw_properties r
-                          WHERE r.id = p.guid), '') ILIKE '%community pool%'
-                AND COALESCE((SELECT r.data->>'description' FROM raw_properties r
-                              WHERE r.id = p.guid), '') NOT ILIKE '%private pool%'
-                AND NOT EXISTS (
+                -- No private-pool photo anywhere in the listing, AND either the
+                -- description attributes the pool to the community, OR the
+                -- property is a UNIT in a complex (condo, or a unit-numbered
+                -- townhouse/multifamily) — where "private pool" metadata means
+                -- the building's shared pool.
+                NOT EXISTS (
                     SELECT 1 FROM room_instances ri
                     WHERE ri.property_id = p.id AND ri.room_type = 'Pool'
                       AND NOT EXISTS (SELECT 1 FROM unnest(ri.features) cf
                                       WHERE cf ILIKE '%community%pool%')
+                )
+                AND COALESCE((SELECT r.data->>'description' FROM raw_properties r
+                              WHERE r.id = p.guid), '') NOT ILIKE '%private pool%'
+                AND (
+                    COALESCE((SELECT r.data->>'description' FROM raw_properties r
+                              WHERE r.id = p.guid), '') ILIKE '%community pool%'
+                    OR p.home_type = 'CONDO'
+                    OR (p.home_type IN ('TOWNHOUSE', 'MULTI_FAMILY')
+                        AND p.street ~* '\y(apt|unit)\y|#')
                 )
             )
         )
