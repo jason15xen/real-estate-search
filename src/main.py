@@ -406,10 +406,11 @@ class SearchRequest(BaseModel):
     @field_validator("query")
     @classmethod
     def _query_not_blank(cls, v: str) -> str:
-        # Reject empty/whitespace queries — an unfiltered search would dump the whole catalog.
-        if not v or not v.strip():
-            raise ValueError("query must not be empty")
-        return v.strip()
+        # Blank is allowed: the structured fields (filters/bounds/drawnPolygon) can
+        # carry the whole search — e.g. after "remove boundaries" empties the bar.
+        # A blank query with NO other criteria still 422s downstream, so an
+        # unfiltered search can't dump the catalog by accident.
+        return (v or "").strip()
 
 
 class DebugInfo(BaseModel):
@@ -713,8 +714,14 @@ async def search_properties(request: SearchRequest):
         filters_dict = (
             request.filters.model_dump(exclude_none=True) if request.filters else None
         )
-        if filters_dict is not None and not filters_dict:
-            filters_dict = None  # empty {} = no filters
+        if filters_dict is not None:
+            # 0 / [] mean "not specified" — the response's `filters` object uses
+            # those as its unset markers (client contract), so a frontend that
+            # echoes it back must not turn every search into "max price $0".
+            # No real constraint in this shape is expressed by 0 or [].
+            filters_dict = {k: v for k, v in filters_dict.items() if v}
+        if not filters_dict:
+            filters_dict = None  # nothing specified = no filters
 
         result = await search(
             request.query,
@@ -767,7 +774,7 @@ async def search_properties(request: SearchRequest):
         # replaced by filter values (mirroring the pipeline's override behavior).
         base_query = request.query
         if result.get("location_detected") and result.get("region_name"):
-            base_query = f"{request.query} in {result['region_name']}"
+            base_query = f"{request.query} in {result['region_name']}".strip()
         if request.ignore_region and result.get("stripped_locations"):
             # "Remove boundaries": the search ignored these places, so the search
             # bar must not keep showing them. A place-only query strips to an

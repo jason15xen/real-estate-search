@@ -12,6 +12,7 @@ from src.data.geolocate import locate_by_point
 from src.data.us_states import state_variants
 from src.models.search import (
     AreaCriterion,
+    ParsedQuery,
     AreaRelationCriterion,
     ColorRoomCriterion,
     FeatureCriterion,
@@ -655,10 +656,19 @@ async def search(
     drawn_polygon ([(lat, lng), ...] from the map's draw tool) restricts results
     to homes inside that ring — the only polygon-based filtering; like bounds it
     suppresses detected-location injection."""
-    # Phase 1: Parse
-    logger.info(f"Phase 1: Parsing query: '{query}'")
-    parsed_query = await parse_query(query)
-    logger.info(f"Parsed {len(parsed_query.criteria)} criteria: {parsed_query.understood_intent}")
+    # Phase 1: Parse. A blank query skips the LLM entirely — the structured
+    # request fields (filters/bounds/drawnPolygon) carry the search instead
+    # (e.g. the filter panel after "remove boundaries" emptied the bar).
+    if not query.strip():
+        logger.info("Phase 1: blank query — skipping parse, structured fields only")
+        parsed_query = ParsedQuery(
+            original_query=query, criteria=[],
+            understood_intent="blank query: structured filters only",
+        )
+    else:
+        logger.info(f"Phase 1: Parsing query: '{query}'")
+        parsed_query = await parse_query(query)
+        logger.info(f"Parsed {len(parsed_query.criteria)} criteria: {parsed_query.understood_intent}")
 
     # Phase 1.2: "Remove boundaries" — strip the region part BEFORE any location
     # machinery runs. With no LocationCriterion left, region resolution, region
