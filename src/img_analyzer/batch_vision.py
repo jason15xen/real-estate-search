@@ -167,6 +167,7 @@ async def _pending_rows(conn: asyncpg.Connection) -> list[asyncpg.Record]:
         """
         SELECT id, data, status, updated_at FROM raw_properties
         WHERE status IN ('unprocessed', 'partial_image_only_processed', 'batch_submitted')
+          AND data->>'homeStatus' = 'FOR_SALE'  -- active listings only (see prune_non_for_sale)
         ORDER BY updated_at ASC
         LIMIT $1
         """,

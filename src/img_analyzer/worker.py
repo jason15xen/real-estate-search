@@ -37,6 +37,7 @@ from src.img_analyzer.raw_db import (
     extract_photo_urls_from_data,
     mark_processed,
     primary_photo_urls,
+    prune_non_for_sale,
 )
 
 logger = logging.getLogger(__name__)
@@ -515,6 +516,14 @@ async def _worker_iteration(pool: asyncpg.Pool) -> tuple[int, int]:
     """Process one iteration; returns (claimed, succeeded), claimed=0 meaning no work.
     Batch mode is BATCH-EXCLUSIVE: all photo analysis flows through _batch_step, and the
     sync claim below only handles metadata-only rows (image_only_processed)."""
+    # Catalog is FOR_SALE-only: drop listings that sold/went pending since ingest and
+    # park their pending rows BEFORE any vision work is scheduled below.
+    try:
+        async with pool.acquire() as conn:
+            await prune_non_for_sale(conn)
+    except Exception as e:  # noqa: BLE001 — never let the prune stall ingestion
+        logger.warning(f"Worker: FOR_SALE prune failed: {e}")
+
     batch_activity = 0
     if settings.vision_use_batch:
         batch_activity = await _batch_step(pool)

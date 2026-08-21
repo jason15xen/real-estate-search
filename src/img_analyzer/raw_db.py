@@ -127,6 +127,7 @@ async def claim_pending_batch(
         SELECT id, data, status, updated_at
         FROM raw_properties
         WHERE status = ANY($2)
+          AND data->>'homeStatus' = 'FOR_SALE'  -- active listings only (see prune_non_for_sale)
         ORDER BY updated_at ASC
         LIMIT $1
         FOR UPDATE SKIP LOCKED
@@ -158,3 +159,57 @@ async def mark_processed(conn, item_id: str, expected_updated_at: datetime) -> b
 async def get_status_counts(conn) -> dict[str, int]:
     rows = await conn.fetch("SELECT status, COUNT(*) AS n FROM raw_properties GROUP BY status")
     return {r["status"]: r["n"] for r in rows}
+
+
+# Client requirement: the catalog carries ACTIVE listings only. Anything Zillow
+# no longer marks FOR_SALE (SOLD, RECENTLY_SOLD, PENDING, PRE_FORECLOSURE,
+# FOR_RENT, OTHER — and any status added upstream later) must not be searchable.
+# Enforced as a keep-only-FOR_SALE rule so a new upstream status can never leak in.
+SKIPPED_NOT_FOR_SALE = "skipped_not_for_sale"
+
+_PENDING_STATUSES = ("unprocessed", "partial_image_only_processed", "image_only_processed")
+
+
+async def prune_non_for_sale(conn) -> tuple[int, int]:
+    """Enforce the FOR_SALE-only catalog; returns (properties_deleted, rows_skipped).
+
+    Two halves, both idempotent and cheap when there is nothing to do:
+      1. DELETE properties whose raw record is no longer FOR_SALE — covers a listing
+         that sold or went pending after it was ingested (children cascade).
+      2. Park still-pending raw rows of non-FOR_SALE listings in a terminal status so
+         the worker never claims them: no vision spend on homes we would delete anyway.
+    A listing that returns to FOR_SALE is re-uploaded as 'unprocessed' by /process and
+    flows through normally, so this never permanently blacklists a property.
+    """
+    deleted = await conn.fetchval(
+        """
+        WITH gone AS (
+            DELETE FROM properties p
+            USING raw_properties r
+            WHERE r.id = p.guid
+              AND r.data->>'homeStatus' IS DISTINCT FROM 'FOR_SALE'
+            RETURNING p.id
+        )
+        SELECT count(*) FROM gone
+        """
+    )
+    skipped = await conn.fetchval(
+        """
+        WITH parked AS (
+            UPDATE raw_properties
+            SET status = $1, updated_at = NOW()
+            WHERE status = ANY($2)
+              AND data->>'homeStatus' IS DISTINCT FROM 'FOR_SALE'
+            RETURNING id
+        )
+        SELECT count(*) FROM parked
+        """,
+        SKIPPED_NOT_FOR_SALE,
+        list(_PENDING_STATUSES),
+    )
+    if deleted or skipped:
+        logger.info(
+            "Catalog prune: %d non-FOR_SALE property(ies) removed, %d pending row(s) skipped",
+            deleted, skipped,
+        )
+    return deleted or 0, skipped or 0

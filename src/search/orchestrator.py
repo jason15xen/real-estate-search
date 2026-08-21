@@ -9,6 +9,7 @@ import asyncpg
 from config.settings import settings
 from src.data.feature_registry import registry
 from src.data.geolocate import locate_by_point
+from src.data.us_states import state_variants
 from src.models.search import (
     AreaCriterion,
     AreaRelationCriterion,
@@ -678,6 +679,10 @@ async def search(
                     v = getattr(c, field, None)
                     if v and str(v).strip():
                         stripped_locations.append(str(v).strip())
+                        if field == "state":
+                            # The parser normalizes states ("florida" -> "FL"), so
+                            # the typed text may spell it either way — strip both.
+                            stripped_locations.extend(state_variants(str(v)))
             else:
                 kept.append(c)
         parsed_query.criteria = kept
