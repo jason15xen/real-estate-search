@@ -20,7 +20,7 @@ from src.data.database import close_pool, get_pool
 from src.data.feature_registry import registry
 from src.img_analyzer.router import router as img_analyzer_router
 from src.img_analyzer.test_router import router as vision_test_router
-from src.models.search import ParsedQuery
+from src.models.search import CriterionType, ParsedQuery
 from src.search.orchestrator import search
 from src.search.photo_search import detailed_photos
 from src.search.query_parser import QueryParseError
@@ -510,6 +510,51 @@ class MapPin(BaseModel):
     price: float | None = None
 
 
+class SearchFilters(BaseModel):
+    """The structured filters the parser extracted from the natural-language query,
+    echoed back so the frontend can sync its filter panel with what the search
+    actually applied. Unspecified = 0 / [] (client-agreed shape — not null).
+    NOTE: an exact count ("2 bedrooms") is reported in beds_min even though the
+    search matches it exactly; financing is never parsed today, so always []."""
+    price_min: int = 0
+    price_max: int = 0
+    beds_min: int = 0
+    baths_min: int = 0
+    property_types: list[str] = []
+    financing: list[str] = []
+    sqft_min: int = 0
+    sqft_max: int = 0
+    year_from: int = 0
+    year_to: int = 0
+
+
+def _extract_filters(parsed) -> SearchFilters:
+    """ParsedQuery.criteria -> SearchFilters. First criterion of a kind wins;
+    location/features/colors are deliberately excluded (covered by regionId and
+    updated_query)."""
+    f = SearchFilters()
+    for c in parsed.criteria:
+        t = getattr(c, "type", None)
+        if t == CriterionType.PRICE:
+            f.price_min = f.price_min or c.min_price or 0
+            f.price_max = f.price_max or c.max_price or 0
+        elif t == CriterionType.AREA:
+            f.sqft_min = f.sqft_min or c.min_sqft or 0
+            f.sqft_max = f.sqft_max or c.max_sqft or 0
+        elif t == CriterionType.ROOM_COUNT:
+            count = c.exact_count or c.min_count or 0
+            if c.room_type == "Bedroom":
+                f.beds_min = f.beds_min or count
+            elif c.room_type == "Bathroom":
+                f.baths_min = f.baths_min or count
+        elif t == CriterionType.PROPERTY:
+            if c.home_type and c.home_type not in f.property_types:
+                f.property_types.append(c.home_type)
+            f.year_from = f.year_from or c.min_year_built or 0
+            f.year_to = f.year_to or c.max_year_built or 0
+    return f
+
+
 class SearchResponse(BaseModel):
     # VERBATIM echo of what the user typed — never modified, safe for the frontend
     # to hold/resend. Filter descriptions live in updated_query instead: merging
@@ -545,6 +590,9 @@ class SearchResponse(BaseModel):
     # location (browser coordinates, IP, or the Brevard default) — lets the UI say
     # "showing homes near you".
     detectedLocation: bool = False
+    # Structured filters parsed from the query (see SearchFilters) — lets the
+    # frontend's filter panel mirror the natural-language query.
+    filters: SearchFilters
     debug: DebugInfo | None = None
 
 
@@ -743,6 +791,7 @@ async def search_properties(request: SearchRequest):
             regionId=result.get("region_id"),
             polygons=result.get("polygons"),
             detectedLocation=result.get("location_detected", False),
+            filters=_extract_filters(result["parsed_query"]),
             debug=debug_info,
         )
     except HTTPException:
