@@ -661,6 +661,35 @@ def _merge_query_filters(query: str, f: dict) -> str:
         if n:
             out = new
             consumed.add("baths_min")
+    if f.get("price_min") is not None or f.get("price_max") is not None:
+        # Filter has priority over the query's price (handler only passes price
+        # here when it DIFFERS from what the query says): the winning value
+        # replaces the typed price phrase so the bar shows the price ONCE. An
+        # amount only counts as a price with a $ prefix or k/m suffix — and not
+        # when an area word follows — so "above 2000 sqft", "5k sqft" and
+        # "built after 2000" are never swallowed.
+        amount = r"(?:\$\s*\d[\d,]*(?:\.\d+)?(?:\s*(?:k|m)\b)?|\d[\d,]*(?:\.\d+)?\s*(?:k|m)\b)"
+        qualifier = (r"(?:priced?\s+)?(?:above|over|under|below|at\s+least|at\s+most|"
+                     r"up\s+to|more\s+than|less\s+than|min(?:imum)?|max(?:imum)?|"
+                     r"from|starting\s+at|between)")
+        price_expr = (rf"(?:{qualifier}\s+)?{amount}(?:\s*\+)?"
+                      rf"(?:\s*(?:-|–|to|and)\s*{amount})?"
+                      rf"(?!\s*(?:k\b|m\b|sq|sf|square|ft\b|feet|acre))")
+        price_desc = _describe_filters(
+            {k: f[k] for k in ("price_min", "price_max") if f.get(k) is not None}
+        )
+        # Placeholder pass: the description contains a price expression itself,
+        # so a direct residual-deletion would eat our own replacement.
+        placeholder = "\x00PRICE\x00"
+        new, n = re.subn(price_expr, placeholder, out, count=1, flags=re.IGNORECASE)
+        if n:
+            # Delete any FURTHER price phrases ("over 300k under 500k") plus a
+            # dangling and/or connector, then drop in the winning description.
+            new = re.sub(rf"(?:\s+(?:and|or))?\s*(?:{price_expr})", " ", new,
+                         flags=re.IGNORECASE)
+            new = new.replace(placeholder, price_desc)
+            out = re.sub(r"\s{2,}", " ", new).strip()
+            consumed.update(("price_min", "price_max"))
     clauses = _describe_filters({k: v for k, v in f.items() if k not in consumed})
     if not clauses:
         return out
@@ -780,9 +809,37 @@ async def search_properties(request: SearchRequest):
             # bar must not keep showing them. A place-only query strips to an
             # EMPTY bar (product decision).
             base_query = _strip_locations(base_query, result["stripped_locations"])
+        # PRICE ONLY (client rule): if the filter restates the price the query
+        # already expresses ("above 500k" == price_min 500000), the bar keeps the
+        # user's own phrase and no clause is appended — one mention, verbatim.
+        # If they DIFFER, the filter wins and its value replaces the typed
+        # phrase (single mention). Other filter fields are untouched. Display
+        # only — result filtering is unchanged either way.
+        display_filters = dict(filters_dict) if filters_dict else None
+        if display_filters and (
+            display_filters.get("price_min") is not None
+            or display_filters.get("price_max") is not None
+        ):
+            pmin = pmax = None
+            for c in result["parsed_query"].criteria:
+                if getattr(c, "type", None) == CriterionType.PRICE:
+                    pmin, pmax = c.min_price, c.max_price
+                    break
+            f_min = display_filters.get("price_min")
+            f_max = display_filters.get("price_max")
+            if (f_min is None or f_min == pmin) and (f_max is None or f_max == pmax):
+                display_filters.pop("price_min", None)
+                display_filters.pop("price_max", None)
+            else:
+                # Effective pair (filter priority over parsed) so a partial
+                # override of a typed range still renders coherently.
+                if f_min is None and pmin is not None:
+                    display_filters["price_min"] = pmin
+                if f_max is None and pmax is not None:
+                    display_filters["price_max"] = pmax
         updated_query = (
-            _merge_query_filters(base_query, filters_dict)
-            if filters_dict else base_query
+            _merge_query_filters(base_query, display_filters)
+            if display_filters else base_query
         )
 
         return SearchResponse(
