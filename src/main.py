@@ -637,6 +637,26 @@ def _strip_locations(query: str, places: list[str]) -> str:
     return out
 
 
+_MERGE_QUALIFIER = (r"(?:priced?\s+)?(?:above|over|under|below|at\s+least|at\s+most|"
+                    r"up\s+to|more\s+than|less\s+than|min(?:imum)?|max(?:imum)?|"
+                    r"from|starting\s+at|between)")
+
+
+def _swap_phrase(text: str, expr: str, desc: str) -> tuple[str, bool]:
+    """Replace the FIRST match of `expr` in `text` with `desc` and DELETE any
+    further matches (plus a dangling and/or connector) — so the merged line
+    mentions the constraint exactly once. Placeholder pass because `desc`
+    itself usually matches `expr` ("min price $500,000", "built after 1990")
+    and a direct residual-deletion would eat our own replacement."""
+    placeholder = "\x00SWAP\x00"
+    new, n = re.subn(expr, placeholder, text, count=1, flags=re.IGNORECASE)
+    if not n:
+        return text, False
+    new = re.sub(rf"(?:\s+(?:and|or))?\s*(?:{expr})", " ", new, flags=re.IGNORECASE)
+    new = new.replace(placeholder, desc)
+    return re.sub(r"\s{2,}", " ", new).strip(), True
+
+
 def _merge_query_filters(query: str, f: dict) -> str:
     """The EFFECTIVE search as one readable line. Filters that CONFLICT with a
     number in the typed text REPLACE it in place ("4 bedrooms in rockledge" +
@@ -662,34 +682,48 @@ def _merge_query_filters(query: str, f: dict) -> str:
             out = new
             consumed.add("baths_min")
     if f.get("price_min") is not None or f.get("price_max") is not None:
-        # Filter has priority over the query's price (handler only passes price
-        # here when it DIFFERS from what the query says): the winning value
-        # replaces the typed price phrase so the bar shows the price ONCE. An
+        # Filter has priority over the query's price (the handler only passes a
+        # price here when it DIFFERS from what the query says): the winning value
+        # replaces the typed price phrase so the line shows the price ONCE. An
         # amount only counts as a price with a $ prefix or k/m suffix — and not
         # when an area word follows — so "above 2000 sqft", "5k sqft" and
         # "built after 2000" are never swallowed.
         amount = r"(?:\$\s*\d[\d,]*(?:\.\d+)?(?:\s*(?:k|m)\b)?|\d[\d,]*(?:\.\d+)?\s*(?:k|m)\b)"
-        qualifier = (r"(?:priced?\s+)?(?:above|over|under|below|at\s+least|at\s+most|"
-                     r"up\s+to|more\s+than|less\s+than|min(?:imum)?|max(?:imum)?|"
-                     r"from|starting\s+at|between)")
-        price_expr = (rf"(?:{qualifier}\s+)?{amount}(?:\s*\+)?"
+        price_expr = (rf"(?:{_MERGE_QUALIFIER}\s+)?{amount}(?:\s*\+)?"
                       rf"(?:\s*(?:-|–|to|and)\s*{amount})?"
                       rf"(?!\s*(?:k\b|m\b|sq|sf|square|ft\b|feet|acre))")
-        price_desc = _describe_filters(
+        desc = _describe_filters(
             {k: f[k] for k in ("price_min", "price_max") if f.get(k) is not None}
         )
-        # Placeholder pass: the description contains a price expression itself,
-        # so a direct residual-deletion would eat our own replacement.
-        placeholder = "\x00PRICE\x00"
-        new, n = re.subn(price_expr, placeholder, out, count=1, flags=re.IGNORECASE)
-        if n:
-            # Delete any FURTHER price phrases ("over 300k under 500k") plus a
-            # dangling and/or connector, then drop in the winning description.
-            new = re.sub(rf"(?:\s+(?:and|or))?\s*(?:{price_expr})", " ", new,
-                         flags=re.IGNORECASE)
-            new = new.replace(placeholder, price_desc)
-            out = re.sub(r"\s{2,}", " ", new).strip()
+        out, swapped = _swap_phrase(out, price_expr, desc)
+        if swapped:
             consumed.update(("price_min", "price_max"))
+    if f.get("sqft_min") is not None or f.get("sqft_max") is not None:
+        # Same single-mention rule for square footage; the sqft word anchors the
+        # match, so plain numbers/prices/years are never touched.
+        sq_amount = r"\d[\d,]*(?:\.\d+)?\s*k?"
+        sq_word = r"(?:sq\.?\s*\.?\s*ft\.?|sqft|sf|square\s+f(?:ee|oo)t)"
+        sqft_expr = (rf"(?:{_MERGE_QUALIFIER}\s+)?{sq_amount}"
+                     rf"(?:\s*(?:-|–|to|and)\s*{sq_amount})?\s*{sq_word}\b")
+        desc = _describe_filters(
+            {k: f[k] for k in ("sqft_min", "sqft_max") if f.get(k) is not None}
+        )
+        out, swapped = _swap_phrase(out, sqft_expr, desc)
+        if swapped:
+            consumed.update(("sqft_min", "sqft_max"))
+    if f.get("year_from") is not None or f.get("year_to") is not None:
+        # Single mention for year built; anchored on built/constructed wording so
+        # bare years ("2000 sqft", prices) are never touched.
+        yr = r"(?:19|20)\d{2}"
+        year_expr = (rf"(?:built|constructed|build)\s*(?:in|after|before|since|"
+                     rf"from|between)?\s*{yr}(?:\s*(?:-|–|to|and)\s*{yr})?"
+                     rf"(?:\s*(?:or|and)\s+(?:newer|later|older|earlier))?")
+        desc = _describe_filters(
+            {k: f[k] for k in ("year_from", "year_to") if f.get(k) is not None}
+        )
+        out, swapped = _swap_phrase(out, year_expr, desc)
+        if swapped:
+            consumed.update(("year_from", "year_to"))
     clauses = _describe_filters({k: v for k, v in f.items() if k not in consumed})
     if not clauses:
         return out
@@ -809,34 +843,36 @@ async def search_properties(request: SearchRequest):
             # bar must not keep showing them. A place-only query strips to an
             # EMPTY bar (product decision).
             base_query = _strip_locations(base_query, result["stripped_locations"])
-        # PRICE ONLY (client rule): if the filter restates the price the query
-        # already expresses ("above 500k" == price_min 500000), the bar keeps the
-        # user's own phrase and no clause is appended — one mention, verbatim.
-        # If they DIFFER, the filter wins and its value replaces the typed
-        # phrase (single mention). Other filter fields are untouched. Display
-        # only — result filtering is unchanged either way.
+        # Client rule (price, sqft, beds, baths, year built): if the filter
+        # RESTATES what the query already expresses ("above 500k" == price_min
+        # 500000), the line keeps the user's own phrase and nothing is appended —
+        # one mention, verbatim. If they DIFFER, the filter wins and its value
+        # replaces the typed phrase (single mention). Display only — result
+        # filtering is unchanged either way.
         display_filters = dict(filters_dict) if filters_dict else None
-        if display_filters and (
-            display_filters.get("price_min") is not None
-            or display_filters.get("price_max") is not None
-        ):
-            pmin = pmax = None
-            for c in result["parsed_query"].criteria:
-                if getattr(c, "type", None) == CriterionType.PRICE:
-                    pmin, pmax = c.min_price, c.max_price
-                    break
-            f_min = display_filters.get("price_min")
-            f_max = display_filters.get("price_max")
-            if (f_min is None or f_min == pmin) and (f_max is None or f_max == pmax):
-                display_filters.pop("price_min", None)
-                display_filters.pop("price_max", None)
-            else:
-                # Effective pair (filter priority over parsed) so a partial
-                # override of a typed range still renders coherently.
-                if f_min is None and pmin is not None:
-                    display_filters["price_min"] = pmin
-                if f_max is None and pmax is not None:
-                    display_filters["price_max"] = pmax
+        if display_filters:
+            parsed_f = {
+                k: (v or None)
+                for k, v in _extract_filters(result["parsed_query"]).model_dump().items()
+            }
+            for pair in (("price_min", "price_max"),
+                         ("sqft_min", "sqft_max"),
+                         ("year_from", "year_to")):
+                sent = [display_filters.get(k) for k in pair]
+                if all(v is None for v in sent):
+                    continue
+                if all(v is None or v == parsed_f.get(k) for k, v in zip(pair, sent)):
+                    for k in pair:
+                        display_filters.pop(k, None)
+                else:
+                    # Effective pair (filter priority over parsed) so a partial
+                    # override of a typed range still renders coherently.
+                    for k in pair:
+                        if display_filters.get(k) is None and parsed_f.get(k) is not None:
+                            display_filters[k] = parsed_f[k]
+            for k in ("beds_min", "baths_min"):
+                if display_filters.get(k) is not None and display_filters[k] == parsed_f.get(k):
+                    display_filters.pop(k, None)
         updated_query = (
             _merge_query_filters(base_query, display_filters)
             if display_filters else base_query

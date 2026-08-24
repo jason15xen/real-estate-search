@@ -1,6 +1,7 @@
 """Query parser: the OpenAI model maps NL queries to structured criteria using the DB's known features/room types."""
 
 import json
+import re
 import logging
 
 from config.settings import settings
@@ -44,6 +45,10 @@ Available criterion types:
 1. room_count — The user wants a specific number of rooms.
    Fields: room_type (string), exact_count (int|null), min_count (int|null), max_count (int|null)
    Use ONLY the room types listed above.
+   A BARE count with no qualifier means AT LEAST that many — "3 bedrooms" ->
+   min_count=3 (NOT exact_count). Use exact_count ONLY for explicit exactness
+   ("exactly 2 bedrooms", "only 2 bedrooms"). "at least/or more" -> min_count;
+   "at most/up to/no more than" -> max_count.
 
 2. feature — The user wants a specific feature included or excluded.
    Fields: feature (string), room_context (string|null), negated (bool)
@@ -117,6 +122,10 @@ the user said.
 
 4. area — Square footage constraint.
    Fields: min_sqft (int|null), max_sqft (int|null)
+   A BARE size with no qualifier means AT LEAST that size — "2000 sqft homes" ->
+   min_sqft=2000 only, NEVER max_sqft. Set BOTH only for an explicit range
+   ("1500-2500 sqft"). "under/below/up to X sqft" -> max_sqft; "over/above/
+   at least X sqft" -> min_sqft. NEVER set min_sqft = max_sqft.
 
 5. location — A place the property is IN (administrative or named area), matched
    by name (fuzzy). NOT a "near <landmark>" distance (that's proximity #6).
@@ -177,6 +186,10 @@ Do NOT also emit a `feature` criterion for the same phrase. \
 "family home" is a home type, NOT a feature like "family-friendly community".
    "under $2k/mo" or "rent under 2000" → max_rent=2000
    "built after 2000" → min_year_built=2000
+   A BARE year built with no qualifier means THAT YEAR OR NEWER — "built in
+   2005" / "2005 build" → min_year_built=2005 only, NEVER max_year_built.
+   "built before 1990" → max_year_built=1990; "built 1990-2010" → both.
+   NEVER set min_year_built = max_year_built.
    "single story" → max_stories=1
    IMPORTANT: There is NO has_pool or has_waterfront field on the `property` criterion.
    "pool", "swimming pool", "waterfront", "on the water" are FEATURES. \
@@ -271,7 +284,8 @@ feature alternatives deterministically from the database. Returning anything oth
 than `[]` is wasted output that will be discarded.
 
 Important rules:
-- If the user says "two bedrooms", that means exact_count=2 for Bedroom.
+- If the user says "two bedrooms", that means min_count=2 for Bedroom (bare
+  count = at least; exact_count ONLY for "exactly"/"only two bedrooms").
 - If the user says "at least 3 bathrooms", that means min_count=3 for Bathroom.
 {feature_value_rule}
 - Only extract criteria that are explicitly stated or clearly implied.
@@ -506,10 +520,17 @@ async def _parse_query_uncached(query: str, max_retries: int = 2) -> ParsedQuery
         try:
             criterion_type = c["type"]
             if criterion_type == "room_count":
+                exact, cmin = c.get("exact_count"), c.get("min_count")
+                # Product rule: a bare count means AT LEAST that many. The prompt
+                # says so too, but enforce it deterministically — keep exact only
+                # when the user actually said so ("exactly"/"only 2 bedrooms").
+                if exact is not None and cmin is None and not re.search(
+                        r"\b(?:exact|exactly|only|just)\b", query, re.IGNORECASE):
+                    cmin, exact = exact, None
                 criteria.append(RoomCountCriterion(
                     room_type=c["room_type"],
-                    exact_count=c.get("exact_count"),
-                    min_count=c.get("min_count"),
+                    exact_count=exact,
+                    min_count=cmin,
                     max_count=c.get("max_count"),
                 ))
             elif criterion_type == "feature":
@@ -531,9 +552,14 @@ async def _parse_query_uncached(query: str, max_retries: int = 2) -> ParsedQuery
                     max_price=pmax,
                 ))
             elif criterion_type == "area":
+                smin, smax = c.get("min_sqft"), c.get("max_sqft")
+                # Product rule: a bare size means AT LEAST that size (enforced
+                # deterministically like the bare-price guard, but keeping MIN).
+                if smin is not None and smin == smax:
+                    smax = None
                 criteria.append(AreaCriterion(
-                    min_sqft=c.get("min_sqft"),
-                    max_sqft=c.get("max_sqft"),
+                    min_sqft=smin,
+                    max_sqft=smax,
                 ))
             elif criterion_type == "location":
                 criteria.append(LocationCriterion(
@@ -561,12 +587,16 @@ async def _parse_query_uncached(query: str, max_retries: int = 2) -> ParsedQuery
                         radius_miles=_safe_miles(c.get("radius_miles"), default=None),
                     ))
             elif criterion_type == "property":
+                ymin, ymax = c.get("min_year_built"), c.get("max_year_built")
+                # Product rule: a bare year built means THAT YEAR OR NEWER.
+                if ymin is not None and ymin == ymax:
+                    ymax = None
                 criteria.append(PropertyCriterion(
                     home_type=c.get("home_type"),
                     min_rent=c.get("min_rent"),
                     max_rent=c.get("max_rent"),
-                    min_year_built=c.get("min_year_built"),
-                    max_year_built=c.get("max_year_built"),
+                    min_year_built=ymin,
+                    max_year_built=ymax,
                     min_lot_sqft=c.get("min_lot_sqft"),
                     max_lot_sqft=c.get("max_lot_sqft"),
                     min_stories=c.get("min_stories"),
