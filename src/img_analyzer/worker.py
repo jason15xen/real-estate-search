@@ -105,7 +105,33 @@ async def _process_unprocessed(
                 "SELECT id FROM properties WHERE guid = $1", item_id
             )
             if existing_id is None:
-                await _insert_primary_full(conn, item)
+                # The scraper re-issues NEW GUIDs for homes it re-scrapes. The
+                # zpid is the stable Zillow identity, so a zpid we already hold
+                # is the SAME listing: adopt it (move the row to the new GUID and
+                # refresh everything) instead of inserting a duplicate — which
+                # would violate idx_properties_zpid on every retry, forever.
+                zpid = _extract_property_fields(item).get("zpid")
+                dup = await conn.fetchrow(
+                    "SELECT id, guid FROM properties WHERE zpid = $1", zpid
+                ) if zpid is not None else None
+                if dup is not None:
+                    await conn.execute(
+                        "UPDATE properties SET guid = $1 WHERE id = $2", item_id, dup["id"]
+                    )
+                    # The superseded raw row is dead weight: nothing references
+                    # its GUID any more, and keeping it would make the
+                    # non-FOR_SALE prune / photo joins see a phantom listing.
+                    await conn.execute(
+                        "DELETE FROM raw_properties WHERE id = $1 AND id <> $2",
+                        dup["guid"], item_id,
+                    )
+                    logger.info(
+                        f"Worker {item_id}: zpid {zpid} already catalogued as {dup['guid']} — "
+                        f"adopted under the new GUID and refreshed"
+                    )
+                    await update_property_with_children(conn, dup["id"], item)
+                else:
+                    await _insert_primary_full(conn, item)
             else:
                 await update_property_with_children(conn, existing_id, item)
         return await mark_processed(conn, item_id, expected_updated_at)
@@ -399,6 +425,40 @@ async def _insert_primary_full(conn, item: dict) -> None:
     await assign_region_ids(conn, prop_id)
 
 
+MAX_INGEST_ATTEMPTS = 5
+
+
+async def _record_failure(pool: asyncpg.Pool, item_id: str, status: str) -> None:
+    """A row that raised: push it to the back of the queue (claim is oldest-first)
+    and count the attempt. After MAX_INGEST_ATTEMPTS it is parked as 'failed' so a
+    poison row can never loop forever — the 2026-08 incident was 80 duplicate
+    rows retried every cycle for three days, logging 18 GB and filling the disk.
+    A re-upload via /process resets the row to 'unprocessed' (attempts reset too)."""
+    try:
+        async with pool.acquire() as conn:
+            attempts = await conn.fetchval(
+                """
+                UPDATE raw_properties
+                SET updated_at = NOW(), ingest_attempts = ingest_attempts + 1
+                WHERE id = $1 AND status = $2
+                RETURNING ingest_attempts
+                """,
+                item_id, status,
+            )
+            if attempts is not None and attempts >= MAX_INGEST_ATTEMPTS:
+                await conn.execute(
+                    "UPDATE raw_properties SET status = 'failed', updated_at = NOW() "
+                    "WHERE id = $1 AND status = $2",
+                    item_id, status,
+                )
+                logger.error(
+                    f"Worker: {item_id} failed {attempts} times — parked as 'failed' "
+                    f"(re-upload via /process to retry)"
+                )
+    except Exception:  # noqa: BLE001 — best-effort bookkeeping
+        pass
+
+
 async def _process_one_row(pool: asyncpg.Pool, row: asyncpg.Record) -> bool:
     """Dispatch a single raw row to the right processor; returns False if raced or if processing raised (row stays pending)."""
     item_id = row["id"]
@@ -428,16 +488,7 @@ async def _process_one_row(pool: asyncpg.Pool, row: asyncpg.Record) -> bool:
         return marked
     except Exception as e:
         logger.exception(f"Worker failed for {item_id} (status={status}): {e}")
-        # Push the failed row to the BACK of the queue (claim is oldest-first): one
-        # poison row must not head-of-line block ingestion and re-bill vision forever.
-        try:
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    "UPDATE raw_properties SET updated_at = NOW() WHERE id = $1 AND status = $2",
-                    item_id, status,
-                )
-        except Exception:  # noqa: BLE001 — best-effort deprioritization
-            pass
+        await _record_failure(pool, item_id, status)
         return False
 
 
@@ -488,15 +539,7 @@ async def _batch_step(pool: asyncpg.Pool) -> int:
             # fresh data (URL-keyed results stay valid for unchanged photos).
         except Exception as e:
             logger.exception(f"Worker: ingesting {item_id} from batch results failed: {e}")
-            # Deprioritize so a poison row can't head-of-line block the pending scan.
-            try:
-                async with pool.acquire() as conn:
-                    await conn.execute(
-                        "UPDATE raw_properties SET updated_at = NOW() WHERE id = $1 AND status = $2",
-                        item_id, entry["status"],
-                    )
-            except Exception:  # noqa: BLE001
-                pass
+            await _record_failure(pool, item_id, entry["status"])
     if ingested:
         await _signal_features_changed(pool)
         try:

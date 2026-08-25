@@ -132,8 +132,14 @@ CREATE TABLE raw_properties (
                      -- Terminal: listing is not FOR_SALE, so it is never analyzed or
                      -- ingested (raw_db.prune_non_for_sale). A re-upload via /process
                      -- resets it to 'unprocessed', so this is not a permanent blacklist.
-                     'skipped_not_for_sale'
+                     'skipped_not_for_sale',
+                     -- Terminal: raised MAX_INGEST_ATTEMPTS times (worker._record_failure).
+                     -- A re-upload via /process resets it to 'unprocessed'.
+                     'failed'
                  )),
+    -- Consecutive ingest failures; parked as 'failed' at MAX_INGEST_ATTEMPTS so a
+    -- poison row cannot be retried forever (2026-08 disk-full incident).
+    ingest_attempts INTEGER NOT NULL DEFAULT 0,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
