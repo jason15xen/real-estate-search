@@ -173,10 +173,16 @@ _PENDING_STATUSES = ("unprocessed", "partial_image_only_processed", "image_only_
 async def prune_non_for_sale(conn) -> tuple[int, int]:
     """Enforce the FOR_SALE-only catalog; returns (properties_deleted, rows_skipped).
 
-    Two halves, both idempotent and cheap when there is nothing to do:
-      1. DELETE properties whose raw record is no longer FOR_SALE — covers a listing
-         that sold or went pending after it was ingested (children cascade).
-      2. Park still-pending raw rows of non-FOR_SALE listings in a terminal status so
+    Three parts, all idempotent and cheap when there is nothing to do:
+      1. DELETE properties whose OWN raw record is no longer FOR_SALE — a listing
+         re-sent under the same GUID after it sold / went pending (children cascade).
+      2. DELETE properties superseded by a NEWER raw record with the same zpid that is
+         not FOR_SALE. The scraper re-issues GUIDs on re-scrape, so a status change
+         usually arrives under a new GUID: it gets parked by part 3 and the old
+         FOR_SALE row would otherwise stay searchable forever (1550 Mars St, 2026-08).
+         "Newer" is decided by upload time, so an OLD pending record can never delete
+         a listing that has since been re-listed and adopted under a new GUID.
+      3. Park still-pending raw rows of non-FOR_SALE listings in a terminal status so
          the worker never claims them: no vision spend on homes we would delete anyway.
     A listing that returns to FOR_SALE is re-uploaded as 'unprocessed' by /process and
     flows through normally, so this never permanently blacklists a property.
@@ -193,6 +199,23 @@ async def prune_non_for_sale(conn) -> tuple[int, int]:
         SELECT count(*) FROM gone
         """
     )
+    superseded = await conn.fetchval(
+        """
+        WITH gone AS (
+            DELETE FROM properties p
+            USING raw_properties own, raw_properties newer
+            WHERE own.id = p.guid
+              AND p.zpid IS NOT NULL
+              AND newer.id <> own.id
+              AND newer.data->>'zpid' = p.zpid::text
+              AND newer.created_at > own.created_at
+              AND newer.data->>'homeStatus' IS DISTINCT FROM 'FOR_SALE'
+            RETURNING p.id
+        )
+        SELECT count(*) FROM gone
+        """
+    )
+    deleted = (deleted or 0) + (superseded or 0)
     skipped = await conn.fetchval(
         """
         WITH parked AS (

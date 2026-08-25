@@ -5,6 +5,7 @@ import gzip
 import json
 import logging
 import re
+import shutil
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -912,6 +913,60 @@ async def health():
     async with pool.acquire() as conn:
         count = await conn.fetchval("SELECT count(*) FROM properties")
     return {"status": "ok", "properties_in_db": count}
+
+
+class DiskUsage(BaseModel):
+    path: str          # filesystem sampled — the host-mounted log dir, so the
+    #                    numbers are the VPS disk, not the container's overlay
+    total_gb: float
+    used_gb: float
+    free_gb: float
+    used_pct: float
+
+
+class DiskStatus(BaseModel):
+    """Disk health of the host the API runs on — added after the 2026-08 outage
+    where runaway logs filled the disk and took Postgres down. Poll this from a
+    monitor: 'warning' below WARN_FREE_PCT free, 'critical' below CRIT_FREE_PCT."""
+    status: str                    # ok | warning | critical
+    disk: DiskUsage
+    database_size_gb: float        # the one consumer that grows with the catalog
+    thresholds: dict[str, int]
+    checked_at: str
+
+
+DISK_WARN_FREE_PCT = 20
+DISK_CRIT_FREE_PCT = 10
+
+
+@app.get("/health/disk", response_model=DiskStatus)
+async def health_disk():
+    """Host disk usage + database size. Cheap (one statvfs + one catalog query)."""
+    # LOG_DIR is a bind mount from the host (./log:/app/log), so statvfs on it
+    # reports the host's real disk; fall back to / (overlay, same numbers on a
+    # default single-disk Docker host) if the mount is missing.
+    path = str(LOG_DIR) if LOG_DIR.exists() else "/"
+    usage = shutil.disk_usage(path)
+    gb = 1024 ** 3
+    free_pct = usage.free / usage.total * 100 if usage.total else 0.0
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        db_bytes = await conn.fetchval("SELECT pg_database_size(current_database())")
+    status = ("critical" if free_pct < DISK_CRIT_FREE_PCT
+              else "warning" if free_pct < DISK_WARN_FREE_PCT else "ok")
+    return DiskStatus(
+        status=status,
+        disk=DiskUsage(
+            path=path,
+            total_gb=round(usage.total / gb, 2),
+            used_gb=round(usage.used / gb, 2),
+            free_gb=round(usage.free / gb, 2),
+            used_pct=round(100 - free_pct, 1),
+        ),
+        database_size_gb=round((db_bytes or 0) / gb, 2),
+        thresholds={"warning_free_pct": DISK_WARN_FREE_PCT, "critical_free_pct": DISK_CRIT_FREE_PCT},
+        checked_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
 
 
 @app.get("/property/{guid}")
