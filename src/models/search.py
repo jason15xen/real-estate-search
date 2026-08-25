@@ -28,6 +28,10 @@ class FeatureCriterion(BaseModel):
     feature: str
     room_context: str | None = None  # room type the feature must be in
     negated: bool = False  # True = must NOT have feature
+    # "hard" = concrete, checkable requirement -> filters (may be auto-relaxed if it
+    # starves the results); "soft" = subjective wish ("great kitchen", "feels
+    # private") -> never filters, only ranks matching homes first.
+    strength: str = "hard"
 
 
 class PriceCriterion(BaseModel):

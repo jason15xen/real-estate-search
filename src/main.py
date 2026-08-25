@@ -91,10 +91,15 @@ async def _refresh_registry_and_embeddings() -> None:
     # New room features may have appeared → embed them and drop the resolver cache so they surface immediately.
     if settings.search_use_embedding_retrieval:
         from src.search.feature_index import sync_feature_embeddings
-        from src.search.feature_resolver import clear_cache
+        from src.search.feature_resolver import clear_cache, clear_persisted_cache
         n = await sync_feature_embeddings(pool)
-        clear_cache()
-        logger.info(f"Embeddings synced: {n} newly embedded; resolver cache cleared")
+        if n:
+            # New tags exist: curated phrase lists may be missing them — drop the
+            # caches so each phrase re-curates once. Unchanged vocabulary keeps
+            # the persisted (deterministic) lists.
+            clear_cache()
+            await clear_persisted_cache(pool)
+        logger.info(f"Embeddings synced: {n} newly embedded; resolver caches {'cleared' if n else 'kept'}")
 
 
 async def _on_feature_change(_connection, _pid, channel, _payload):
@@ -501,6 +506,9 @@ class BriefProperty(BaseModel):
     yearBuilt: int | None = None
     county: str | None = None
     lotAreaValue: float | None = None  # square feet (acreage converted at ingest)
+    # The query's soft wishes ("great kitchen", "feels private") this home
+    # satisfies — results are ranked by how many; lets the UI badge them.
+    matchedSoft: list[str] = []
 
 
 class MapPin(BaseModel):
@@ -595,6 +603,13 @@ class SearchResponse(BaseModel):
     # Structured filters parsed from the query (see SearchFilters) — lets the
     # frontend's filter panel mirror the natural-language query.
     filters: SearchFilters
+    # Hard feature requirements the search had to LOOSEN (turned into ranking
+    # signals) because they left fewer than a handful of homes — show as
+    # "showing homes without: ...". Empty when everything was honored.
+    relaxed: list[str] = []
+    # The query's subjective wishes (never filters, only ranking) — see
+    # BriefProperty.matchedSoft for which ones each result satisfies.
+    softCriteria: list[str] = []
     debug: DebugInfo | None = None
 
 
@@ -893,6 +908,8 @@ async def search_properties(request: SearchRequest):
             polygons=result.get("polygons"),
             detectedLocation=result.get("location_detected", False),
             filters=_extract_filters(result["parsed_query"]),
+            relaxed=result.get("relaxed", []),
+            softCriteria=result.get("soft_criteria", []),
             debug=debug_info,
         )
     except HTTPException:

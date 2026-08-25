@@ -51,8 +51,32 @@ Available criterion types:
    "at most/up to/no more than" -> max_count.
 
 2. feature — The user wants a specific feature included or excluded.
-   Fields: feature (string), room_context (string|null), negated (bool)
+   Fields: feature (string), room_context (string|null), negated (bool), strength ("hard"|"soft")
 {feature_naming_rule}
+   STRENGTH — people write in natural language, mixing REQUIREMENTS with WISHES:
+     "hard" = a concrete thing a photo can verify: an object, material, amenity,
+       room, layout or condition ("screened patio", "water views", "granite
+       countertops", "primary suite", "pool", "fireplace", "updated kitchen",
+       "recently renovated", "new roof", "fenced yard", "two-car garage").
+     "soft" = a subjective opinion, degree or feeling that no photo can prove:
+       quality words ("great", "nice", "nicer", "beautiful", "lovely", "amazing",
+       "charming", "cozy", "spacious", "bright", "open-feeling"), comparatives
+       ("bigger", "better"), and impressions ("feels private", "looks luxurious").
+       Strip impression verbs ("feels", "looks", "seems") and classify what is
+       left: "backyard that feels private" -> feature="private backyard", soft;
+       "kitchen that looks recently renovated" -> "recently renovated kitchen", hard.
+     When unsure, prefer "soft" — a soft wish still ranks matching homes first,
+     while a wrong "hard" requirement can wipe out every result.
+   CONCESSIONS — a thing the user is WILLING TO GIVE UP is NOT a requirement and
+   gets NO criterion at all (this overrides "never drop a feature"): "I'd trade a
+   smaller yard for a nicer interior" -> ONLY feature="nicer interior" (soft);
+   "don't mind an older kitchen", "okay with a small lot", "yard doesn't matter",
+   "willing to give up a garage", "doesn't need to be big", "doesn't have to have
+   a pool", "not necessarily new" -> nothing for that thing (NOT a negated feature:
+   negated=true is reserved for an explicit ban like "no pool" / "without carpet").
+   BEACH AREA — "beachside", "oceanside", "on the beach side", "barrier island"
+   describe WHERE the home is: emit feature="beachside" (hard); the search maps it
+   to the beach-side towns. "ocean view"/"water views" stay ordinary features.
    room_context ties the feature to a specific room type. Set it ONLY when \
 the user EXPLICITLY names a room type as a CONTAINER for the feature \
 (pattern: "<ROOM TYPE> with <FEATURE>" or "<FEATURE> in the <ROOM TYPE>").
@@ -295,6 +319,8 @@ Important rules:
 "<ROOM TYPE> with <FEATURE>" or "<FEATURE> in the <ROOM TYPE>".
   NEVER set room_context because a feature name coincides with a room type. \
 For "pool", "garage", "kitchen", "bedroom" used as features, room_context=null.
+- Every feature gets a strength: "hard" for concrete/checkable things, "soft" for
+  opinions, degrees and feelings (see STRENGTH). Concession clauses produce no criterion.
 - When the user says "without", "no", "exclude", or "not", set negated=true.
   "2 bedrooms without stone tile" → feature="stone tile", negated=true
   "no pool" → the closest known feature, negated=true
@@ -383,8 +409,28 @@ async def _known_regions_block() -> str:
     return block
 
 
+# The vision taxonomy. The registry also carries legacy types from older prompts
+# ("Interior": 5 photos, "Closet", "Hallway", ...) — offering those to the parser
+# let "nicer interior" get scoped to a room type that effectively doesn't exist,
+# zeroing the search. Only these may appear in the prompt or in room_context.
+CANONICAL_ROOM_TYPES = (
+    "Kitchen", "Bedroom", "Bathroom", "Living Room", "Dining Room",
+    "Exterior", "Pool", "Garage",
+)
+_ROOM_TYPE_BY_LOWER = {rt.lower(): rt for rt in CANONICAL_ROOM_TYPES}
+
+
+def canonical_room_context(value) -> str | None:
+    """Normalize a parsed room_context to the vision taxonomy; anything else -> None
+    (the feature then matches in any room instead of in no room)."""
+    if not value or not str(value).strip():
+        return None
+    return _ROOM_TYPE_BY_LOWER.get(str(value).strip().lower())
+
+
 def _build_system_prompt(use_embedding_retrieval: bool, known_regions_block: str = "") -> str:
-    room_types = registry.get_room_types_list()
+    room_types = [rt for rt in registry.get_room_types_list() if rt in CANONICAL_ROOM_TYPES] \
+        or list(CANONICAL_ROOM_TYPES)
     if use_embedding_retrieval:
         return SYSTEM_PROMPT_TEMPLATE.format(
             room_types=", ".join(room_types),
@@ -534,10 +580,12 @@ async def _parse_query_uncached(query: str, max_retries: int = 2) -> ParsedQuery
                     max_count=c.get("max_count"),
                 ))
             elif criterion_type == "feature":
+                strength = str(c.get("strength") or "hard").strip().lower()
                 criteria.append(FeatureCriterion(
                     feature=c["feature"],
-                    room_context=c.get("room_context"),
+                    room_context=canonical_room_context(c.get("room_context")),
                     negated=c.get("negated", False),
+                    strength=strength if strength in ("hard", "soft") else "hard",
                 ))
             elif criterion_type == "price":
                 pmin, pmax = c.get("min_price"), c.get("max_price")

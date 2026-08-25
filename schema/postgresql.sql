@@ -147,6 +147,16 @@ CREATE INDEX idx_raw_properties_status ON raw_properties(status);
 -- The catalog is FOR_SALE-only; the prune/claim paths filter on this expression.
 CREATE INDEX idx_raw_properties_home_status ON raw_properties ((data->>'homeStatus'));
 
+-- Curated feature alternatives per user phrase (feature_resolver). Created lazily
+-- by the app; persisted so a phrase resolves identically across processes and
+-- restarts (the LLM curation step is non-deterministic). Cleared whenever new
+-- tags are embedded.
+CREATE TABLE IF NOT EXISTS feature_phrase_cache (
+    phrase       TEXT PRIMARY KEY,
+    alternatives TEXT[] NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- OpenAI Batch API vision runs (bulk photo analysis): one row per submitted batch;
 -- items = {raw_property_id: {updated_at, urls: [...]}} maps custom_ids back to photos.
 CREATE TABLE vision_batches (

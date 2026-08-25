@@ -15,11 +15,69 @@ logger = logging.getLogger(__name__)
 # Per-process cache: lowercased phrase -> curated feature list (cleared on embedding change via clear_cache()).
 _cache: dict[str, list[str]] = {}
 _CACHE_MAX = 5000  # bound memory; phrases are short, this is plenty
+_table_ready = False
+
+# The curation step (LLM #2) is non-deterministic: the same phrase curated in two
+# processes yields different alternative lists, so the same query returned 18
+# homes on one day and 53 on another. Persisting the FIRST curation makes a
+# phrase resolve identically forever (and instantly — no embed + LLM round trip),
+# which is what the front-page sample queries need. Cleared when new tags are
+# embedded (clear_cache), like the in-memory cache.
+_ENSURE_TABLE = """
+CREATE TABLE IF NOT EXISTS feature_phrase_cache (
+    phrase       TEXT PRIMARY KEY,
+    alternatives TEXT[] NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+)
+"""
+
+
+async def _load_persisted(pool, keys: list[str]) -> dict[str, list[str]]:
+    global _table_ready
+    try:
+        async with pool.acquire() as conn:
+            if not _table_ready:
+                await conn.execute(_ENSURE_TABLE)
+                _table_ready = True
+            rows = await conn.fetch(
+                "SELECT phrase, alternatives FROM feature_phrase_cache WHERE phrase = ANY($1::text[])", keys
+            )
+        return {r["phrase"]: list(r["alternatives"]) for r in rows}
+    except Exception as e:  # noqa: BLE001 — cache is an optimization, never a failure
+        logger.warning("feature_phrase_cache read failed: %s", e)
+        return {}
+
+
+async def _persist(pool, entries: dict[str, list[str]]) -> None:
+    if not entries:
+        return
+    try:
+        async with pool.acquire() as conn:
+            await conn.executemany(
+                "INSERT INTO feature_phrase_cache (phrase, alternatives) VALUES ($1, $2) "
+                "ON CONFLICT (phrase) DO NOTHING",
+                list(entries.items()),
+            )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("feature_phrase_cache write failed: %s", e)
 
 
 def clear_cache() -> None:
-    """Drop the resolver cache; call when feature_embeddings is re-synced so new features appear in retrievals."""
+    """Drop the in-memory resolver cache; call when feature_embeddings is re-synced so new features appear in retrievals."""
     _cache.clear()
+
+
+async def clear_persisted_cache(pool) -> None:
+    """Drop the persisted curations too — only when NEW tags were embedded, so a
+    phrase can pick them up on its next (single) re-curation."""
+    global _table_ready
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(_ENSURE_TABLE)
+            _table_ready = True
+            await conn.execute("DELETE FROM feature_phrase_cache")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("feature_phrase_cache clear failed: %s", e)
 
 
 _RESOLVER_SYSTEM_PROMPT = """\
@@ -140,6 +198,13 @@ async def resolve_feature_phrases(
 
     to_resolve = [orig for key, orig in distinct.items() if key not in _cache]
 
+    # Persisted curations first: identical answers across processes and restarts.
+    if to_resolve:
+        persisted = await _load_persisted(pool, [p.strip().lower() for p in to_resolve])
+        for key, alts in persisted.items():
+            _cache[key] = alts
+        to_resolve = [p for p in to_resolve if p.strip().lower() not in persisted]
+
     # Fallback results are served for THIS request but never cached (see _llm_filter).
     local: dict[str, list[str]] = {}
     if to_resolve:
@@ -147,14 +212,35 @@ async def resolve_feature_phrases(
         filtered, unreliable = await _llm_filter(retrieved)
         if len(_cache) > _CACHE_MAX:   # simple bound — drop all and refill
             _cache.clear()
+        fresh: dict[str, list[str]] = {}
         for phrase in to_resolve:
             val = filtered.get(phrase, [])
             local[phrase.strip().lower()] = val
             if phrase not in unreliable:
                 _cache[phrase.strip().lower()] = val
+                fresh[phrase.strip().lower()] = val
+        await _persist(pool, fresh)
 
     # Assemble result keyed by the ORIGINAL phrase strings the caller passed.
     return {
-        p: _cache.get(p.strip().lower(), local.get(p.strip().lower(), []))
+        p: _drop_opposite_polarity(
+            p, _cache.get(p.strip().lower(), local.get(p.strip().lower(), []))
+        )
         for p in phrases
     }
+
+
+# Tags that describe the ABSENCE or mere possibility of a feature. Embedding
+# similarity happily returns "needs kitchen renovation" for "renovated kitchen"
+# and "water views potential" for "water views" — text-close, meaning-opposite.
+_NEGATIVE_POLARITY = ("needs ", "need ", "potential", "project", "unfinished",
+                      "outdated", "dated ", "damaged", "to be ", "not ")
+
+
+def _drop_opposite_polarity(phrase: str, alts: list[str]) -> list[str]:
+    """Remove alternatives whose wording negates the phrase, unless the user's own
+    phrase carries that wording (someone searching "needs renovation" keeps them)."""
+    pl = f" {phrase.strip().lower()} "
+    if any(m.strip() and m.strip() in pl for m in _NEGATIVE_POLARITY):
+        return alts
+    return [a for a in alts if not any(m in f" {a.lower()} " for m in _NEGATIVE_POLARITY)]

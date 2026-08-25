@@ -118,6 +118,11 @@ def _build_alternatives(
 
 _POOL_PHRASES = ("pool", "swimming pool")
 
+# Below this many results, hard feature requirements are relaxed one at a time
+# (weakest evidence first) into ranking signals — a conversational query must
+# never come back empty because one phrase had no photo evidence.
+RELAX_FLOOR = 5
+
 
 def _extract_pool_filters(
     feature_criteria: list[FeatureCriterion],
@@ -145,6 +150,55 @@ def _extract_pool_filters(
         else:
             remaining.append(fc)
     return want_pool, want_covered, no_uncovered, remaining
+
+
+# "Beachside" is WHERE a home is, not what a photo shows — the barrier-island
+# towns between the Indian River and the Atlantic. Matched by city region id
+# (with the city text as a fallback for rows whose region assignment differs).
+_BEACHSIDE_CITIES = (
+    "cocoa beach", "cape canaveral", "satellite beach", "indian harbour beach",
+    "indialantic", "melbourne beach",
+)
+_BEACHSIDE_PHRASES = ("beachside", "beach side", "oceanside", "ocean side",
+                      "barrier island", "on the beach", "beach area")
+
+
+def _extract_beachside(
+    feature_criteria: list[FeatureCriterion],
+) -> tuple[bool | None, list[FeatureCriterion]]:
+    """Pull the beach-area intent out of the feature list: (want_beachside, remaining)."""
+    want: bool | None = None
+    remaining: list[FeatureCriterion] = []
+    for fc in feature_criteria:
+        nf = fc.feature.strip().lower()
+        if nf in _BEACHSIDE_PHRASES or nf.replace("-", " ") in _BEACHSIDE_PHRASES:
+            want = not fc.negated
+        else:
+            remaining.append(fc)
+    return want, remaining
+
+
+async def _filter_by_beachside(
+    pool: asyncpg.Pool, property_ids: list[int], want: bool
+) -> list[int]:
+    if not property_ids:
+        return property_ids
+    neg = "" if want else "NOT "
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            f"""
+            SELECT id FROM properties p
+            WHERE id = ANY($1) AND {neg}(
+                p.city_region_id IN (
+                    SELECT regionid FROM regions
+                    WHERE lower(regionname) = ANY($2::text[]) AND statecode = 'FL'
+                )
+                OR lower(p.city) = ANY($2::text[])
+            )
+            """,
+            property_ids, list(_BEACHSIDE_CITIES),
+        )
+    return [r["id"] for r in rows]
 
 
 async def _filter_by_pool_evidence(
@@ -462,6 +516,7 @@ async def _load_results(pool: asyncpg.Pool, property_ids: list[int]) -> list[dic
         except ValueError:
             days = None
         results.append({
+            "_internal_id": r["internal_id"],
             "propertyId": r["guid"],
             "price": r["price_usd"],
             "currency": r["currency"] or "USD",
@@ -744,6 +799,7 @@ async def search(
     want_pool, want_covered, no_uncovered, feature_criteria = _extract_pool_filters(
         feature_criteria_all
     )
+    want_beachside, feature_criteria = _extract_beachside(feature_criteria)
     feature_task: asyncio.Task | None = None
     if feature_criteria and settings.search_use_embedding_retrieval:
         feature_task = asyncio.create_task(
@@ -918,6 +974,20 @@ async def search(
                 "dropped": before - len(property_ids),
             })
 
+    if want_beachside is not None and property_ids:
+        before = len(property_ids)
+        property_ids = await _filter_by_beachside(pool, property_ids, want_beachside)
+        logger.info("Phase 3.8: beachside = %s -> %d", want_beachside, len(property_ids))
+        if debug:
+            filter_steps.append({
+                "step": f"beachside towns = {want_beachside}",
+                "count": len(property_ids),
+                "dropped": before - len(property_ids),
+            })
+
+    relaxed: list[str] = []
+    soft_criteria: list[str] = []
+    soft_hits: dict[int, list[str]] = {}
     alternatives: dict[str, list[str]] = {}
     if feature_task is not None and not (feature_criteria and property_ids):
         # Filters emptied the pool (or only pool-phrases remained) — the overlapped
@@ -947,33 +1017,75 @@ async def search(
             feature_criteria,
             key=lambda fc: (fc.negated, len(fc.feature.split())),
         )
+        # Natural-language queries mix REQUIREMENTS with WISHES. Hard features
+        # (and every negation) filter; soft ones only rank. A hard feature that
+        # would starve the page below RELAX_FLOOR is relaxed — weakest evidence
+        # first — into a ranking signal, and reported in `relaxed` so the UI can
+        # say "showing homes without: ...". Structured criteria (place, price,
+        # beds, pool) are never relaxed: those were explicit.
+        # A negated SOFT phrase ("doesn't need to be big") is the absence of a
+        # wish, not a ban — it must never exclude homes. Drop it outright.
+        dropped = [fc for fc in feature_criteria if fc.negated and fc.strength == "soft"]
+        if dropped:
+            logger.info("Phase 4: ignoring negated soft wish(es): %s", [fc.feature for fc in dropped])
+        feature_criteria = [fc for fc in feature_criteria if fc not in dropped]
+        hard = [fc for fc in feature_criteria if fc.negated or fc.strength != "soft"]
+        soft = [fc for fc in feature_criteria if not fc.negated and fc.strength == "soft"]
+        pool_ids = list(property_ids)
+        async with pool.acquire() as conn:
+            matched: dict[str, set[int]] = {}
+            for fc in feature_criteria:
+                alts = alternatives.get(fc.feature, [fc.feature])
+                matched[fc.feature] = await _match_feature_set(
+                    conn, pool_ids, fc.feature, alts, fc.room_context
+                )
+
+        def _apply(hards: list[FeatureCriterion]) -> set[int]:
+            ids = set(pool_ids)
+            for fc in hards:
+                ids = ids - matched[fc.feature] if fc.negated else ids & matched[fc.feature]
+            return ids
+
+        current_ids = _apply(hard)
         if debug:
-            # Apply one at a time to track progressive drops
-            current_ids = set(property_ids)
-            async with pool.acquire() as conn:
-                for fc in feature_criteria:
-                    before = len(current_ids)
-                    alts = alternatives.get(fc.feature, [fc.feature])
-                    matched = await _match_feature_set(
-                        conn, list(current_ids), fc.feature, alts, fc.room_context
-                    )
-                    if fc.negated:
-                        current_ids = current_ids - matched
-                        op = "NOT"
-                    else:
-                        current_ids = current_ids & matched
-                        op = "HAS"
-                    room_ctx = f" in {fc.room_context}" if fc.room_context else ""
-                    filter_steps.append({
-                        "step": f"feature: {op} '{fc.feature}'{room_ctx} (alts={len(alts)})",
-                        "count": len(current_ids),
-                        "dropped": before - len(current_ids),
-                    })
-            property_ids = list(current_ids)
-        else:
-            property_ids = await _match_features(
-                pool, property_ids, feature_criteria, alternatives or None
-            )
+            for fc in hard:
+                alts = alternatives.get(fc.feature, [fc.feature])
+                room_ctx = f" in {fc.room_context}" if fc.room_context else ""
+                filter_steps.append({
+                    "step": f"feature: {'NOT' if fc.negated else 'HAS'} '{fc.feature}'{room_ctx} (alts={len(alts)})",
+                    "count": len(matched[fc.feature]) if not fc.negated else len(pool_ids) - len(matched[fc.feature]),
+                    "dropped": 0,
+                })
+        while len(current_ids) < RELAX_FLOOR:
+            relaxable = [fc for fc in hard if not fc.negated]
+            # Nothing to gain: no positive requirement left, or the search area
+            # itself holds fewer homes than the floor (relaxing can't add any).
+            if not relaxable or current_ids == set(pool_ids):
+                break
+            weakest = min(relaxable, key=lambda fc: (len(matched[fc.feature]), fc.feature))
+            hard.remove(weakest)
+            soft.append(weakest)
+            relaxed.append(weakest.feature)
+            current_ids = _apply(hard)
+            logger.info("Phase 4: relaxed '%s' (matched %d) -> %d results",
+                        weakest.feature, len(matched[weakest.feature]), len(current_ids))
+            if debug:
+                filter_steps.append({
+                    "step": f"relaxed '{weakest.feature}' to ranking-only",
+                    "count": len(current_ids),
+                    "dropped": 0,
+                })
+        property_ids = list(current_ids)
+        if debug:
+            filter_steps.append({
+                "step": "hard features combined",
+                "count": len(property_ids),
+                "dropped": len(pool_ids) - len(property_ids),
+            })
+        soft_criteria = [fc.feature for fc in soft]
+        for fc in soft:
+            for pid in matched[fc.feature] & current_ids:
+                soft_hits.setdefault(pid, []).append(fc.feature)
     after_feature_count = len(property_ids)
 
     # Replace LLM reconstructed_queries with the alternatives actually used (honest debug view)
@@ -999,13 +1111,20 @@ async def search(
     # Pagination: sort ids once (set operations above lose order) so pages are
     # deterministic and disjoint, slice BEFORE the heavy raw-JSON/photos join —
     # page 2+ skips that cost entirely. Pins stay un-paginated for the map.
-    property_ids = sorted(property_ids)
+    # Ranking: homes matching more soft wishes first, then id (deterministic pages).
+    property_ids = sorted(property_ids, key=lambda pid: (-len(soft_hits.get(pid, [])), pid))
     total_count = len(property_ids)
     page_ids = property_ids[(page - 1) * page_size : page * page_size]
 
     pins, results = await asyncio.gather(
         _load_pins(pool, property_ids), _load_results(pool, page_ids)
     )
+    # _load_results orders by id; restore rank order and attach the wishes each
+    # card satisfies so the UI can badge them ("great kitchen ✓").
+    by_id = {r["_internal_id"]: r for r in results}
+    results = [by_id[pid] for pid in page_ids if pid in by_id]
+    for r in results:
+        r["matchedSoft"] = soft_hits.get(r.pop("_internal_id"), [])
 
     stats = {
         "after_hard_filters": after_hard_filter_count,
@@ -1058,4 +1177,6 @@ async def search(
         "polygons": polygons,
         "location_detected": location_detected,
         "stripped_locations": stripped_locations,
+        "relaxed": relaxed,
+        "soft_criteria": soft_criteria,
     }
