@@ -610,6 +610,11 @@ class SearchResponse(BaseModel):
     # The query's subjective wishes (never filters, only ranking) — see
     # BriefProperty.matchedSoft for which ones each result satisfies.
     softCriteria: list[str] = []
+    # True only when the query was a COMPLETE street address (house number +
+    # street) and exactly one property matched it and every other criterion:
+    # the UI opens that home directly. False for every other response — an
+    # incomplete address, several units, no match, or a normal search.
+    exactAddress: bool = False
     debug: DebugInfo | None = None
 
 
@@ -828,6 +833,7 @@ async def search_properties(request: SearchRequest):
         # drawn polygon, which IS the search area.
         if (not request.ignore_region
                 and request.drawnPolygon is None
+                and not result.get("address_mode")
                 and not result["parsed_query"].criteria
                 and bounds_dict is None and filters_dict is None):
             raise HTTPException(
@@ -910,6 +916,7 @@ async def search_properties(request: SearchRequest):
             filters=_extract_filters(result["parsed_query"]),
             relaxed=result.get("relaxed", []),
             softCriteria=result.get("soft_criteria", []),
+            exactAddress=result.get("exact_address", False),
             debug=debug_info,
         )
     except HTTPException:

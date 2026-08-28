@@ -22,6 +22,7 @@ from src.models.search import (
     ProximityCriterion,
     RoomCountCriterion,
 )
+from src.search.address_lookup import match_address, parse_address
 from src.search.feature_resolver import resolve_feature_phrases
 from src.search.filter_engine import apply_hard_filters, drop_district_name_outliers
 from src.search.geo_search import apply_area_relation_filters, apply_proximity_filters
@@ -711,6 +712,27 @@ async def search(
     drawn_polygon ([(lat, lng), ...] from the map's draw tool) restricts results
     to homes inside that ring — the only polygon-based filtering; like bounds it
     suppresses detected-location injection."""
+    # Phase 0: Exact address. "1845 Hidden Lake Dr[, Rockledge, FL 32955]" scopes
+    # the search to that house (all its units when none is given); the rest of the
+    # text is parsed as usual and applied STRICTLY (no relaxation). Deterministic —
+    # a bare street / place name is NOT an address and takes the normal path.
+    address = parse_address(query)
+    address_ids: list[int] | None = None
+    if address is not None:
+        address_ids = await match_address(pool, address)
+        logger.info(
+            "Phase 0: exact address '%s' -> %d home(s); remainder '%s'",
+            address.matched_text.strip(), len(address_ids), address.remainder,
+        )
+        query = address.remainder
+        # A typed address is the strongest location intent there is: it overrides
+        # the map viewport and any drawn polygon (the frontend sends `bounds` on
+        # every search — a home outside the current view must still be found).
+        if bounds is not None or drawn_polygon is not None:
+            logger.info("Phase 0: address query — ignoring map bounds / drawn polygon")
+            bounds = None
+            drawn_polygon = None
+
     # Phase 1: Parse. A blank query skips the LLM entirely — the structured
     # request fields (filters/bounds/drawnPolygon) carry the search instead
     # (e.g. the filter panel after "remove boundaries" emptied the bar).
@@ -770,7 +792,7 @@ async def search(
         isinstance(c, (LocationCriterion, AreaRelationCriterion))
         for c in parsed_query.criteria
     )
-    if (not ignore_region and not has_location
+    if (not ignore_region and not has_location and address is None
             and parsed_query.criteria and bounds is None
             and drawn_polygon is None):
         detected = None
@@ -860,6 +882,16 @@ async def search(
             "count": len(property_ids),
             "dropped": 0,
         })
+    if address_ids is not None:
+        before_addr = len(property_ids)
+        keep = set(address_ids)
+        property_ids = [pid for pid in property_ids if pid in keep]
+        if debug:
+            filter_steps.append({
+                "step": f"exact address: {address.matched_text.strip()}",
+                "count": len(property_ids),
+                "dropped": before_addr - len(property_ids),
+            })
     if area_region_id is None:
         # Name-matching mode only: subdivision plat names embed nearby-city names
         # ("MELBOURNE HEIGHTS" sits in Malabar), so drop district-only matches whose
@@ -1056,7 +1088,7 @@ async def search(
                     "count": len(matched[fc.feature]) if not fc.negated else len(pool_ids) - len(matched[fc.feature]),
                     "dropped": 0,
                 })
-        while len(current_ids) < RELAX_FLOOR:
+        while len(current_ids) < RELAX_FLOOR and address is None:
             relaxable = [fc for fc in hard if not fc.negated]
             # Nothing to gain: no positive requirement left, or the search area
             # itself holds fewer homes than the floor (relaxing can't add any).
@@ -1179,4 +1211,7 @@ async def search(
         "stripped_locations": stripped_locations,
         "relaxed": relaxed,
         "soft_criteria": soft_criteria,
+        "address_mode": address is not None,
+        # Complete address AND exactly one home survived every criterion.
+        "exact_address": address is not None and total_count == 1,
     }
