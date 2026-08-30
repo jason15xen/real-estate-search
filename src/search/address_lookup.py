@@ -51,8 +51,14 @@ _NOT_STREET_WORDS = {
 
 def _tokens(text: str) -> list[str]:
     text = text.lower().replace("#", " unit ")
-    text = re.sub(r"[^\w\s-]", " ", text)
+    text = re.sub(r"[^\w\s]", " ", text)          # hyphens separate too ("Sea-Breeze" == "Sea Breeze")
     return [_SYNONYMS.get(t, t) for t in text.split() if t]
+
+
+# Zillow-style URL slug: "4875-Winchester-Dr-Titusville-FL-32780" — one hyphenated
+# word that is a whole address. Expanded to spaces before scanning.
+_SLUG_RE = re.compile(r"^\d{1,6}[A-Za-z]?(?:-[A-Za-z0-9']+){2,}$")
+_HAS_LETTERS = re.compile(r"-[0-9]*[A-Za-z]")            # excludes "321-555-1234"
 
 
 @dataclass
@@ -78,14 +84,52 @@ _HOUSE_NUMBER = re.compile(r"^\d{1,6}[A-Za-z]?$")
 # What may follow the street: unit, ", city", state, ZIP — anchored at the tail.
 _TAIL_RE = re.compile(
     r"^(?:\s*,?\s*(?:apt|unit|suite|ste|lot|#)\s*\.?\s*(?P<unit>[a-z0-9-]+))?"
-    r"(?:\s*,\s*(?P<city>[a-z][a-z .'-]*?)(?=\s*(?:,|$)|\s+(?:fl|florida)\b|\s+\d{5}\b))?"
+    # ", City" — or, without a comma, "City" only when a state follows it
+    # ("... Dr Titusville FL 32780", the expanded slug form).
+    r"(?:\s*,\s*(?P<city>[a-z][a-z .'-]*?)(?=\s*(?:,|$)|\s+(?:fl|florida)\b|\s+\d{5}\b)"
+    r"|\s+(?P<city2>[a-z][a-z .'-]*?)(?=\s+(?:fl|florida)\b|\s+\d{5}\b|$))?"
     r"(?:\s*,?\s*(?P<state>fl|florida)\b)?"
     r"(?:\s+(?P<zip>\d{5})\b)?",
     re.IGNORECASE,
 )
 
 
-def parse_address(query: str) -> AddressQuery | None:
+# Known city names (normalized token tuples), loaded from the catalog and cached:
+# "Merritt Island" / "Palm Bay" contain street-suffix words, so without this the
+# comma-less form "… Dr Merritt Island FL" would absorb the city into the street.
+_CITY_CACHE: dict = {"at": 0.0, "cities": frozenset()}
+_CITY_TTL_SEC = 600
+
+
+async def known_cities(pool: asyncpg.Pool) -> frozenset[tuple[str, ...]]:
+    import time
+    if time.monotonic() - _CITY_CACHE["at"] < _CITY_TTL_SEC and _CITY_CACHE["cities"]:
+        return _CITY_CACHE["cities"]
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("SELECT DISTINCT city FROM properties WHERE city IS NOT NULL")
+        cities = frozenset(tuple(_tokens(r["city"])) for r in rows if _tokens(r["city"]))
+        _CITY_CACHE.update(at=time.monotonic(), cities=cities)
+    except Exception:  # noqa: BLE001 — detection still works, just without city awareness
+        pass
+    return _CITY_CACHE["cities"]
+
+
+def _city_ahead(words, j: int, cities: frozenset[tuple[str, ...]]) -> bool:
+    """True if the words starting at index j spell a known city (1–3 words)."""
+    if not cities:
+        return False
+    acc: list[str] = []
+    for k in range(j, min(j + 3, len(words))):
+        acc.extend(_tokens(words[k][0]))
+        if tuple(acc) in cities:
+            return True
+        if len(acc) >= 3:
+            break
+    return False
+
+
+def parse_address(query: str, cities: frozenset[tuple[str, ...]] = frozenset()) -> AddressQuery | None:
     """Return the complete address found in `query`, or None (incomplete / no address).
 
     Token scan rather than one regex: from each house-number-shaped word, walk
@@ -95,7 +139,8 @@ def parse_address(query: str) -> AddressQuery | None:
     the first suffix seen is usually not the end of the street. A stop word, a
     unit marker or a stray number ends the walk; a lone suffix ("3 bay garage",
     "4 point inspection") is never a street."""
-    query = query or ""
+    query = " ".join(w.replace("-", " ") if _SLUG_RE.match(w) and _HAS_LETTERS.search(w) else w
+                     for w in (query or "").split())
     words = [(m.group(0), m.start(), m.end()) for m in re.finditer(r"\S+", query)]
     for i, (raw, s, _) in enumerate(words):
         if not _HOUSE_NUMBER.match(raw.strip(",.;")):
@@ -110,6 +155,8 @@ def parse_address(query: str) -> AddressQuery | None:
             toks = _tokens(w)                        # "J.A." -> ["j","a"], "#413" -> ["unit","413"]
             if not toks or toks[0] in _UNIT_MARKERS:
                 break                                # unit part begins
+            if best is not None and _city_ahead(words, j, cities):
+                break                                # "... Dr Merritt Island FL": the city begins
             for tok in toks:
                 if tok in _NOT_STREET_WORDS:
                     stop = True; break               # criteria begin
@@ -119,6 +166,8 @@ def parse_address(query: str) -> AddressQuery | None:
                 )
                 if tok.isdigit() and not numbered_route:
                     stop = True; break               # "123 Main St 3 bedroom"
+                if tok in _DIRECTIONS and best is not None and best[1] == len(name):
+                    stop = True; break               # trailing direction ends the street
                 name.append(tok)
                 if tok in _SUFFIX_SET and len(name) >= 2:
                     best = (j, len(name))
@@ -132,7 +181,8 @@ def parse_address(query: str) -> AddressQuery | None:
         end_idx = best
         if best + 1 < len(words):                    # trailing direction: "... Rd SW"
             d = _tokens(words[best + 1][0])
-            if len(d) == 1 and d[0] in _DIRECTIONS and not words[best][0].endswith(","):
+            if (len(d) == 1 and d[0] in _DIRECTIONS and not words[best][0].endswith(",")
+                    and not _city_ahead(words, best + 1, cities)):   # not "... Dr West Melbourne"
                 street.append(d[0])
                 end_idx = best + 1
         end = words[end_idx][2]
@@ -149,9 +199,30 @@ def parse_address(query: str) -> AddressQuery | None:
             if city and any(t in _NOT_STREET_WORDS for t in city.lower().split()):
                 # "1845 Hidden Lake Dr, with a pool": criteria, not a city — give
                 # the text back to the remainder instead of swallowing it.
-                city = None
                 tail_end = end + tail.start("city")
+                city = None
                 state = zip_code = None
+            elif tail.group("city2"):
+                # No comma: only a KNOWN city counts ("... Dr Rockledge", "... Dr
+                # West Melbourne FL"); "... Dr granite countertops" is criteria.
+                # Keep the longest known-city prefix, return the rest to the query.
+                c2_start = end + tail.start("city2")
+                c2_words = list(re.finditer(r"\S+", tail.group("city2")))
+                acc: list[str] = []
+                cut = None                       # (word count, char offset after it)
+                for k, wm in enumerate(c2_words, 1):
+                    acc.extend(_tokens(wm.group(0)))
+                    if tuple(acc) in cities:
+                        cut = (k, wm.end())
+                if cut is None:
+                    city = None
+                    state = zip_code = None
+                    tail_end = c2_start
+                else:
+                    city = tail.group("city2")[: cut[1]].strip()
+                    if cut[0] < len(c2_words):   # criteria followed the city
+                        state = zip_code = None
+                        tail_end = c2_start + cut[1]
             end = tail_end
         remainder = (query[:s] + " " + query[end:]).strip(" ,.;")
         return AddressQuery(
@@ -215,7 +286,8 @@ async def match_address(pool: asyncpg.Pool, addr: AddressQuery) -> list[int]:
             continue
         is_exact = street == addr.street
         if addr.unit:
-            q_unit, s_unit = addr.unit.replace(" ", ""), (unit or "").replace(" ", "")
+            q_unit = re.sub(r"[\s-]", "", addr.unit)
+            s_unit = re.sub(r"[\s-]", "", unit or "")
             if not s_unit or not (s_unit == q_unit or s_unit.startswith(q_unit)):
                 continue
         # Disambiguate by ZIP / city only when the row actually carries one.

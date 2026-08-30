@@ -22,7 +22,7 @@ from src.models.search import (
     ProximityCriterion,
     RoomCountCriterion,
 )
-from src.search.address_lookup import match_address, parse_address
+from src.search.address_lookup import known_cities, match_address, parse_address
 from src.search.feature_resolver import resolve_feature_phrases
 from src.search.filter_engine import apply_hard_filters, drop_district_name_outliers
 from src.search.geo_search import apply_area_relation_filters, apply_proximity_filters
@@ -716,7 +716,7 @@ async def search(
     # the search to that house (all its units when none is given); the rest of the
     # text is parsed as usual and applied STRICTLY (no relaxation). Deterministic —
     # a bare street / place name is NOT an address and takes the normal path.
-    address = parse_address(query)
+    address = parse_address(query, await known_cities(pool))
     address_ids: list[int] | None = None
     if address is not None:
         address_ids = await match_address(pool, address)
