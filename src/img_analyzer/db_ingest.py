@@ -453,6 +453,19 @@ async def assign_region_ids(conn, prop_id: int) -> None:
         """,
         prop_id,
     )
+    # The MLS feed has no neighborhood name; once the polygon tier assigned a
+    # neighborhood region, surface its NAME in the text column (used by
+    # name-matching search and the response address block). Never overwrites a
+    # feed-provided name.
+    await conn.execute(
+        """
+        UPDATE properties p SET neighborhood = g.regionname
+        FROM regions g
+        WHERE p.id = $1 AND COALESCE(p.neighborhood, '') = ''
+          AND g.regionid = p.neighborhood_region_id AND g.regiontype = '1'
+        """,
+        prop_id,
+    )
 
 
 async def _insert_children(conn, prop_id: int, rooms_from_photos: dict, schools: list[dict]) -> None:

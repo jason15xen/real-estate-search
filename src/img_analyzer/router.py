@@ -9,6 +9,7 @@ from fastapi import APIRouter, Body, File, HTTPException, UploadFile
 from pydantic import ValidationError
 
 from src.data.database import get_pool
+from src.img_analyzer.mls_adapter import is_mls_record, transform_mls
 from src.img_analyzer.models import PropertyInput
 from src.img_analyzer.raw_db import get_status_counts, upsert_raw_property
 
@@ -32,8 +33,20 @@ async def _ingest_items(items: list[PropertyInput]) -> dict:
     async with pool.acquire() as conn:
         for it in items:
             try:
+                item_id, data = str(it.id), it.data or {}
+                if is_mls_record(data):
+                    # MLS/RESO record: rewrite to the internal shape; the row id
+                    # becomes the stable SparkId/ListingKey.
+                    item_id, data = transform_mls(data, fallback_id=item_id)
+                    if not item_id or set(item_id) <= {"0", "-"}:
+                        # No SparkId/ListingKey and the wrapper id is the zero
+                        # GUID — ingesting would make records overwrite each
+                        # other under one key. Reject just this item.
+                        raise ValueError(
+                            "MLS record has no usable id (SparkId/ListingKey empty)"
+                        )
                 status, image_diff, existed = await upsert_raw_property(
-                    conn, str(it.id), it.data or {}
+                    conn, item_id, data
                 )
                 if status == "image_only_processed":
                     counts["image_only_processed"] += 1
@@ -89,6 +102,13 @@ async def process_properties_upload(file: UploadFile = File(...)):
             detail="Uploaded JSON must be an array of {id, data} objects.",
         )
 
+    # Convenience for the MLS exporter: a bare array of MLS records (no
+    # {id, data} wrapper) is accepted as-is — each record IS the data.
+    payload = [
+        {"id": str(obj.get("SparkId") or obj.get("ListingKey") or ""), "data": obj}
+        if isinstance(obj, dict) and "data" not in obj and is_mls_record(obj) else obj
+        for obj in payload
+    ]
     try:
         items = [PropertyInput.model_validate(obj) for obj in payload]
     except ValidationError as e:
