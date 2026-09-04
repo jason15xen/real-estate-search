@@ -423,6 +423,14 @@ async def assign_region_ids(conn, prop_id: int) -> None:
           county_region_id = COALESCE(
             (SELECT (r.data->>'countyId')::bigint FROM raw_properties r
              WHERE r.id = p.guid AND (r.data->>'countyId') ~ '^[0-9]+$'),
+            -- Feed without countyId (MLS): the stated county NAME decides
+            -- before polygons — coastline-hugging county boundaries leave
+            -- beachfront points metres outside ST_Covers.
+            (SELECT g2.regionid FROM regions g2, raw_properties r2
+             WHERE r2.id = p.guid AND g2.regiontype = '3'
+               AND lower(g2.regionname) = lower(trim(r2.data->>'county'))
+               AND g2.statecode = upper(trim(r2.data->'address'->>'state'))
+             ORDER BY g2.regionid LIMIT 1),
             (SELECT g.regionid FROM regions g
              WHERE g.regiontype = '3' AND g.geom IS NOT NULL AND ST_Covers(g.geom, p.geom)
              ORDER BY ST_Area(g.geom), g.regionid LIMIT 1)

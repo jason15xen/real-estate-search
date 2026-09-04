@@ -102,6 +102,20 @@ _CITY_NAME_SQL = """
     WHERE r2.id = p.guid AND p.city_region_id IS NULL
 """
 
+# Feed without countyId (MLS): the stated county NAME decides before polygons —
+# coastline-hugging county boundaries leave beachfront points metres outside
+# ST_Covers.
+_COUNTY_NAME_SQL = """
+    UPDATE properties p SET county_region_id = sub.regionid
+    FROM raw_properties r2,
+    LATERAL (SELECT g2.regionid FROM regions g2
+             WHERE g2.regiontype = '3'
+               AND lower(g2.regionname) = lower(trim(r2.data->>'county'))
+               AND g2.statecode = upper(trim(r2.data->'address'->>'state'))
+             ORDER BY g2.regionid LIMIT 1) sub
+    WHERE r2.id = p.guid AND p.county_region_id IS NULL
+"""
+
 _LEVELS = [
     ("city_region_id", "0"),
     ("county_region_id", "3"),
@@ -121,6 +135,8 @@ async def backfill(conn) -> dict[str, int]:
             await conn.execute(_ZILLOW_SQL[col])
             if col == "city_region_id":
                 await conn.execute(_CITY_NAME_SQL)
+            if col == "county_region_id":
+                await conn.execute(_COUNTY_NAME_SQL)
             await conn.execute(_POLYGON_SQL.format(col=col), rtype)
         await conn.execute(_ZIP_TEXT_SQL)
     row = await conn.fetchrow(

@@ -160,6 +160,21 @@ def _standard_fields(d: dict) -> dict:
         return {}
 
 
+def _listing_terms(data: dict, sf: dict) -> str | None:
+    """Comma-joined financing terms ('Cash,Conventional,VA Loan'). The flat
+    ListingTerms field is null in the Spark feed; the real data is the
+    StandardFieldsJson.ListingTerms {term: bool} map."""
+    flat = data.get("ListingTerms")
+    if isinstance(flat, str) and flat.strip():
+        return flat
+    lt = sf.get("ListingTerms")
+    if isinstance(lt, dict):
+        return ",".join(k for k, v in lt.items() if v) or None
+    if isinstance(lt, list):
+        return ",".join(str(x) for x in lt) or None
+    return None
+
+
 def transform_mls(data: dict, fallback_id: str = "") -> tuple[str, dict]:
     """MLS record -> (raw-row id, internal-shaped record)."""
     sf = _standard_fields(data)
@@ -199,7 +214,7 @@ def transform_mls(data: dict, fallback_id: str = "") -> tuple[str, dict]:
             "stories": data.get("StoriesTotal") or sf.get("Stories"),
             "hasPrivatePool": bool(data.get("PoolYN")),
             "hasWaterfrontView": bool(data.get("WaterFrontYN")),
-            "listingTerms": data.get("ListingTerms"),
+            "listingTerms": _listing_terms(data, sf),
             "garageParkingCapacity": data.get("GarageSpaces"),
             "hasGarage": bool(sf.get("GarageYN")) or bool(data.get("GarageSpaces")),
             "hasAttachedGarage": bool(sf.get("AttachedGarageYN")),
